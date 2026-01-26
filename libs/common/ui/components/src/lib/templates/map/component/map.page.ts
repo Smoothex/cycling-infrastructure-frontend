@@ -54,14 +54,16 @@ export class MapPage implements OnDestroy, OnInit {
 
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
 	public readonly routerPosition: Signal<IMapPosition> = computed(() => {
-		const {
-			lat = BERLIN_POSITION.lat,
-			lng = BERLIN_POSITION.lng,
-			zoom = BERLIN_POSITION.zoom,
-			isNavigated = false
-		} = (this.queryParams() as IMapPosition) ?? {};
+		const params = this.queryParams();
 
-		return { lat, lng, zoom, isNavigated };
+		const lat = params['lat'] ?? BERLIN_POSITION.lat;
+		const lng = params['lng'] ?? BERLIN_POSITION.lng;
+		const zoom = params['zoom'] ?? BERLIN_POSITION.zoom;
+
+		// Every Query paramter is a string. To get a boolean, the string has to be parsed
+		const isNavigated = params['isNavigated'] === undefined ? false : params['isNavigated'] === 'true';
+		const moveTo = params['moveTo'] === undefined ? true : params['moveTo'] === 'true';
+		return { lat, lng, zoom, isNavigated, moveTo };
 	});
 
 	constructor() {
@@ -69,7 +71,7 @@ export class MapPage implements OnDestroy, OnInit {
 			const position = this.routerPosition();
 			const navigable = this.isNavigable();
 
-			if (!this.mlMap || !position) return;
+			if (!this.mlMap || !position || !position.moveTo) return;
 
 			if (navigable && position.isNavigated) {
 				this.mlMap?.flyTo({

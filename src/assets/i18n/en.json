@@ -23,7 +23,8 @@
                 "LIST": "List",
                 "REGIONS": "Regions",
                 "ADMINISTRATIVE_REGIONS": "Administrative District",
-                "SIMRA_REGIONS": "SimRa Regions"
+                "SIMRA_REGIONS": "SimRa Regions",
+                "INTERSECTIONS": "Intersections"
             },
             "SETTINGS": {
                 "TITLE": "Settings",

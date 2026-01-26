@@ -1,0 +1,47 @@
+<div class="page-content">
+    <chart-detail
+        [intersectionData]="intersectionData()"
+    ></chart-detail>
+    <p-card>
+        <div class="information-and-map">
+            <section class="information">
+                @if (displayNodes()) {
+                    <h4 class="p-card-title">
+                    trafficSignalClusterId <a [routerLink]="['/intersections/node', trafficSignalClusterId()]" class="link-button">{{ trafficSignalClusterId() }}</a>
+                    </h4>
+
+                    <h5 class="p-card-subtitle">
+                        startOsmId {{ startOsmId() }} - endOsmId {{ endOsmId() }}
+                    </h5>
+                } @else {
+                    <h4 class="p-card-title">
+                    Weg
+                    </h4>
+                    <h5 class="p-card-subtitle">
+                        prevOsmId {{ prevOsmId() }} - osmId {{ osmId() }} - nextOsmId {{ nextOsmId() }}
+                    </h5>
+                }
+                
+
+                <p-card>
+                    <p>
+                        Text about inaccuracy of GPS mapping.
+                    </p>
+                </p-card>
+            </section>
+
+            <section id="intersection-map" class="map">
+                <map-detail 
+                    [displayNodes]="displayNodes()"
+                    [intersectionData]="intersectionData()"
+                    [trafficSignalClusterId]="trafficSignalClusterId()"
+                ></map-detail>
+            </section>
+        </div>
+    </p-card>
+
+    <list-detail
+        [displayNodes]="displayNodes()"
+        [intersectionData]="intersectionData()"
+    ></list-detail>
+</div>

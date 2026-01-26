@@ -5,11 +5,7 @@ const DEV_ROUTES: Route[] = [
 	{
 		path: 'rides',
 		loadChildren: () => import('@simra/rides-shell').then((m) => m.RIDES_SHELL_ROUTES),
-	},
-	{
-		path: 'ride',
-		loadChildren: () => import('@simra/ride-shell').then((m) => m.RIDE_SHELL_ROUTES),
-	},
+	}
 ];
 
 const PRODUCTION_ROUTES: Route[] = [
@@ -28,6 +24,10 @@ const PRODUCTION_ROUTES: Route[] = [
 	{
 		path: 'simra-regions',
 		loadChildren: () => import('@simra/regions-shell').then((m) => m.SIMRA_REGION_SHELL_ROUTES),
+	},
+	{
+		path: 'intersections',
+		loadChildren: () => import('@simra/intersections-shell').then((m) => m.INTERSECTIONS_SHELL_ROUTES),
 	},
 	{
 		path: '',

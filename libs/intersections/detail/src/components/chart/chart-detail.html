@@ -1,0 +1,24 @@
+<p-card header="Charts">
+  <div class="charts">
+    <p-chart class="chart"
+      type="bar"
+      [data]="speedChartData()"
+      [options]="speedChartOptions()"
+      height="21rem"
+    ></p-chart>
+
+    <p-chart class="chart"
+      type="bar"
+      [data]="durationChartData()"
+      [options]="durationChartOptions()"
+      height="21rem"
+    ></p-chart>
+
+    <p-chart class="chart"
+      type="bar"
+      [data]="waitingTimeChartData()"
+      [options]="waitingTimeChartOptions()"
+      height="21rem"
+    ></p-chart>
+  </div>
+</p-card>

@@ -1,0 +1,76 @@
+<div>
+	<p-card>
+		<p-table [value]="rows()" [loading]="loading()"
+        [sortField]="'medianWaitingTime'"
+		[sortOrder]="-1"
+        >
+            <ng-template pTemplate="caption" class="pt-0">
+				<div class="title-filter">
+                    <p-togglebutton [(ngModel)]="displayNodes" (onChange)="onDisplayChange()" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
+					<m-autocomplete class="region__autocomplete" [fetchFunction]="fetchRegionNames" [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate" (selectionChange)="onFilterChange($event)" field="region" [showDropdown]="true" />
+				</div>
+			</ng-template>
+            <ng-template pTemplate="header">
+                <tr>
+                    @for (col of columns; track col.field) {
+                        <th>
+                            @if (col.sortable) {
+                                <div [pSortableColumn]="col.field">
+									{{ col.header}}
+									<p-sortIcon [field]="col.field"></p-sortIcon>
+								</div>
+                            }
+                            @else {
+                                <div>
+                                    {{col.header}}
+                                </div>
+                            }
+                        </th>
+                    }
+                </tr>
+                <tr>
+					@for(col of columns; track col.field) {
+					<th>
+						@if (col.headerFilter?.dataType === "number") {
+                            <m-number-filter
+                                [field]="asNumberFilter(col.headerFilter).field"
+                                [step]="asNumberFilter(col.headerFilter).step"
+                                [min]="asNumberFilter(col.headerFilter).min"
+                                [defaultValue]="asNumberFilter(col.headerFilter).default ?? 0"
+                                (filterChange)="onFilterChange($event)">
+                            </m-number-filter>
+						} @if(col.headerFilter?.dataType === "autocomplete") {
+							<m-autocomplete class="table__autocomplete" [fetchFunction]="asAutocompleteFilter(col.headerFilter).fetchFunction" (selectionChange)="onFilterChange($event)" [field]="asAutocompleteFilter(col.headerFilter).field" />
+						}
+					</th>
+					}
+				</tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-row>
+                <tr>
+                    @for (col of columns; track col.field) {
+                        @switch (col.display) {
+                            @case ("decimal") {
+                                <td>{{ row[col.field] | number: '1.0-1' }} </td>
+                            }
+                            @case ("link") {
+                                <td><a [routerLink]="['/intersections/node', row[col.field]]" class="link-button">{{ row[col.field] }}</a></td>
+                            }
+                            @case ("clusterStartEndLink") {
+                                <td><a [routerLink]="['/intersections/node', row.trafficSignalClusterId, row.startOsmId, row.endOsmId]" class="link-button">{{ row[col.field] }}</a></td>
+                            }
+                            @case ("prevOsmNextId") {
+                                <td><a [routerLink]="['/intersections/edge', row.prevOsmId, row.osmId, row.nextOsmId]" class="link-button">{{ row[col.field] }}</a></td>
+                            }
+                            @default {
+                                <td>{{ row[col.field] }} </td>
+                            }
+                        }
+                    }
+                </tr>
+            </ng-template>
+		</p-table>
+	</p-card>
+</div>
+

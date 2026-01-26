@@ -1,0 +1,12 @@
+<p-card >
+    <section class="street-information-card__tags">
+		<h4 class="p-card-title">trafficSignalClusterId {{trafficSignalClusterId()}}</h4>
+    </section>
+    <section id="intersection-map">
+        <map-aggregate 
+            [intersectionNodeAggregate]="intersectionNodeAggregate()"
+            [trafficSignalClusterId]="trafficSignalClusterId()"
+        ></map-aggregate>
+    </section>
+</p-card>
+<list-aggregate [intersectionNodeAggregate]="intersectionNodeAggregate()"></list-aggregate>
