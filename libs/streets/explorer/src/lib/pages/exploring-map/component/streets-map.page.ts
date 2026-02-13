@@ -68,7 +68,7 @@ export class StreetsMapPage {
 	protected readonly lastSafetyMetrics$ = signal<any>(null);
 	protected readonly showOverlay$ = signal(true);
 	protected readonly lastRun$ = toSignal(
-		this._streetsMapFacade.fetchLastMethodRun('calculateSafetyMetricsHighway'),
+		this._streetsMapFacade.fetchLastMethodRun('updateSafetyMetrics'),
 	);
 	private _mlMap= signal<maplibregl.Map>(undefined);
 

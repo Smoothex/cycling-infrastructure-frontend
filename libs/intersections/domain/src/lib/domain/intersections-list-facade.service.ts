@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
-import { IntersectionNodeAggregateRequest, IntersectionEdgeAggregateRequest } from '@simra/intersections-common';
+import { IntersectionNodeAggregateRequest, IntersectionEdgeAggregateRequest, PagedGeoResponse } from '@simra/intersections-common';
 import { IntersectionsRequestService } from './intersections-request.service';
 import { RegionRequestService } from '../../../../../streets/domain/src/lib/infrastructure/region-request.service';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
@@ -20,7 +20,7 @@ export class IntersectionsListFacade {
     return firstValueFrom(this._intersectionsRequestService.getTrafficSignalPolygons());
   }
 
-  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Promise<FeatureCollection<LineString>> {
+  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
     return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregateWithFilter(request));
   }
 
@@ -28,7 +28,7 @@ export class IntersectionsListFacade {
 		return this._intersectionsRequestService.getIntersectionNodeStreetNames(request);
 	}
 
-  public getIntersectionEdgeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Promise<FeatureCollection<LineString>> {
+  public getIntersectionEdgeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
     return firstValueFrom(this._intersectionsRequestService.getIntersectionEdgeAggregateWithFilter(request));
   }
 

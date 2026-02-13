@@ -1,0 +1,17 @@
+{
+    "HEADERS": {
+        "PREVOSMNEXTID": "OSM IDs",
+        "INTERSECTIONID": "Kreuzungs ID",
+        "STARTENDOSMID": "OSM IDs",
+        "RIDES": "Fahrten",
+        "SPEED": "Geschwindigkeit (km/h)",
+        "LENGTH": "Länge (m)",
+        "DURATION": "Dauer (s)",
+        "MEDIANWAITINGTIME": "Wartezeit (s)",
+        "MAXWAITINGTIME": "Max. Wartezeit (s)",
+        "WEEKDAY": "Wochentag",
+        "TRAFFICTIME": "Verkehrszeit",
+        "YEAR": "Jahr"
+    }
+}
+

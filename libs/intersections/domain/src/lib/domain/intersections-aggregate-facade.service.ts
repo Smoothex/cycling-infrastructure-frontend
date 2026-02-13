@@ -1,7 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { IntersectionsRequestService } from './intersections-request.service';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
+import { IntersectionsRequestService } from './intersections-request.service';
+import { IntersectionNodeAggregateRequest, PagedGeoResponse } from '@simra/intersections-common';
+
 
 @Injectable({
   providedIn: 'root'
@@ -10,8 +12,8 @@ export class IntersectionsAggregateFacade {
   private readonly _intersectionsRequestService = inject(IntersectionsRequestService);
 
 
-  public getIntersectionNodeAggregateWithFilter(trafficSignalClusterId: number): Promise<FeatureCollection<LineString>> {
-    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregateWithFilter({trafficSignalClusterId: trafficSignalClusterId}));
+  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregateWithFilter(request));
   }
 
   public getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId: number): Promise<FeatureCollection<Point>> {

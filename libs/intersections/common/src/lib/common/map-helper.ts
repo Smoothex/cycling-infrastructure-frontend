@@ -16,16 +16,6 @@ export function calculateMidPoint(lineString: LineString) {
     return center;
 }
 
-export function renameProperty(collection: FeatureCollection, sourceName: string, targetName: string) {
-    for (const feature of collection.features) {
-        if (!feature.properties) continue;
-        if (feature.properties[sourceName]) {
-            feature.properties[targetName] = feature.properties[sourceName];
-            delete feature.properties[sourceName];
-        }
-    }
-}
-
 export interface displayOptions {
     sourceId: string; 
     color: any;
@@ -357,7 +347,7 @@ export function displayIntersectionAggregate (_router: Router, data: FeatureColl
         color: [
             'interpolate',
             ['linear'],
-            ['get', 'median_waiting_time'],
+            ['get', 'medianWaitingTime'],
             0,  '#00ffb3ff',
             10, '#3cff00ff',
             30, '#fffb00ff',
@@ -367,7 +357,7 @@ export function displayIntersectionAggregate (_router: Router, data: FeatureColl
         width: [
             'interpolate',
             ['linear'],
-            ['get', 'count'],
+            ['get', 'numberOfRides'],
             1, 1.0,
             2, 2.0,
             5, 3.0,
@@ -396,7 +386,7 @@ export function displayIntersection (_router: Router, data: FeatureCollection<Li
         color: [
             'interpolate',
             ['linear'],
-            ['get', 'waiting_time'],
+            ['get', 'waitingTime'],
             0,  '#00ffb3ff',
             10, '#3cff00ff',
             30, '#fffb00ff',

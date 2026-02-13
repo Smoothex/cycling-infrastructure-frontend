@@ -1,12 +1,31 @@
-<p-card >
-    <section class="street-information-card__tags">
-		<h4 class="p-card-title">trafficSignalClusterId {{trafficSignalClusterId()}}</h4>
-    </section>
-    <section id="intersection-map">
-        <map-aggregate 
-            [intersectionNodeAggregate]="intersectionNodeAggregate()"
-            [trafficSignalClusterId]="trafficSignalClusterId()"
-        ></map-aggregate>
-    </section>
-</p-card>
-<list-aggregate [intersectionNodeAggregate]="intersectionNodeAggregate()"></list-aggregate>
+<div class="flex flex-col gap-4">
+    <t-date-filter
+    [(mode)]="_mode"
+    [(selectedYear)]="_selectedYear"
+    [(selectedWeekDays)]="_selectedWeekDays"
+    [(selectedTrafficTime)]="_selectedTrafficTime"
+    [(startTime)]="_startTime"
+    [(endTime)]="_endTime"
+    [(datetime)]="_datetime$">
+    </t-date-filter>
+    <p-card >
+        <section>
+            <h4 class="p-card-title">trafficSignalClusterId {{trafficSignalClusterId()}}</h4>
+        </section>
+        <section id="intersection-map">
+            <intersection-map
+                [intersectionData]="intersectionNodeAggregate()"
+                [trafficSignalClusterId]="trafficSignalClusterId()"
+                [isAggregateData]="true"
+            >
+            </intersection-map>
+        </section>
+    </p-card>
+    <intersection-list
+        [columns]="nodeColumns"
+        [rows]="nodeRows()"
+        (rowFocused)="handleZoom($event)"
+    >
+    </intersection-list>
+</div>
+

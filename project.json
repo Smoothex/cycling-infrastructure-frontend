@@ -64,6 +64,11 @@
             "output": "assets/i18n/incidents/ui"
           },
           {
+            "input": "libs/intersections/assets/i18n",
+            "glob": "**/*",
+            "output": "assets/i18n/intersections"
+          },
+          {
             "glob": "**/*",
             "input": "node_modules/leaflet/dist/images",
             "output": "./media/"

@@ -7,4 +7,7 @@ export enum EYear {
 	Y2023 = '2023',
 	Y2024 = '2024',
 	Y2025 = '2025',
+	Y2026 = '2026',
 }
+
+// TODO: This should not be defined like this

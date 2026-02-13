@@ -28,8 +28,13 @@
                 <tr>
                     @for (col of columns; track col.field) {
                         @switch (col.display) {
+                            <!--
                             @case ("regionLink") {
                                 <td><a [routerLink]="['/intersections/regions', row[col.field]]" class="link-button">{{ row[col.field] }}</a></td>
+                            }
+                                -->
+                            @case ("link") {
+                                <td><a [routerLink]="[row[col.field].value]" class="link-button">{{ row[col.field].label }}</a></td>
                             }
                             @case ("decimal") {
                                 <td>{{ row[col.field] | number: '1.0-2' }} </td>

@@ -31,8 +31,8 @@ export class IntersectionsRegionList {
 	private readonly _intersectionsRegionFacade = inject(IntersectionsRegionFacade);
 
 	protected readonly columns: ListColumn<RegionAggregateRow>[] = [
-		{ field: 'name', header: 'Name', sortable: true, display: "regionLink" },
-		{ field: 'count', header: 'Count', sortable: true },
+		{ field: 'name', header: 'Name', sortable: true,  }, // display: "regionLink"
+		{ field: 'numberOfRides', header: 'Count', sortable: true },
 		{ field: 'nodeMedianWaitingTime', header: 'Median Waiting Node', sortable: true, display: "decimal" },
 		{ field: 'length', header: 'Length (km)', sortable: true, display: "decimal" },
 		{ field: 'nodeWaitingPerKm', header: 'Node Waiting (s/km)', sortable: true, display: "decimal" },

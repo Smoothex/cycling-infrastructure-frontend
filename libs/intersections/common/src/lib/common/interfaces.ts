@@ -1,33 +1,66 @@
-import { FeatureCollection, LineString, Polygon, Position } from 'geojson';
+import { FeatureCollection, LineString, Polygon, Position, Geometry } from 'geojson';
 import { calculateMidPoint } from '@simra/intersections-common';
+import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
+import { Observable } from 'rxjs';
 
-export interface IntersectionNodeAggregateRequest {
+
+export interface PagedGeoResponse<T extends Geometry> {
+    metadata: {
+        totalElements: number;
+        totalPages: number;
+        currentPage: number;
+    };
+    geoData: FeatureCollection<T>;
+}
+
+interface linkLabelValue {
+    label: string; 
+    value: string;
+}
+
+export interface BaseRow {
+    id: number;
+    midPoint: Position;
+}
+
+interface BaseRequest {
+    sort?: string;
+    page?: number;
+    size?: number;
+    weekDay?: EWeekDays[];
+    trafficTime?: ETrafficTimes[];
+    year?: EYear[];
+}
+
+
+export interface IntersectionNodeAggregateRequest extends BaseRequest {
     trafficSignalClusterId?: number; 
-    count?: number;
+    numberOfRides?: number;
     region?: string; 
     streetNames?: string;
 }
 
-export interface IntersectionNodeAggregateRow {
-    id: number;
+export interface IntersectionNodeAggregateRow extends BaseRow {
 	startOsmId: number;
 	endOsmId: number;
 	trafficSignalClusterId: number;
-	clusterStartEndId: string;
-	count: number;
-	avgLength: number;
-	avgDuration: number;
-	maxDuration: number;
-	avgSpeed: number;
-	avgWaitingTime: number;
+    trafficSignalClusterLink: linkLabelValue;
+    clusterStartEndLink: linkLabelValue;
+    weekDay: EWeekDays;
+    trafficTime: ETrafficTimes;
+    year: EYear;
+    startName: string;
+    endName: string;
+    streetNames: string;
+	numberOfRides: number;
+	medianLength: number;
+	medianDuration: number;
+	medianSpeed: number;
 	maxWaitingTime: number;
 	medianWaitingTime: number;
-	streetNames: string;
-    midPoint: Position;
 }
 
-export interface IntersectionNodeRow {
-    id: number;
+export interface IntersectionNodeRow extends BaseRow {
 	startOsmId: number;
 	endOsmId: number;
 	trafficSignalClusterId: number;
@@ -39,36 +72,36 @@ export interface IntersectionNodeRow {
 	duration: number;
     waitingTime: number;
 	streetNames: string;
-    midPoint: Position;
 }
 
 
-export interface IntersectionEdgeAggregateRequest {
-    count?: number;
+export interface IntersectionEdgeAggregateRequest extends BaseRequest {
+    numberOfRides?: number;
     region?: string; 
     name?: string;
+    weekDay?: EWeekDays[];
+    trafficTime?: ETrafficTimes[];
+    year?: EYear[];
 }
 
-export interface IntersectionEdgeAggregateRow {
-    exampleId: number;
+export interface IntersectionEdgeAggregateRow extends BaseRow {
 	osmId: number;
 	prevOsmId: number;
 	nextOsmId: number;
-    prevOsmNextId: string;
+    prevOsmNextLink: linkLabelValue;
+    weekDay: EWeekDays;
+    trafficTime: ETrafficTimes;
+    year: EYear;
     name: string;
-	count: number;
-	avgLength: number;
-	avgDuration: number;
-	maxDuration: number;
-	avgSpeed: number;
-	avgWaitingTime: number;
+	numberOfRides: number;
+	medianLength: number;
+	medianDuration: number;
+	medianSpeed: number;
 	maxWaitingTime: number;
 	medianWaitingTime: number;
-    midPoint: Position;
 }
 
-export interface IntersectionEdgeRow {
-    id: number;
+export interface IntersectionEdgeRow extends BaseRow {
 	osmId: number;
 	prevOsmId: number;
     nextOsmId: number;
@@ -80,7 +113,6 @@ export interface IntersectionEdgeRow {
 	duration: number;
     waitingTime: number;
 	name: string;
-    midPoint: Position;
 }
 
 
@@ -90,7 +122,7 @@ export interface RegionAggregateRequest {
 
 export interface RegionAggregateRow {
     name: string; 
-    count: number; 
+    numberOfRides: number; 
     nodeMedianWaitingTime: number;
     length: number;
     nodeWaitingPerKm: number;
@@ -100,49 +132,70 @@ export interface RegionAggregateRow {
 }
 
 
-export interface HeaderFilter {
-	dataType :  'number' | 'autocomplete';
-	field: keyof IntersectionNodeAggregateRequest | keyof IntersectionEdgeAggregateRequest;
+export type HeaderFilter<T> =
+  | NumberHeaderFilter<T>
+  | AutocompleteHeaderFilter<T>
+  | EnumHeaderFilter<T>;
+
+export interface BaseHeaderFilter<T, K extends keyof T> {
+  field: K;
 }
 
-export interface HeaderFilterNumber extends HeaderFilter {
-	dataType: 'number',
-	step: number,
-	min: number,
-    default?: number
+export interface NumberHeaderFilter<T, K extends keyof T = keyof T>
+  extends BaseHeaderFilter<T, K> {
+  dataType: 'number';
+  step: number;
+  min: number;
+  default?: number;
 }
 
-export interface HeaderFilterAutocomplete extends HeaderFilter {
-	dataType: 'autocomplete',
-	fetchFunction: any
+export interface AutocompleteHeaderFilter<T, K extends keyof T = keyof T>
+  extends BaseHeaderFilter<T, K> {
+  dataType: 'autocomplete';
+  fetchFunction: (query: string) => Observable<string[]>;
 }
 
-export interface ListColumn<T = any> {
-	field: keyof T;
-	header: string;
-	sortable?: boolean;
-	filter?: 'number' | 'text';
-	display?: string;
-	headerFilter?: HeaderFilterNumber | HeaderFilterAutocomplete;
+export interface EnumHeaderFilter<
+  T,
+  K extends keyof T = keyof T,
+  E = any
+> extends BaseHeaderFilter<T, K> {
+  dataType: 'enum';
+  enum: E;
+  translationMap: any; // Record<string, string>;
+  default?: E[keyof E] | E[keyof E][];
+}
+
+export interface ListColumn<T, K extends keyof T = keyof T> {
+  field: K & string;
+  header: string;
+  sortable?: boolean;
+  display?: 'decimal' | 'link' | 'enum' | 'zoomOnLine' | 'date';
+  translationMap?: any; // Record<string, string>;
+  headerFilter?: HeaderFilter<T>;
 }
 
 
 export function mapIntersectionNodeAggregateToRows(fc: FeatureCollection<LineString>): IntersectionNodeAggregateRow[] {
     return fc.features.map(f => ({
-        id: f.properties?.['example_id'],
-        startOsmId: f.properties?.['start_osm_id'],
-        endOsmId: f.properties?.['end_osm_id'],
-        trafficSignalClusterId: f.properties?.['traffic_signal_cluster_id'],
-        clusterStartEndId: `${f.properties?.['start_osm_id']}-${f.properties?.['end_osm_id']}`,
-        count: f.properties?.['count'],
-        avgLength: f.properties?.['avg_length'],
-        avgDuration: f.properties?.['avg_duration'],
-        maxDuration: f.properties?.['max_duration'],
-        avgSpeed: f.properties?.['avg_speed'],
-        avgWaitingTime: f.properties?.['avg_waiting_time'],
-        maxWaitingTime: f.properties?.['max_waiting_time'],
-        medianWaitingTime: f.properties?.['median_waiting_time'],
-        streetNames: f.properties?.['street_names'],
+        startOsmId: f.properties?.['startOsmId'],
+        endOsmId: f.properties?.['endOsmId'],
+        trafficSignalClusterId: f.properties?.['trafficSignalClusterId'],
+        trafficSignalClusterLink: {label: String(f.properties?.['trafficSignalClusterId']), value: `/intersections/node/${f.properties?.['trafficSignalClusterId']}`},
+        clusterStartEndLink: {label: `${f.properties?.['startOsmId']}-${f.properties?.['endOsmId']}`, value: `/intersections/node/${f.properties?.['trafficSignalClusterId']}/${f.properties?.['startOsmId']}/${f.properties?.['endOsmId']}`},
+        weekDay : f.properties?.['weekDay'],
+        trafficTime: f.properties?.['trafficTime'],
+        year: f.properties?.['year'],
+        startName: f.properties?.['startName'],
+        endName: f.properties?.['endName'],
+        streetNames: f.properties?.['streetNames'],
+        id: f.properties?.['id'],
+        numberOfRides: f.properties?.['numberOfRides'],
+        medianLength: f.properties?.['medianLength'],
+        medianDuration: f.properties?.['medianDuration'],
+        medianSpeed: f.properties?.['medianSpeed'],
+        maxWaitingTime: f.properties?.['maxWaitingTime'],
+        medianWaitingTime: f.properties?.['medianWaitingTime'],
         midPoint: calculateMidPoint(f.geometry)
     }));
 }
@@ -150,17 +203,17 @@ export function mapIntersectionNodeAggregateToRows(fc: FeatureCollection<LineStr
 export function mapIntersectionNodeToRows(fc: FeatureCollection<LineString>): IntersectionNodeRow[] {
     return fc.features.map(f => ({
         id: f.properties?.['id'],
-        startOsmId: f.properties?.['start_osm_id'],
-        endOsmId: f.properties?.['end_osm_id'],
-        trafficSignalClusterId: f.properties?.['traffic_signal_cluster_id'],
-        rideId: f.properties?.['ride_id'],
-        startTime: f.properties?.['start_time'],
-        endTime: f.properties?.['end_time'],
+        startOsmId: f.properties?.['startOsmId'],
+        endOsmId: f.properties?.['endOsmId'],
+        trafficSignalClusterId: f.properties?.['trafficSignalClusterId'],
+        rideId: f.properties?.['rideId'],
+        startTime: f.properties?.['startTime'],
+        endTime: f.properties?.['endTime'],
         length: f.properties?.['length'],
         speed: f.properties?.['speed'],
         duration: f.properties?.['duration'],
-        waitingTime: f.properties?.['waiting_time'],
-        streetNames: f.properties?.['street_names'],
+        waitingTime: f.properties?.['waitingTime'],
+        streetNames: f.properties?.['streetNames'],
         midPoint: calculateMidPoint(f.geometry)
     }));
 }
@@ -168,20 +221,21 @@ export function mapIntersectionNodeToRows(fc: FeatureCollection<LineString>): In
 
 export function mapIntersectionEdgeAggregateToRows(fc: FeatureCollection<LineString>): IntersectionEdgeAggregateRow[] {
     return fc.features.map(f => ({
-        exampleId: f.properties?.['example_id'],
-        osmId: f.properties?.['osm_id'],
-        prevOsmId: f.properties?.['prev_osm_id'],
-        nextOsmId: f.properties?.['next_osm_id'],
-        prevOsmNextId: `${f.properties?.['prev_osm_id']}-${f.properties?.['osm_id']}-${f.properties?.['next_osm_id']}`,
+        osmId: f.properties?.['osmId'],
+        prevOsmId: f.properties?.['prevOsmId'],
+        nextOsmId: f.properties?.['nextOsmId'],
+        prevOsmNextLink: {label: `${f.properties?.['prevOsmId']}-${f.properties?.['osmId']}-${f.properties?.['nextOsmId']}`, value: `/intersections/edge/${f.properties?.['prevOsmId']}/${f.properties?.['osmId']}/${f.properties?.['nextOsmId']}`},
+        weekDay : f.properties?.['weekDay'],
+        trafficTime: f.properties?.['trafficTime'],
+        year: f.properties?.['year'],
         name: f.properties?.['name'],
-        count: f.properties?.['count'],
-        avgLength: f.properties?.['avg_length'],
-        avgDuration: f.properties?.['avg_duration'],
-        maxDuration: f.properties?.['max_duration'],
-        avgSpeed: f.properties?.['avg_speed'],
-        avgWaitingTime: f.properties?.['avg_waiting_time'],
-        maxWaitingTime: f.properties?.['max_waiting_time'],
-        medianWaitingTime: f.properties?.['median_waiting_time'],
+        id: f.properties?.['id'],
+        numberOfRides: f.properties?.['numberOfRides'],
+        medianLength: f.properties?.['medianLength'],
+        medianDuration: f.properties?.['medianDuration'],
+        medianSpeed: f.properties?.['medianSpeed'],
+        maxWaitingTime: f.properties?.['maxWaitingTime'],
+        medianWaitingTime: f.properties?.['medianWaitingTime'],
         midPoint: calculateMidPoint(f.geometry)
     }));
 }
@@ -189,16 +243,16 @@ export function mapIntersectionEdgeAggregateToRows(fc: FeatureCollection<LineStr
 export function mapIntersectionEdgeToRows(fc: FeatureCollection<LineString>): IntersectionEdgeRow[] {
     return fc.features.map(f => ({
         id: f.properties?.['id'],
-        osmId: f.properties?.['osm_id'],
-        prevOsmId: f.properties?.['prev_osm_id'],
-        nextOsmId: f.properties?.['next_osm_id'],
-        rideId: f.properties?.['ride_id'],
-        startTime: f.properties?.['start_time'],
-        endTime: f.properties?.['end_time'],
+        osmId: f.properties?.['osmId'],
+        prevOsmId: f.properties?.['prevOsmId'],
+        nextOsmId: f.properties?.['nextOsmId'],
+        rideId: f.properties?.['rideId'],
+        startTime: f.properties?.['startTime'],
+        endTime: f.properties?.['endTime'],
         length: f.properties?.['length'],
         speed: f.properties?.['speed'],
         duration: f.properties?.['duration'],
-        waitingTime: f.properties?.['waiting_time'],
+        waitingTime: f.properties?.['waitingTime'],
         name: f.properties?.['name'],
         midPoint: calculateMidPoint(f.geometry)
     }));
@@ -207,7 +261,7 @@ export function mapIntersectionEdgeToRows(fc: FeatureCollection<LineString>): In
 export function mapIntersectionRegionAggregateToRows(fc: FeatureCollection<Polygon>): RegionAggregateRow[] {
     return fc.features.map(f => ({
         name: f.properties?.['name'],
-        count: f.properties?.['number_of_rides'],
+        numberOfRides: f.properties?.['number_of_rides'],
         nodeMedianWaitingTime: f.properties?.['node_median_waiting_time'],
         length: f.properties?.['length_km'],
         nodeWaitingPerKm: f.properties?.['node_waiting_s_per_km'],

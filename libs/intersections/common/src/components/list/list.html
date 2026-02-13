@@ -6,19 +6,10 @@
         >
             <ng-template pTemplate="header">
                 <tr>
-                    @for (col of columns; track col.field) {
-                        <th>
-                            @if (col.sortable) {
-                                <div [pSortableColumn]="col.field">
-									{{ col.header}}
-									<p-sortIcon [field]="col.field"></p-sortIcon>
-								</div>
-                            }
-                            @else {
-                                <div>
-                                    {{col.header}}
-                                </div>
-                            }
+                    @for (col of columns(); track col.field) {
+                        <th [pSortableColumn]="col.sortable ? col.field : undefined">
+                            {{ col.header | translate }}
+                            @if (col.sortable) { <p-sortIcon [field]="col.field"></p-sortIcon> }
                         </th>
                     }
                 </tr>
@@ -26,10 +17,13 @@
 
             <ng-template pTemplate="body" let-row>
                 <tr [class.highlighted-row]="row.id === highlightedRowId()">
-                    @for (col of columns; track col.field) {
+                    @for (col of columns(); track col.field) {
                         @switch (col.display) {
                             @case ("decimal") {
                                 <td>{{ row[col.field] | number: '1.0-1' }} </td>
+                            }
+                            @case ("link") {
+                                <td><a [routerLink]="[row[col.field].value]" class="link-button">{{ row[col.field].label }}</a></td>
                             }
                             @case ("date") {
                                 <td>{{ row[col.field] | date: 'dd/MM/yyyy HH:mm' }} </td>
@@ -38,16 +32,17 @@
                                 <td>
                                     <a
                                         class="link-button whitespace-nowrap"
-                                        (click)="zoomOnLine(row)"
-                                        (focus)="zoomOnLine(row)"
-                                        (keydown.enter)="zoomOnLine(row)"
-                                        (keydown.space)="zoomOnLine(row)"
+                                        (click)="onRowAction(row)"
+                                        (focus)="onRowAction(row)"
+                                        (keydown.enter)="onRowAction(row)"
+                                        (keydown.space)="onRowAction(row)"
                                         tabindex="0"
                                     >
                                         {{ row[col.field] }}
                                     </a>
                                 </td>
                             }
+
                             @default {
                                 <td>{{ row[col.field] }} </td>
                             }

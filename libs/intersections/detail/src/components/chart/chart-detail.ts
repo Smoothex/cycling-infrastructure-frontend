@@ -6,8 +6,10 @@ import { ChartModule } from 'primeng/chart';
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import { 
 	IntersectionNodeRow,
+	IntersectionEdgeRow,
 	ListColumn,
-	mapIntersectionNodeToRows
+	mapIntersectionNodeToRows,
+	BaseRow
 } from '@simra/intersections-common';
 
 
@@ -18,11 +20,8 @@ import {
 	templateUrl: './chart-detail.html',
 	styleUrl: './chart-detail.scss',
 })
-export class ChartDetail {
-	intersectionData = input<FeatureCollection<LineString> | undefined>();
-
-	protected readonly loading = signal(false);
-	protected readonly rows = signal<IntersectionNodeRow[]>([]);
+export class ChartDetail<T extends BaseRow & IntersectionNodeRow | IntersectionEdgeRow>  {
+	rows = input.required<T[]>();
 
 	protected durationChartData = signal<any>(null);
 	protected durationChartOptions = signal<any>(null);
@@ -33,15 +32,6 @@ export class ChartDetail {
 	protected waitingTimeChartData = signal<any>(null);
 	protected waitingTimeChartOptions = signal<any>(null);
 
-	protected readonly columns: ListColumn<IntersectionNodeRow>[] = [
-		{ field: 'streetNames', header: 'Name', sortable: true },
-		{ field: 'rideId', header: 'Ride ID', display: "clusterStartEndLink" },
-		{ field: 'startTime', header: 'Start Time', sortable: true, display: "date"},
-		{ field: 'duration', header: 'Duration (s)', sortable: true, display: "decimal"  },
-		{ field: 'speed', header: 'Speed (km/h)', sortable: true, display: "decimal"  },
-		{ field: 'length', header: 'Length (m)', sortable: true, display: "decimal" },
-	];
-
 	private createHistogram(data: number[], bucketSize: number, xLabel: string, yLabel: string) {
 		const max = Math.max(...data);
 
@@ -49,10 +39,7 @@ export class ChartDetail {
 		const buckets = new Array(bucketCount).fill(0);
 
 		data.forEach(d => {
-			const index = Math.min(
-			Math.floor(d / bucketSize),
-			bucketCount - 1
-			);
+			const index = Math.max(Math.min(Math.floor(d / bucketSize), bucketCount - 1), 0);
 			buckets[index]++;
 		});
 
@@ -103,11 +90,8 @@ export class ChartDetail {
 
 	constructor() {
 		effect(() => {
-			const value = this.intersectionData();
-			if (value) {
-				const rows: IntersectionNodeRow[] = mapIntersectionNodeToRows(value);
-				this.rows.set(rows);
-
+			const rows = this.rows();
+			if (rows && rows.length > 0) {
 				const durationHistogram = this.createHistogram(rows.map(r => r.duration), 15, 'Duration (seconds)', 'Count')
 				this.durationChartData.set(durationHistogram.chart);
 				this.durationChartOptions.set(durationHistogram.options);

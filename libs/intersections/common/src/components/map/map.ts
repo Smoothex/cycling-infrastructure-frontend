@@ -12,24 +12,25 @@ import {
 	loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId,
 	displayIntersection,
 	highlightLineFromQueryParams,
-	zoomOnLineMidPoint
+	zoomOnLineMidPoint,
+	displayIntersectionAggregate
 } from '@simra/intersections-common';
 
 
 @Component({
-	selector: 'map-detail',
+	selector: 'intersection-map',
 	imports: [CommonModule, MapPage, TableModule],
-	templateUrl: './map-detail.html'
+	templateUrl: './map.html'
 })
-export class MapDetail {
+export class IntersectionMap {
 	private readonly _intersectionsAggregateFacade = inject(IntersectionsAggregateFacade);
 	private readonly _router = inject(Router);
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
 
-	@Input({required: true}) displayNodes!: boolean;
-	@Input({required: true}) trafficSignalClusterId!: number;
-	intersectionData = input<FeatureCollection<LineString> | undefined>();
+	trafficSignalClusterId = input.required<number>();
+	isAggregateData = input.required<boolean>();
+	intersectionData = input.required<FeatureCollection<LineString> | undefined>();
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	private readonly mapDataLoaded = signal(false);
@@ -42,14 +43,18 @@ export class MapDetail {
 			const data = this.intersectionData();
 			if (!data || !this.mapReady() || !this.map) return;
 
-			if (!isNaN(this.trafficSignalClusterId)) {
-				await loadAndDisplayTrafficSignalPolygonsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId);
-				await loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId);
+			if (!isNaN(this.trafficSignalClusterId())) {
+				await loadAndDisplayTrafficSignalPolygonsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId());
+				await loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId());
 			} else {
 				zoomOnLineMidPoint(this.map, data);
 			}
 
-			displayIntersection(this._router, data, this.map, "intersectionLineData");
+			if (this.isAggregateData()) {
+				displayIntersectionAggregate(this._router, data, this.map, "intersectionLineData");
+			} else {
+				displayIntersection(this._router, data, this.map, "intersectionLineData");
+			}
 			this.mapDataLoaded.set(true);
 		});
 

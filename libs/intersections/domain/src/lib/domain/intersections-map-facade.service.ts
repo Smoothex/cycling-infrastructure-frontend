@@ -2,6 +2,11 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { IntersectionsRequestService } from './intersections-request.service';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
+import {
+	IntersectionNodeAggregateRequest, 
+	IntersectionEdgeAggregateRequest,
+	PagedGeoResponse
+} from '@simra/intersections-common';
 
 @Injectable({
   providedIn: 'root'
@@ -29,12 +34,12 @@ export class IntersectionsMapFacade {
     return firstValueFrom(this._intersectionsRequestService.getIntersectionNode(id));
   }
 
-  public getIntersectionNodeAggregate(): Promise<FeatureCollection<LineString>> {
-    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregate());
+  public getIntersectionNodeAggregate(request: IntersectionNodeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregateWithFilter(request));
   }
 
-  public getIntersectionEdgeAggregate(): Promise<FeatureCollection<LineString>> {
-    return firstValueFrom(this._intersectionsRequestService.getIntersectionEdgeAggregate());
+  public getIntersectionEdgeAggregate(request: IntersectionEdgeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionEdgeAggregateWithFilter(request));
   }
 
   public getRideIdsByOsmId(osmId: number): Promise<number[]> {

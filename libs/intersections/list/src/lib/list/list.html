@@ -1,8 +1,18 @@
 <div>
 	<p-card>
-		<p-table [value]="rows()" [loading]="loading()"
-        [sortField]="'medianWaitingTime'"
-		[sortOrder]="-1"
+		<p-table
+            [value]="rows()"
+            [paginator]="true"
+            [loading]="loading()"
+            [lazy]="true"
+            [rows]="requestFilter().size"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [totalRecords]="totalElements()"
+			(onFilter)="onFilterChange($event)"
+			(onLazyLoad)="onLazy($event)"
+            [resetPageOnSort]="true"
+            [sortField]="'medianWaitingTime'"
+            [sortOrder]="-1"
         >
             <ng-template pTemplate="caption" class="pt-0">
 				<div class="title-filter">
@@ -16,13 +26,13 @@
                         <th>
                             @if (col.sortable) {
                                 <div [pSortableColumn]="col.field">
-									{{ col.header}}
+									{{ col.header | translate}}
 									<p-sortIcon [field]="col.field"></p-sortIcon>
 								</div>
                             }
                             @else {
                                 <div>
-                                    {{col.header}}
+                                    {{col.header | translate}}
                                 </div>
                             }
                         </th>
@@ -31,16 +41,26 @@
                 <tr>
 					@for(col of columns; track col.field) {
 					<th>
-						@if (col.headerFilter?.dataType === "number") {
+                        @if(col.headerFilter && col.headerFilter.dataType === "autocomplete") {
+							<m-autocomplete class="table__autocomplete" [fetchFunction]="col.headerFilter.fetchFunction" (selectionChange)="onFilterChange($event)" [field]="col.headerFilter.field" />
+						}
+                        @else if(col.headerFilter && col.headerFilter.dataType === "enum") {
+							<m-enum-multi-select-component
+                                [field]="col.headerFilter.field"
+                                [optionEnum]="col.headerFilter.enum"
+                                [translationMap]="col.headerFilter.translationMap"
+                                [selected]="col.headerFilter.default"
+                                (selectionChange)="onFilterChange($event)">
+                            </m-enum-multi-select-component>
+						}
+						@else if (col.headerFilter && col.headerFilter.dataType === "number") {
                             <m-number-filter
-                                [field]="asNumberFilter(col.headerFilter).field"
-                                [step]="asNumberFilter(col.headerFilter).step"
-                                [min]="asNumberFilter(col.headerFilter).min"
-                                [defaultValue]="asNumberFilter(col.headerFilter).default ?? 0"
+                                [field]="col.headerFilter.field"
+                                [step]="col.headerFilter.step"
+                                [min]="col.headerFilter.min"
+                                [defaultValue]="col.headerFilter.default ?? 0"
                                 (filterChange)="onFilterChange($event)">
                             </m-number-filter>
-						} @if(col.headerFilter?.dataType === "autocomplete") {
-							<m-autocomplete class="table__autocomplete" [fetchFunction]="asAutocompleteFilter(col.headerFilter).fetchFunction" (selectionChange)="onFilterChange($event)" [field]="asAutocompleteFilter(col.headerFilter).field" />
 						}
 					</th>
 					}
@@ -55,13 +75,10 @@
                                 <td>{{ row[col.field] | number: '1.0-1' }} </td>
                             }
                             @case ("link") {
-                                <td><a [routerLink]="['/intersections/node', row[col.field]]" class="link-button">{{ row[col.field] }}</a></td>
+                                <td><a [routerLink]="[row[col.field].value]" class="link-button">{{ row[col.field].label }}</a></td>
                             }
-                            @case ("clusterStartEndLink") {
-                                <td><a [routerLink]="['/intersections/node', row.trafficSignalClusterId, row.startOsmId, row.endOsmId]" class="link-button">{{ row[col.field] }}</a></td>
-                            }
-                            @case ("prevOsmNextId") {
-                                <td><a [routerLink]="['/intersections/edge', row.prevOsmId, row.osmId, row.nextOsmId]" class="link-button">{{ row[col.field] }}</a></td>
+                            @case ("enum") {
+                                 <td>{{ col.translationMap[row[col.field]].label | translate }} </td>
                             }
                             @default {
                                 <td>{{ row[col.field] }} </td>

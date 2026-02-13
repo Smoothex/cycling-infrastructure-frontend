@@ -34,6 +34,11 @@ export function moduleHttpLoaderFactory(http: HttpClient) {
 				moduleName: 'streets.explorer',
 				pathTemplate: '{baseTranslateUrl}/streets/explorer/{language}',
 			},
+			{
+				baseTranslateUrl,
+				moduleName: 'intersections',
+				pathTemplate: '{baseTranslateUrl}/intersections/{language}',
+			},
 		],
 	};
 

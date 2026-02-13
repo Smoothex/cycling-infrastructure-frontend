@@ -1,10 +1,16 @@
-<div class="page-content">
-    <chart-detail
-        [intersectionData]="intersectionData()"
-    ></chart-detail>
+<div class="flex flex-col gap-4">
+    @if (displayNodes()) {
+        <chart-detail
+            [rows]="nodeRows()"
+        ></chart-detail>
+    } @else {
+        <chart-detail
+            [rows]="edgeRows()"
+        ></chart-detail>
+    }
     <p-card>
-        <div class="information-and-map">
-            <section class="information">
+        <div class="flex flex-row gap-4">
+            <div class="w-1/3 flex flex-col">
                 @if (displayNodes()) {
                     <h4 class="p-card-title">
                     trafficSignalClusterId <a [routerLink]="['/intersections/node', trafficSignalClusterId()]" class="link-button">{{ trafficSignalClusterId() }}</a>
@@ -28,20 +34,31 @@
                         Text about inaccuracy of GPS mapping.
                     </p>
                 </p-card>
-            </section>
+            </div>
 
-            <section id="intersection-map" class="map">
-                <map-detail 
-                    [displayNodes]="displayNodes()"
+            <div class="w-2/3">
+                <intersection-map id="intersection-map"
                     [intersectionData]="intersectionData()"
                     [trafficSignalClusterId]="trafficSignalClusterId()"
-                ></map-detail>
-            </section>
+                    [isAggregateData]="false"
+                ></intersection-map>
+            </div>
         </div>
     </p-card>
 
-    <list-detail
-        [displayNodes]="displayNodes()"
-        [intersectionData]="intersectionData()"
-    ></list-detail>
+    @if (displayNodes()) {
+        <intersection-list
+            [columns]="nodeColumns"
+            [rows]="nodeRows()"
+            (rowFocused)="handleZoom($event)"
+        >    
+        </intersection-list>
+    } @else {
+        <intersection-list
+            [columns]="edgeColumns"
+            [rows]="edgeRows()"
+            (rowFocused)="handleZoom($event)"
+        >    
+        </intersection-list>
+    }
 </div>

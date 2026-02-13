@@ -29,12 +29,12 @@ import {
 	displayIntersection,
   displayIntersectionAggregate,
 	highlightLineFromQueryParams,
-  renameProperty,
   removeLineHighlight,
   displayPolygons,
   displayRegions,
   waitForSource
 } from '@simra/intersections-common';
+import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 
 @Component({
 	selector: 'lib-map',
@@ -77,6 +77,15 @@ export class IntersectionsMap {
   showIntersectionEdgeAggregate: boolean = true;
   showIntersectionNodeAggregate: boolean = true;
   flyToRide: boolean = true;
+
+  private readonly defaults = {
+		numberOfRides: 0,
+		weekDay: [EWeekDays.ALL_WEEK],
+		trafficTime: [ETrafficTimes.ALL_DAY],
+		year: [EYear.ALL],
+		page: 0,
+		size: 10000
+	}
 
   constructor(private cdr: ChangeDetectorRef) {
     effect(() => {
@@ -152,7 +161,7 @@ export class IntersectionsMap {
       if (ride.features.length === 0 || !ride.features[0].properties) {
         continue;
       }
-      const sourceIdRide = `${sourceId}-${ride.features[0].properties["ride_id"]}`;
+      const sourceIdRide = `${sourceId}-${ride.features[0].properties["rideId"]}`;
       displayPoints(ride, map, {
           sourceId: sourceIdRide,
           width: 4,
@@ -172,14 +181,34 @@ export class IntersectionsMap {
       this.trafficSignals = await this._intersectionsMapFacade.getTrafficSignals();
       displayTrafficSignals(mlMap, this.trafficSignals, true);
 
-      this.intersectionEdgeAggregate = await this._intersectionsMapFacade.getIntersectionEdgeAggregate();
-      renameProperty(this.intersectionEdgeAggregate, "example_id", "id");
+      const pagedEdgeAggregate = await this._intersectionsMapFacade.getIntersectionEdgeAggregate({
+        numberOfRides: this.defaults.numberOfRides,
+        weekDay: this.defaults.weekDay,
+        trafficTime: this.defaults.trafficTime,
+        year: this.defaults.year,
+        page: this.defaults.page,
+        size: this.defaults.size
+      });
+      this.intersectionEdgeAggregate = pagedEdgeAggregate.geoData;
       displayIntersectionAggregate(this._router, this.intersectionEdgeAggregate, mlMap, "intersectionEdgeAggregate", true);
       this.changeVisibility("intersectionEdgeAggregate-circle-layer", false);
+      if (pagedEdgeAggregate.metadata.totalElements > this.defaults.size) {
+        console.warn(`Number of Elements (${pagedEdgeAggregate.metadata.totalElements}) greater than default (${this.defaults.size})`)
+      }
 
-      this.intersectionNodeAggregate = await this._intersectionsMapFacade.getIntersectionNodeAggregate();
-      renameProperty(this.intersectionNodeAggregate, "example_id", "id");
+      const pagedNodeAggregate = await this._intersectionsMapFacade.getIntersectionNodeAggregate({
+        numberOfRides: this.defaults.numberOfRides,
+        weekDay: this.defaults.weekDay,
+        trafficTime: this.defaults.trafficTime,
+        year: this.defaults.year,
+        page: this.defaults.page,
+        size: this.defaults.size
+      });
+      this.intersectionNodeAggregate = pagedNodeAggregate.geoData;
       displayIntersectionAggregate(this._router, this.intersectionNodeAggregate, mlMap, "intersectionNodeAggregate", true);
+      if (pagedNodeAggregate.metadata.totalElements > this.defaults.size) {
+        console.warn(`Number of Elements (${pagedNodeAggregate.metadata.totalElements}) greater than default (${this.defaults.size})`)
+      }
 
       this.regions = await this._intersectionsMapFacade.getRegions();
       displayRegions(this.regions, this.map, "regionMedium", 8, 11, ['>=', ['get', 'admin_level'], 6]);
@@ -224,7 +253,7 @@ export class IntersectionsMap {
       if (ride.features.length === 0 || !ride.features[0].properties) {
         continue;
       }
-      const sourceIdRide = `${sourceId}-${ride.features[0].properties["ride_id"]}`;
+      const sourceIdRide = `${sourceId}-${ride.features[0].properties["rideId"]}`;
       displayIntersection(this._router, ride, map, sourceIdRide, true);
       this.changeVisibility(`${sourceIdRide}-circle-layer`, displayCircle);
     }
@@ -267,7 +296,7 @@ export class IntersectionsMap {
         this.changeVisibility(`intersectionNodes-${route.id}-layer`, visibile && this.showRideIntersectionNodes);
         this.changeVisibility(`intersectionNodes-${route.id}-circle-layer`, visibile && this.showRideIntersectionNodes);
         if (visibile && this.flyToRide) {
-          const features = this.ridePoints.filter(f => f.features[0]?.properties?.["ride_id"] === route.id);
+          const features = this.ridePoints.filter(f => f.features[0]?.properties?.["rideId"] === route.id);
           const coordiante = features[0].features[0].geometry.coordinates;
           if (flyTo) {
             this.map.flyTo({ center: [coordiante[0], coordiante[1]] });

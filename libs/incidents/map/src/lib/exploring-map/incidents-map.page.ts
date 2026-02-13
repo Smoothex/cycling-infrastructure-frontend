@@ -38,7 +38,7 @@ export class IncidentsMapPage {
 	private _mlMap= signal<maplibregl.Map>(undefined);
 
 	protected readonly _lastRun$ = toSignal(
-		this._incidentsMapFacade.fetchLastMethodRun('calculateSafetyMetricsHighway'),
+		this._incidentsMapFacade.fetchLastMethodRun('updateSafetyMetrics'),
 	);
 
 	constructor() {

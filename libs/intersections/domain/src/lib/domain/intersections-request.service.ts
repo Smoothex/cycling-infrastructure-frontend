@@ -1,11 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { defaults, isEmpty, isNumber, omitBy, pickBy } from 'lodash';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
 import { 
   IntersectionNodeAggregateRequest, 
   IntersectionEdgeAggregateRequest,
-  RegionAggregateRequest
+  RegionAggregateRequest,
+  PagedGeoResponse
 } from '@simra/intersections-common';
 
 @Injectable({
@@ -40,25 +42,15 @@ export class IntersectionsRequestService {
     const endString = endOsmId != null ? `&endOsmId=${endOsmId}` : "";
     return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_nodes?trafficSignalClusterId=${trafficSignalClusterId}${startString}${endString}`);
   }
-
-  public getIntersectionNodeAggregate(): Observable<FeatureCollection<LineString>> {
-    return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_nodes/aggregate`);
-  }
-
-  private getIntersectionNodeAggregateFilterParameters(request: IntersectionNodeAggregateRequest) : string {
-    const tString = request.trafficSignalClusterId != undefined ? `&trafficSignalClusterId=${request.trafficSignalClusterId}` : "";
-    const cString = request.count != undefined ? `&count=${request.count}` : "";
-    const rString = request.region != undefined ? `&region=${request.region}` : "";
-    const sString = request.streetNames != undefined ? `&streetNames=${request.streetNames}` : "";
-    return `?filter=true${tString}${cString}${rString}${sString}`;
-  }
  
-  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Observable<FeatureCollection<LineString>> {
-    return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_nodes/aggregate${this.getIntersectionNodeAggregateFilterParameters(request)}`);
+  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Observable<PagedGeoResponse<LineString>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		return this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params });
   }
 
   public getIntersectionNodeStreetNames(request: IntersectionNodeAggregateRequest): Observable<string[]> {
-		return this._http.get<string[]>(`/api/intersections/intersection_nodes/streetNames${this.getIntersectionNodeAggregateFilterParameters(request)}`);
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		return this._http.get<string[]>('/api/intersections/intersection_nodes/streetNames', { params });
 	}
 
   public getIntersectionEdgeFiltered(prevOsmId: number | null, osmId: number | null, nextOsmId: number | null): Observable<FeatureCollection<LineString>> {
@@ -68,23 +60,14 @@ export class IntersectionsRequestService {
     return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_edges?filter=true&${pString}${oString}${nString}`);
   }
 
-  private getIntersectionEdgeAggregateFilterParameters(request: IntersectionEdgeAggregateRequest) : string {
-    const cString = request.count != undefined ? `&count=${request.count}` : "";
-    const rString = request.region != undefined ? `&region=${request.region}` : "";
-    const nString = request.name != undefined ? `&name=${request.name}` : "";
-    return `?filter=true${cString}${rString}${nString}`;
-  }
-
-  public getIntersectionEdgeAggregateWithFilter(request: IntersectionEdgeAggregateRequest): Observable<FeatureCollection<LineString>> {
-    return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_edges/aggregate${this.getIntersectionEdgeAggregateFilterParameters(request)}`);
+  public getIntersectionEdgeAggregateWithFilter(request: IntersectionEdgeAggregateRequest): Observable<PagedGeoResponse<LineString>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges/aggregate', { params });
   }
 
   public getIntersectionEdgeStreetNames(request: IntersectionEdgeAggregateRequest): Observable<string[]> {
-		return this._http.get<string[]>(`/api/intersections/intersection_edges/streetNames${this.getIntersectionEdgeAggregateFilterParameters(request)}`);
-	}
-
-  public getIntersectionEdgeAggregate(): Observable<FeatureCollection<LineString>> {
-    return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_edges/aggregate`);
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		return this._http.get<string[]>('/api/intersections/intersection_edges/streetNames', { params });
   }
 
   public getRideIdsByOsmId(osmId: number): Observable<number[]> {
