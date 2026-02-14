@@ -66,8 +66,8 @@ export class SimraRegionDetailViewPage {
 		},
 	});
 
-	protected readonly _lastRunSimraRegionMetrics$ = toSignal(this._facade.getLastMethodRun('updateSafetyMetrics'));
-	protected readonly _lastRunProfileMetrics$ = toSignal(this._facade.getLastMethodRun('updateSafetyMetrics'));
+	protected readonly _lastRunSimraRegionMetrics$ = toSignal(this._facade.getLastMethodRun('SafetyMetricsService->updateSafetyMetrics'));
+	protected readonly _lastRunProfileMetrics$ = toSignal(this._facade.getLastMethodRun('SafetyMetricsService->updateSafetyMetrics'));
 
 	async changeDetails(event: IDetailViewChange) {
 		const regionName = this.regionName();

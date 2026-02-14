@@ -8,16 +8,7 @@ import {
 	RegionAggregateRow,
 	mapIntersectionRegionAggregateToRows
 } from '@simra/intersections-common';
-import {
-	EnumColumn,
-	EnumMultiSelectComponent,
-	isEnumColumn,
-	isNumberColumn, AutocompleteComponent,
-	NumberColumn,
-	NumberFilterComponent,
-	TRAFFIC_TIMES_TO_TRANSLATION,
-	WEEK_DAYS_TO_TRANSLATION, YEAR_TO_TRANSLATION, AutocompleteColumn, isAutocompleteColumn, LastRunComponent,
-} from '@simra/common-components';
+import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { TranslateModule, TranslatePipe } from '@ngx-translate/core';
 import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
@@ -31,14 +22,13 @@ export class IntersectionsRegionList {
 	private readonly _intersectionsRegionFacade = inject(IntersectionsRegionFacade);
 
 	protected readonly columns: ListColumn<RegionAggregateRow>[] = [
-		{ field: 'name', header: 'Name', sortable: true,  }, // display: "regionLink"
+		{ field: 'name', header: 'regionId', sortable: true,  }, // display: "regionLink"
+		{ field: 'name', header: 'Name', sortable: true,  }, 
 		{ field: 'numberOfRides', header: 'Count', sortable: true },
 		{ field: 'nodeMedianWaitingTime', header: 'Median Waiting Node', sortable: true, display: "decimal" },
 		{ field: 'length', header: 'Length (km)', sortable: true, display: "decimal" },
-		{ field: 'nodeWaitingPerKm', header: 'Node Waiting (s/km)', sortable: true, display: "decimal" },
-		{ field: 'nodeMedianWaitingPerKm', header: 'Node Median Waiting (s/km)', sortable: true, display: "decimal" },
-		{ field: 'edgeWaitingPerKm', header: 'Edge Waiting (s/km)', sortable: true, display: "decimal" },
-		{ field: 'edgeMedianWaitingPerKm', header: 'Edge Median Waiting (s/km)', sortable: true, display: "decimal" }
+		{ field: 'nodeWaitingSPerKm', header: 'Node Waiting (s/km)', sortable: true, display: "decimal" },
+		{ field: 'edgeWaitingSPerKm', header: 'Edge Waiting (s/km)', sortable: true, display: "decimal" },
 	];
 
 	protected readonly loading = signal(false);
@@ -46,7 +36,13 @@ export class IntersectionsRegionList {
 
 	async load() {
 		this.loading.set(true);
-		this.rows.set(mapIntersectionRegionAggregateToRows(await this._intersectionsRegionFacade.getRegionAggregate()));
+		const data = await this._intersectionsRegionFacade.getRegionAggregate({
+			numberOfRides: 0,
+			weekDay: EWeekDays.ALL_WEEK,
+			trafficTime: ETrafficTimes.ALL_DAY,
+			year: EYear.ALL
+		});
+		this.rows.set(mapIntersectionRegionAggregateToRows(data.geoData));
   		this.loading.set(false);
 	}
 

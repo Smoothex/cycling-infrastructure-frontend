@@ -149,7 +149,7 @@ export class StreetListViewPage {
 	];
 
 	protected readonly _lastRun$ = toSignal(
-		this._streetDetailViewFacade.fetchLastMethodRun('updateSafetyMetrics'),
+		this._streetDetailViewFacade.fetchLastMethodRun('SafetyMetricsService->updateSafetyMetrics'),
 	);
 	public fetchRegionNames = (query: string): Observable<string[]> => {
 		return this._streetListViewFace.fetchRegionNames(query);

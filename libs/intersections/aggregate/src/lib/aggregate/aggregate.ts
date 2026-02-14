@@ -2,9 +2,9 @@ import { Component, effect, input, inject, signal, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { Card } from 'primeng/card';
-import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
+import { FeatureCollection, LineString } from 'geojson';
 import { IntersectionsAggregateFacade } from '@simra/intersections-domain';
-import { IntersectionNodeAggregateRequest, IntersectionList, IntersectionMap } from '@simra/intersections-common';
+import { IntersectionList, IntersectionMap } from '@simra/intersections-common';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import { 
 	DateFilter, DATE_FILTER_DEFAULTS, ECardMode,
@@ -30,11 +30,11 @@ export class IntersectionsAggregatePage {
 
 	protected _mode = signal<ECardMode>(DATE_FILTER_DEFAULTS.mode);
     protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
-    protected _selectedWeekDays = signal<EWeekDays[]>(DATE_FILTER_DEFAULTS.weekDays);
+    protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
     protected _selectedTrafficTime = signal<ETrafficTimes>(DATE_FILTER_DEFAULTS.trafficTime);
-    protected _startTime = signal<Date>(DATE_FILTER_DEFAULTS.startTime);
-    protected _endTime = signal<Date>(DATE_FILTER_DEFAULTS.endTime);
-    protected _datetime$ = signal<Date[]>(DATE_FILTER_DEFAULTS.getDatetime());
+    protected _startTime = signal<Date>(DATE_FILTER_DEFAULTS.startTime); // Not used
+    protected _endTime = signal<Date>(DATE_FILTER_DEFAULTS.endTime); // Not used
+    protected _datetime$ = signal<Date[]>(DATE_FILTER_DEFAULTS.getDatetime()); // Not used
 
 	protected readonly nodeRows = signal<IntersectionNodeAggregateRow[]>([]);
 	protected readonly nodeColumns: ListColumn<IntersectionNodeAggregateRow>[] = [
@@ -53,16 +53,13 @@ export class IntersectionsAggregatePage {
 		effect(async () => {
 			const id = this.trafficSignalClusterId();
 			if (!id) return;
-			let requestFilter: IntersectionNodeAggregateRequest = {trafficSignalClusterId: id}
-			if (this._mode() === ECardMode.PRECOMPUTED) {
-				requestFilter = {
-					trafficSignalClusterId: id,
-					weekDay: this._selectedWeekDays(),
-					trafficTime: [this._selectedTrafficTime()],
-					year: [this._selectedYear()]
-				};
-			} 
-			const data = await this._intersectionsAggregateFacade.getIntersectionNodeAggregateWithFilter(requestFilter);
+			const data = await this._intersectionsAggregateFacade.getIntersectionNodeAggregateWithFilter({
+				numberOfRides: 0,
+				trafficSignalClusterId: id,
+				weekDay: this._selectedWeekDays(),
+				trafficTime: this._selectedTrafficTime(),
+				year: this._selectedYear()
+			});
 			this.intersectionNodeAggregate.set(data.geoData);
 			this.nodeRows.set(mapIntersectionNodeAggregateToRows(data.geoData));
 		});

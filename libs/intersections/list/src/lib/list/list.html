@@ -18,7 +18,7 @@
 				<div class="title-filter">
                     <p-togglebutton [(ngModel)]="displayNodes" (onChange)="onDisplayChange()" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
 					<m-autocomplete class="region__autocomplete" [fetchFunction]="fetchRegionNames" [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate" (selectionChange)="onFilterChange($event)" field="region" [showDropdown]="true" />
-				</div>
+                </div>
 			</ng-template>
             <ng-template pTemplate="header">
                 <tr>
@@ -45,13 +45,13 @@
 							<m-autocomplete class="table__autocomplete" [fetchFunction]="col.headerFilter.fetchFunction" (selectionChange)="onFilterChange($event)" [field]="col.headerFilter.field" />
 						}
                         @else if(col.headerFilter && col.headerFilter.dataType === "enum") {
-							<m-enum-multi-select-component
+                            <m-enum-select-component
                                 [field]="col.headerFilter.field"
                                 [optionEnum]="col.headerFilter.enum"
-                                [translationMap]="col.headerFilter.translationMap"
                                 [selected]="col.headerFilter.default"
+                                [translationMap]="col.headerFilter.translationMap"
                                 (selectionChange)="onFilterChange($event)">
-                            </m-enum-multi-select-component>
+                            </m-enum-select-component>
 						}
 						@else if (col.headerFilter && col.headerFilter.dataType === "number") {
                             <m-number-filter

@@ -4,9 +4,10 @@ import { Observable } from 'rxjs';
 import { defaults, isEmpty, isNumber, omitBy, pickBy } from 'lodash';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
 import { 
-  IntersectionNodeAggregateRequest, 
+  IntersectionNodeMetricsPageableRequest, 
   IntersectionEdgeAggregateRequest,
   RegionAggregateRequest,
+  BaseRequest,
   PagedGeoResponse
 } from '@simra/intersections-common';
 
@@ -42,13 +43,18 @@ export class IntersectionsRequestService {
     const endString = endOsmId != null ? `&endOsmId=${endOsmId}` : "";
     return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_nodes?trafficSignalClusterId=${trafficSignalClusterId}${startString}${endString}`);
   }
+
+  public getIntersectionNodeMetricsComplete(request: BaseRequest): Observable<FeatureCollection<LineString>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_nodes/aggregate/complete', { params });
+  }
  
-  public getIntersectionNodeAggregateWithFilter(request: IntersectionNodeAggregateRequest): Observable<PagedGeoResponse<LineString>> {
+  public getIntersectionNodeMetricsPageable(request: IntersectionNodeMetricsPageableRequest): Observable<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
 		return this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params });
   }
 
-  public getIntersectionNodeStreetNames(request: IntersectionNodeAggregateRequest): Observable<string[]> {
+  public getIntersectionNodeStreetNames(request: IntersectionNodeMetricsPageableRequest): Observable<string[]> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
 		return this._http.get<string[]>('/api/intersections/intersection_nodes/streetNames', { params });
 	}
@@ -60,7 +66,12 @@ export class IntersectionsRequestService {
     return this._http.get<FeatureCollection<LineString>>(`/api/intersections/intersection_edges?filter=true&${pString}${oString}${nString}`);
   }
 
-  public getIntersectionEdgeAggregateWithFilter(request: IntersectionEdgeAggregateRequest): Observable<PagedGeoResponse<LineString>> {
+  public getIntersectionEdgeMetricsComplete(request: BaseRequest): Observable<FeatureCollection<LineString>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_edges/aggregate/complete', { params });
+  }
+
+  public getIntersectionEdgeMetricsPageable(request: IntersectionEdgeAggregateRequest): Observable<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
     return this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges/aggregate', { params });
   }
@@ -94,13 +105,14 @@ export class IntersectionsRequestService {
     return this._http.get<FeatureCollection<Polygon>>(`/api/osm/cluster-polygons/${trafficSignalClusterId}`);
   }
 
-  public getRegionAggregate(request: null | RegionAggregateRequest = null): Observable<FeatureCollection<Polygon>> {
-    let filter = "";
-    if (request) {
-      const rString = request.region != undefined ? `&region=${request.region}` : "";
-      filter = `?filter=true${rString}`;
-    }
-    return this._http.get<FeatureCollection<Polygon>>(`/api/intersections/regions/aggregate${filter}`);
+  public getIntersectionRegionMetricsComplete(request: BaseRequest): Observable<FeatureCollection<Polygon>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return this._http.get<FeatureCollection<Polygon>>('/api/intersections/regions/complete', { params });
+  }
+
+  public getIntersectionRegionMetricsPageable(request: RegionAggregateRequest): Observable<PagedGeoResponse<Polygon>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return this._http.get<PagedGeoResponse<Polygon>>('/api/intersections/regions/pageable', { params });
   }
 
   public getRegionByName(name: null | string = null): Observable<FeatureCollection<Polygon>> {

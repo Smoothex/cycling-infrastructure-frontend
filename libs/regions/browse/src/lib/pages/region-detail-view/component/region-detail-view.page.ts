@@ -57,7 +57,7 @@ export class RegionDetailViewPage {
 			return await firstValueFrom(this._facade.getDetailedRegion(request));
 		},
 	});
-	protected readonly _lastRunRegionMetrics = toSignal(this._facade.getLastMethodRun('updateSafetyMetrics'));
+	protected readonly _lastRunRegionMetrics = toSignal(this._facade.getLastMethodRun('SafetyMetricsService->updateSafetyMetrics'));
 
 	async changeDetails(event: IDetailViewChange) {
 		const regionName = this.regionName();

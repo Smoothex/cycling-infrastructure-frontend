@@ -125,6 +125,7 @@ export interface displayOptionsLineString extends displayOptions {
     _router: Router;
     width?: any;
     highlightWidth?: any;
+    sortKey?: string;
 }
 
 export function displayLineString(lineString: FeatureCollection<LineString>, map: maplibregl.Map, options: displayOptionsLineString) {
@@ -169,7 +170,8 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'line-color': options.color,
             'line-width': width,
         },
-        ...zoomProps(options)
+        ...zoomProps(options),
+        ...(options.sortKey && {'line-sort-key': ['get', options.sortKey]})
     });
     map.setLayoutProperty(layerId, 'visibility', visible);
     MapUtils.changeCursor(map, layerId);
@@ -210,6 +212,11 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
         data: startFeature,
     });
 
+    const circleZoom = zoomProps(options);
+    if (circleZoom.minzoom) {
+        circleZoom.minzoom += 3;
+    }
+
     map.addLayer({
         id: startMarkerLayerId,
         type: 'circle',
@@ -218,7 +225,8 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'circle-color': options.color,
             'circle-radius': 5,
         },
-        ...zoomProps(options)
+        ...circleZoom,
+        ...(options.sortKey && {'circle-sort-key': ["*", -1, 'get', options.sortKey]})
     })
     map.setLayoutProperty(startMarkerLayerId, 'visibility', visible);
     MapUtils.changeCursor(map, startMarkerLayerId);
@@ -238,7 +246,7 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'circle-radius': 7,
         },
         filter: ['==', ['get', 'id'], ''],
-        ...zoomProps(options)
+        ...circleZoom
     })
 
     removeLineHighlightOnDblclick(options._router, map, options.sourceId);
@@ -320,7 +328,7 @@ export async function displayTrafficSignals(map: maplibregl.Map, trafficSignals:
         visible: true,
         color: "#585858d5",
         popupFunc: setTrafficSignalPopUp,
-        ...(zoom && { minzoom: 11 })
+        ...(zoom && { minzoom: 14 })
     });
 }
 
@@ -342,6 +350,7 @@ export async function loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId(_
 export function displayIntersectionAggregate (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, sourceId: string, zoom: boolean = false) {
     displayLineString(data, map, {
         sourceId: sourceId,
+        sortKey: "numberOfRides",
         visible: true,
         _router: _router,
         color: [
@@ -407,7 +416,7 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
         color: [
             'interpolate',
             ['linear'],
-            ['get', 'node_waiting_s_per_km'],
+            ['get', 'nodeWaitingSPerKm'],
             0,  '#00ffb3ff',
             5, '#3cff00ff',
             10, '#fffb00ff',
@@ -417,7 +426,7 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
         outlineWidth: [
             'interpolate',
             ['linear'],
-            ['get', 'number_of_rides'],
+            ['get', 'numberOfRides'],
             10, 1.0,
             50, 3.0,
             500, 10.0

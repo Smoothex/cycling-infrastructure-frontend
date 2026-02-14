@@ -1,36 +1,35 @@
 <div class="date-filter flex flex-row">
-    <p-card>
-        <m-enum-select-button
-            [optionEnum]="ECardMode"
-            [translationMap]="CARD_MODE_TO_TRANSLATION_MAP"
-            [(selected)]="mode">
-        </m-enum-select-button>
-    </p-card>
+    @if (changeableMode()) {
+        <p-card>
+            <m-enum-select-button
+                [optionEnum]="ECardMode"
+                [translationMap]="CARD_MODE_TO_TRANSLATION_MAP"
+                [(selected)]="mode">
+            </m-enum-select-button>
+        </p-card>
+    }
     <div class="flex-1"></div>
     <p-card>
         <div class="flex gap-2">
 
             @if(mode() === ECardMode.PRECOMPUTED) {
-
-                <m-enum-select-component
-                    [optionEnum]="EYear"
-                    [(selected)]="selectedYear"
-                    [translationMap]="YEAR_TO_TRANSLATION">
-                </m-enum-select-component>
-
                 <m-enum-select-component
                     [optionEnum]="ETrafficTimes"
                     [(selected)]="selectedTrafficTime"
                     [translationMap]="TRAFFIC_TIMES_TO_TRANSLATION">
                 </m-enum-select-component>
 
-                <m-enum-select-button 
+                <m-enum-select-component
                     [optionEnum]="EWeekDays"
-                    [translationMap]="WEEK_DAYS_TO_TRANSLATION" 
-                    [(selected)]="selectedWeekDays" 
-                    [multiple]="true">
-                </m-enum-select-button>
-
+                    [(selected)]="selectedWeekDays"
+                    [translationMap]="WEEK_DAYS_TO_TRANSLATION">
+                </m-enum-select-component>                
+                
+                <m-enum-select-component
+                    [optionEnum]="EYear"
+                    [(selected)]="selectedYear"
+                    [translationMap]="YEAR_TO_TRANSLATION">
+                </m-enum-select-component>
             } @else {
 
                 <div>

@@ -23,19 +23,22 @@ export interface BaseRow {
     midPoint: Position;
 }
 
-interface BaseRequest {
+export interface BaseRequest {
+    weekDay: EWeekDays;
+    trafficTime: ETrafficTimes;
+    year: EYear;
+    numberOfRides: number;
+}
+
+interface BasePageableRequest extends BaseRequest {
     sort?: string;
     page?: number;
     size?: number;
-    weekDay?: EWeekDays[];
-    trafficTime?: ETrafficTimes[];
-    year?: EYear[];
 }
 
 
-export interface IntersectionNodeAggregateRequest extends BaseRequest {
+export interface IntersectionNodeMetricsPageableRequest extends BasePageableRequest {
     trafficSignalClusterId?: number; 
-    numberOfRides?: number;
     region?: string; 
     streetNames?: string;
 }
@@ -75,13 +78,9 @@ export interface IntersectionNodeRow extends BaseRow {
 }
 
 
-export interface IntersectionEdgeAggregateRequest extends BaseRequest {
-    numberOfRides?: number;
+export interface IntersectionEdgeAggregateRequest extends BasePageableRequest {
     region?: string; 
     name?: string;
-    weekDay?: EWeekDays[];
-    trafficTime?: ETrafficTimes[];
-    year?: EYear[];
 }
 
 export interface IntersectionEdgeAggregateRow extends BaseRow {
@@ -116,19 +115,19 @@ export interface IntersectionEdgeRow extends BaseRow {
 }
 
 
-export interface RegionAggregateRequest {
-    region?: string;
+export interface RegionAggregateRequest extends BaseRequest {
+    regionId?: number;
 }
 
 export interface RegionAggregateRow {
-    name: string; 
+    regionId: number;
+    name: string;
+    adminLevel: number; 
     numberOfRides: number; 
     nodeMedianWaitingTime: number;
     length: number;
-    nodeWaitingPerKm: number;
-    nodeMedianWaitingPerKm: number;
-    edgeWaitingPerKm: number;
-    edgeMedianWaitingPerKm: number;
+    nodeWaitingSPerKm: number;
+    edgeWaitingSPerKm: number;
 }
 
 
@@ -260,14 +259,14 @@ export function mapIntersectionEdgeToRows(fc: FeatureCollection<LineString>): In
 
 export function mapIntersectionRegionAggregateToRows(fc: FeatureCollection<Polygon>): RegionAggregateRow[] {
     return fc.features.map(f => ({
+        regionId: f.properties?.['regionId'],
         name: f.properties?.['name'],
-        numberOfRides: f.properties?.['number_of_rides'],
-        nodeMedianWaitingTime: f.properties?.['node_median_waiting_time'],
-        length: f.properties?.['length_km'],
-        nodeWaitingPerKm: f.properties?.['node_waiting_s_per_km'],
-        nodeMedianWaitingPerKm: f.properties?.['node_median_waiting_s_per_km'],
-        edgeWaitingPerKm: f.properties?.['edge_waiting_s_per_km'],
-        edgeMedianWaitingPerKm: f.properties?.['edge_median_waiting_s_per_km'],
+        adminLevel: f.properties?.['adminLevel'],
+        numberOfRides: f.properties?.['numberOfRides'],
+        nodeMedianWaitingTime: f.properties?.['nodeMedianWaitingTime'],
+        length: f.properties?.['length'],
+        nodeWaitingSPerKm: f.properties?.['nodeWaitingSPerKm'],
+        edgeWaitingSPerKm: f.properties?.['edgeWaitingSPerKm'],
     }));
 }
 

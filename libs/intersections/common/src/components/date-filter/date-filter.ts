@@ -25,7 +25,7 @@ export enum ECardMode {
 export const DATE_FILTER_DEFAULTS = {
     mode: ECardMode.PRECOMPUTED,
     year: EYear.ALL,
-    weekDays: [EWeekDays.WEEK, EWeekDays.WEEKEND] as EWeekDays[],
+    weekDays: EWeekDays.ALL_WEEK,
     trafficTime: ETrafficTimes.ALL_DAY,
     startTime: new Date('1970-01-01T00:00:00'),
     endTime: new Date('1970-01-01T23:59'),
@@ -50,10 +50,12 @@ export const DATE_FILTER_DEFAULTS = {
     encapsulation: ViewEncapsulation.None,
 })
 export class DateFilter {
+
+    changeableMode = input.required<boolean>();
     mode = model.required<ECardMode>();
     
     selectedYear = model.required<EYear>();
-    selectedWeekDays = model.required<EWeekDays[]>();
+    selectedWeekDays = model.required<EWeekDays>();
     selectedTrafficTime = model.required<ETrafficTimes>();
     
     startTime = model.required<Date>();

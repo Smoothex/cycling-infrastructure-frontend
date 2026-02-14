@@ -23,8 +23,9 @@ export class IntersectionsRegionDetail {
 		effect(async () => {
 			const regionName = this.regionName();
 			if (regionName) {
-				const data = await this._intersectionsRegionFacade.getRegionAggregate({ region: regionName });
-				this.regionAggregate.set(data);
+				// TODO: replace name with regionId
+				//const data = await this._intersectionsRegionFacade.getRegionAggregate({ region: regionName });
+				//this.regionAggregate.set(data);
 			}
 		});
 	}

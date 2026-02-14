@@ -1,11 +1,11 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LineString } from 'geojson';
 import { IntersectionsListFacade } from '@simra/intersections-domain';
 import {
-	IntersectionNodeAggregateRequest, 
+	IntersectionNodeMetricsPageableRequest, 
 	IntersectionNodeAggregateRow,
 	mapIntersectionNodeAggregateToRows,
 	IntersectionEdgeAggregateRequest,
@@ -16,11 +16,8 @@ import {
 } from '@simra/intersections-common';
 import { TranslateModule, TranslatePipe } from '@ngx-translate/core';
 import {
-	EnumColumn,
-	EnumMultiSelectComponent,
-	isEnumColumn,
-	isNumberColumn, AutocompleteComponent,
-	NumberColumn,
+	EnumSelectComponent,
+	AutocompleteComponent,
 	NumberFilterComponent,
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, YEAR_TO_TRANSLATION, AutocompleteColumn, isAutocompleteColumn, LastRunComponent,
@@ -33,11 +30,12 @@ import { ESortOrder, ETrafficTimes, EWeekDays, EYear } from '@simra/common-model
 
 @Component({
 	selector: 'lib-list',
-	imports: [CommonModule, FormsModule, Card, TableModule, ToggleButtonModule, RouterLink, AutocompleteComponent, NumberFilterComponent, EnumMultiSelectComponent, TranslatePipe],
+	imports: [CommonModule, FormsModule, Card, TableModule, ToggleButtonModule, RouterLink, 
+		AutocompleteComponent, NumberFilterComponent, EnumSelectComponent, TranslatePipe],
 	templateUrl: './list.html',
 	styleUrl: './list.scss',
 })
-export class IntersectionsList implements OnInit {
+export class IntersectionsList {
 	private readonly _intersectionsListFacade = inject(IntersectionsListFacade);
 
 	private readonly defaults = {
@@ -46,9 +44,9 @@ export class IntersectionsList implements OnInit {
 		region: undefined,
 		streetNames: undefined,
 		name: undefined,
-		weekDay: [EWeekDays.ALL_WEEK],
-		trafficTime: [ETrafficTimes.ALL_DAY],
-		year: [EYear.ALL],
+		weekDay: EWeekDays.ALL_WEEK,
+		trafficTime: ETrafficTimes.ALL_DAY,
+		year: EYear.ALL,
 		page: 0,
 		size: 20,
 		sort: "medianWaitingTime,DESC"
@@ -80,7 +78,7 @@ export class IntersectionsList implements OnInit {
 		{ field: 'trafficTime', header: 'INTERSECTIONS.HEADERS.TRAFFICTIME', display: "enum", translationMap: TRAFFIC_TIMES_TO_TRANSLATION, headerFilter: {dataType: "enum", field: 'trafficTime', translationMap: TRAFFIC_TIMES_TO_TRANSLATION, enum: ETrafficTimes, default: this.defaults.trafficTime} },
 		{ field: 'year', header: 'INTERSECTIONS.HEADERS.YEAR', display: "enum", translationMap: YEAR_TO_TRANSLATION, headerFilter: {dataType: "enum", field: 'year', translationMap: YEAR_TO_TRANSLATION, enum: EYear, default: this.defaults.year} }
 	];
-	protected nodeFilter: IntersectionNodeAggregateRequest = {
+	protected nodeFilter: IntersectionNodeMetricsPageableRequest = {
 		trafficSignalClusterId: this.defaults.trafficSignalClusterId,
 		numberOfRides: this.defaults.numberOfRides,
 		region: this.defaults.region,
@@ -126,14 +124,10 @@ export class IntersectionsList implements OnInit {
 
 	protected readonly loading = signal(false);
 	protected readonly rows = signal<IntersectionNodeAggregateRow[] | IntersectionEdgeAggregateRow[]>([]);
-	protected readonly requestFilter = signal<IntersectionNodeAggregateRequest | IntersectionEdgeAggregateRequest>(this.nodeFilter);
+	protected readonly requestFilter = signal<IntersectionNodeMetricsPageableRequest | IntersectionEdgeAggregateRequest>(this.nodeFilter);
 	protected columns: ListColumn<IntersectionNodeAggregateRow>[] | ListColumn<IntersectionEdgeAggregateRow>[] = this.nodeColumns;
 	public displayNodes = true;
 	
-
-	ngOnInit() {
-		this.load();
-	}
 
 	public fetchRegionNames = (query: string): Observable<string[]> => {
 		return this._intersectionsListFacade.fetchRegionNames(query);
@@ -208,7 +202,7 @@ export class IntersectionsList implements OnInit {
 	onFilterChange(event: any) {
 		if (!event) return;
 
-		const keyMapNode: Record<string, keyof IntersectionNodeAggregateRequest> = {
+		const keyMapNode: Record<string, keyof IntersectionNodeMetricsPageableRequest> = {
 			region: 'region',
 			streetNames: 'streetNames',
 			name: 'streetNames',

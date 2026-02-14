@@ -2,11 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { IntersectionsRequestService } from './intersections-request.service';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
-import {
-	IntersectionNodeAggregateRequest, 
-	IntersectionEdgeAggregateRequest,
-	PagedGeoResponse
-} from '@simra/intersections-common';
+import { BaseRequest } from '@simra/intersections-common';
 
 @Injectable({
   providedIn: 'root'
@@ -34,12 +30,12 @@ export class IntersectionsMapFacade {
     return firstValueFrom(this._intersectionsRequestService.getIntersectionNode(id));
   }
 
-  public getIntersectionNodeAggregate(request: IntersectionNodeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
-    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeAggregateWithFilter(request));
+  public getIntersectionNodeMetrics(request: BaseRequest): Promise<FeatureCollection<LineString>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionNodeMetricsComplete(request));
   }
 
-  public getIntersectionEdgeAggregate(request: IntersectionEdgeAggregateRequest): Promise<PagedGeoResponse<LineString>> {
-    return firstValueFrom(this._intersectionsRequestService.getIntersectionEdgeAggregateWithFilter(request));
+  public getIntersectionEdgeMetrics(request: BaseRequest): Promise<FeatureCollection<LineString>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionEdgeMetricsComplete(request));
   }
 
   public getRideIdsByOsmId(osmId: number): Promise<number[]> {
@@ -58,7 +54,7 @@ export class IntersectionsMapFacade {
     return firstValueFrom(this._intersectionsRequestService.getTrafficSignalPolygons());
   }
 
-  public getRegions(): Promise<FeatureCollection<Polygon>> {
-    return firstValueFrom(this._intersectionsRequestService.getRegionAggregate());
+  public getRegions(request: BaseRequest): Promise<FeatureCollection<Polygon>> {
+    return firstValueFrom(this._intersectionsRequestService.getIntersectionRegionMetricsComplete(request));
   }
 }

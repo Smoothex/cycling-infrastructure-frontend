@@ -48,7 +48,7 @@ export class SafetyMetricsCardLogicComponent {
 	private readonly _streetDetailViewFacade = inject(StreetDetailViewFacade);
 
 	protected readonly _lastRun$ = toSignal(
-		this._streetDetailViewFacade.fetchLastMethodRun('updateSafetyMetrics'),
+		this._streetDetailViewFacade.fetchLastMethodRun('SafetyMetricsService->updateSafetyMetrics'),
 	);
 	protected _mode$: ModelSignal<ECardMode> = model<ECardMode>(ECardMode.PRECOMPUTED);
 	protected readonly _datetime$ = model<Date[]>([new Date('2019-01-01T00:00'), new Date()]);

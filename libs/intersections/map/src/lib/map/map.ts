@@ -80,11 +80,9 @@ export class IntersectionsMap {
 
   private readonly defaults = {
 		numberOfRides: 0,
-		weekDay: [EWeekDays.ALL_WEEK],
-		trafficTime: [ETrafficTimes.ALL_DAY],
-		year: [EYear.ALL],
-		page: 0,
-		size: 10000
+		weekDay: EWeekDays.ALL_WEEK,
+		trafficTime: ETrafficTimes.ALL_DAY,
+		year: EYear.ALL
 	}
 
   constructor(private cdr: ChangeDetectorRef) {
@@ -181,38 +179,33 @@ export class IntersectionsMap {
       this.trafficSignals = await this._intersectionsMapFacade.getTrafficSignals();
       displayTrafficSignals(mlMap, this.trafficSignals, true);
 
-      const pagedEdgeAggregate = await this._intersectionsMapFacade.getIntersectionEdgeAggregate({
+
+      this.intersectionEdgeAggregate = await this._intersectionsMapFacade.getIntersectionEdgeMetrics({
         numberOfRides: this.defaults.numberOfRides,
         weekDay: this.defaults.weekDay,
         trafficTime: this.defaults.trafficTime,
-        year: this.defaults.year,
-        page: this.defaults.page,
-        size: this.defaults.size
+        year: this.defaults.year
       });
-      this.intersectionEdgeAggregate = pagedEdgeAggregate.geoData;
       displayIntersectionAggregate(this._router, this.intersectionEdgeAggregate, mlMap, "intersectionEdgeAggregate", true);
       this.changeVisibility("intersectionEdgeAggregate-circle-layer", false);
-      if (pagedEdgeAggregate.metadata.totalElements > this.defaults.size) {
-        console.warn(`Number of Elements (${pagedEdgeAggregate.metadata.totalElements}) greater than default (${this.defaults.size})`)
-      }
 
-      const pagedNodeAggregate = await this._intersectionsMapFacade.getIntersectionNodeAggregate({
+
+      this.intersectionNodeAggregate = await this._intersectionsMapFacade.getIntersectionNodeMetrics({
         numberOfRides: this.defaults.numberOfRides,
         weekDay: this.defaults.weekDay,
         trafficTime: this.defaults.trafficTime,
-        year: this.defaults.year,
-        page: this.defaults.page,
-        size: this.defaults.size
+        year: this.defaults.year
       });
-      this.intersectionNodeAggregate = pagedNodeAggregate.geoData;
       displayIntersectionAggregate(this._router, this.intersectionNodeAggregate, mlMap, "intersectionNodeAggregate", true);
-      if (pagedNodeAggregate.metadata.totalElements > this.defaults.size) {
-        console.warn(`Number of Elements (${pagedNodeAggregate.metadata.totalElements}) greater than default (${this.defaults.size})`)
-      }
 
-      this.regions = await this._intersectionsMapFacade.getRegions();
-      displayRegions(this.regions, this.map, "regionMedium", 8, 11, ['>=', ['get', 'admin_level'], 6]);
-      displayRegions(this.regions, this.map, "regionSmall", undefined, 8, ['==', ['get', 'admin_level'], 4]);
+      this.regions = await this._intersectionsMapFacade.getRegions({
+        numberOfRides: this.defaults.numberOfRides,
+        weekDay: this.defaults.weekDay,
+        trafficTime: this.defaults.trafficTime,
+        year: this.defaults.year
+      });
+      displayRegions(this.regions, this.map, "regionMedium", 8, 11, ['>=', ['get', 'adminLevel'], 6]);
+      displayRegions(this.regions, this.map, "regionSmall", undefined, 8, ['==', ['get', 'adminLevel'], 4]);
 
       this.rideIds = await this._intersectionsMapFacade.getIds();
       this.routes = this.rideIds.map((id) => { return {id: id, label: `${id}` }});  
