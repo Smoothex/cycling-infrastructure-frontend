@@ -22,11 +22,20 @@
             </intersection-map>
         </section>
     </p-card>
-    <intersection-list
-        [columns]="nodeColumns"
-        [rows]="nodeRows()"
+    @if (isNode()) {
+        <intersection-list
+            [columns]="nodeColumns"
+            [rows]="nodeRows()"
+            (rowFocused)="handleZoom($event)"
+        >
+        </intersection-list>
+    } @else {
+        <intersection-list
+        [columns]="edgeColumns"
+        [rows]="edgeRows()"
         (rowFocused)="handleZoom($event)"
     >
     </intersection-list>
+    }
 </div>
 

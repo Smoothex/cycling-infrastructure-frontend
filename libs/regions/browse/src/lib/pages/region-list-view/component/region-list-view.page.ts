@@ -46,7 +46,7 @@ export class RegionListViewPage {
 
 	protected readonly loading = signal<boolean>(false);
 	protected readonly _regions$ = model<IPage<ISafetyMetrics>>();
-	protected readonly _lastRun = toSignal(this._facade.getLastRun('calculateSafetyMetricsRegion'));
+	protected readonly _lastRun = toSignal(this._facade.getLastRun('SafetyMetricsService->updateSafetyMetrics'));
 
 	protected selectedAdminLevel = model<({key: string} & TTranslationMap<EAdminLevel>)>();
 	protected filterRequestParam = signal<ISafetyMetricsRequest>({});

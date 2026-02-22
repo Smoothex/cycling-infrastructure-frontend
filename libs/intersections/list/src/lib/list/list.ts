@@ -3,14 +3,15 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LineString } from 'geojson';
-import { IntersectionsListFacade } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { RegionRequestService } from '@simra/streets-domain';
 import {
-	IntersectionNodeMetricsPageableRequest, 
-	IntersectionNodeAggregateRow,
-	mapIntersectionNodeAggregateToRows,
-	IntersectionEdgeAggregateRequest,
-	IntersectionEdgeAggregateRow,
-	mapIntersectionEdgeAggregateToRows,
+	NodePageableMetricRequest, 
+	NodeMetricRow,
+	mapNodeMetricToRows,
+	EdgePageableMetricRequest,
+	EdgeMetricRow,
+	mapEdgeMetricToRows,
 	ListColumn,
 	PagedGeoResponse
 } from '@simra/intersections-common';
@@ -36,7 +37,8 @@ import { ESortOrder, ETrafficTimes, EWeekDays, EYear } from '@simra/common-model
 	styleUrl: './list.scss',
 })
 export class IntersectionsList {
-	private readonly _intersectionsListFacade = inject(IntersectionsListFacade);
+	private readonly _requestService = inject(IntersectionsRequestService);
+	private readonly _regionRequestService = inject(RegionRequestService);
 
 	private readonly defaults = {
 		trafficSignalClusterId: undefined,
@@ -58,7 +60,7 @@ export class IntersectionsList {
         return response?.metadata?.totalElements ? response.metadata.totalElements : 0;
     });
 	
-	protected readonly nodeColumns: ListColumn<IntersectionNodeAggregateRow>[] = [
+	protected readonly nodeColumns: ListColumn<NodeMetricRow>[] = [
 		{ field: 'trafficSignalClusterLink', header: 'INTERSECTIONS.HEADERS.INTERSECTIONID', sortable: true, display: "link" },
 		{ field: 'clusterStartEndLink', header: 'INTERSECTIONS.HEADERS.STARTENDOSMID', display: "link" },
 		// { field: 'endOsmId', header: 'End OSM ID' },
@@ -66,7 +68,7 @@ export class IntersectionsList {
 			field: 'streetNames',
 			fetchFunction: (query: string): Observable<string[]> => {
 				this.nodeFilter.streetNames = query;
-				return this._intersectionsListFacade.getIntersectionNodeStreetNames(this.nodeFilter);
+				return this._requestService.getIntersectionNodeStreetNames(this.nodeFilter);
 			} }},
 		{ field: 'numberOfRides', header: 'INTERSECTIONS.HEADERS.RIDES', sortable: true, headerFilter: {dataType: 'number', field: 'numberOfRides', step: 5, min: 0, default: this.defaults.numberOfRides}},
 		{ field: 'medianSpeed', header: 'INTERSECTIONS.HEADERS.SPEED', sortable: true, display: "decimal"  },
@@ -78,7 +80,7 @@ export class IntersectionsList {
 		{ field: 'trafficTime', header: 'INTERSECTIONS.HEADERS.TRAFFICTIME', display: "enum", translationMap: TRAFFIC_TIMES_TO_TRANSLATION, headerFilter: {dataType: "enum", field: 'trafficTime', translationMap: TRAFFIC_TIMES_TO_TRANSLATION, enum: ETrafficTimes, default: this.defaults.trafficTime} },
 		{ field: 'year', header: 'INTERSECTIONS.HEADERS.YEAR', display: "enum", translationMap: YEAR_TO_TRANSLATION, headerFilter: {dataType: "enum", field: 'year', translationMap: YEAR_TO_TRANSLATION, enum: EYear, default: this.defaults.year} }
 	];
-	protected nodeFilter: IntersectionNodeMetricsPageableRequest = {
+	protected nodeFilter: NodePageableMetricRequest = {
 		trafficSignalClusterId: this.defaults.trafficSignalClusterId,
 		numberOfRides: this.defaults.numberOfRides,
 		region: this.defaults.region,
@@ -91,13 +93,13 @@ export class IntersectionsList {
 		sort: this.defaults.sort
 	};
 
-	protected readonly edgeColumns: ListColumn<IntersectionEdgeAggregateRow>[] = [
+	protected readonly edgeColumns: ListColumn<EdgeMetricRow>[] = [
 		{ field: 'prevOsmNextLink', header: 'INTERSECTIONS.HEADERS.PREVOSMNEXTID', display: "link" },
 		{ field: 'name', header: 'Name', sortable: true, headerFilter: {dataType: 'autocomplete', 
 			field: 'name',
 			fetchFunction: (query: string): Observable<string[]> => {
 				this.edgeFilter.name = query;
-				return this._intersectionsListFacade.getIntersectionEdgeStreetNames(this.edgeFilter);
+				return this._requestService.getIntersectionEdgeStreetNames(this.edgeFilter);
 			} }},
 		{ field: 'numberOfRides', header: 'INTERSECTIONS.HEADERS.RIDES', sortable: true, headerFilter: {dataType: 'number', field: 'numberOfRides', step: 5, min: 0, default: this.defaults.numberOfRides} },
 		{ field: 'medianSpeed', header: 'INTERSECTIONS.HEADERS.SPEED', sortable: true, display: "decimal"  },
@@ -109,7 +111,7 @@ export class IntersectionsList {
 		{ field: 'trafficTime', header: 'INTERSECTIONS.HEADERS.TRAFFICTIME', headerFilter: {dataType: "enum", field: 'trafficTime', translationMap: TRAFFIC_TIMES_TO_TRANSLATION, enum: ETrafficTimes, default: this.defaults.trafficTime} },
 		{ field: 'year', header: 'INTERSECTIONS.HEADERS.YEAR', headerFilter: {dataType: "enum", field: 'year', translationMap: YEAR_TO_TRANSLATION, enum: EYear, default: this.defaults.year} }
 	];
-	protected edgeFilter: IntersectionEdgeAggregateRequest = {
+	protected edgeFilter: EdgePageableMetricRequest = {
 		numberOfRides: this.defaults.numberOfRides,
 		region: this.defaults.region,
 		name: this.defaults.name,
@@ -123,14 +125,14 @@ export class IntersectionsList {
 
 
 	protected readonly loading = signal(false);
-	protected readonly rows = signal<IntersectionNodeAggregateRow[] | IntersectionEdgeAggregateRow[]>([]);
-	protected readonly requestFilter = signal<IntersectionNodeMetricsPageableRequest | IntersectionEdgeAggregateRequest>(this.nodeFilter);
-	protected columns: ListColumn<IntersectionNodeAggregateRow>[] | ListColumn<IntersectionEdgeAggregateRow>[] = this.nodeColumns;
+	protected readonly rows = signal<NodeMetricRow[] | EdgeMetricRow[]>([]);
+	protected readonly requestFilter = signal<NodePageableMetricRequest | EdgePageableMetricRequest>(this.nodeFilter);
+	protected columns: ListColumn<NodeMetricRow>[] | ListColumn<EdgeMetricRow>[] = this.nodeColumns;
 	public displayNodes = true;
 	
 
 	public fetchRegionNames = (query: string): Observable<string[]> => {
-		return this._intersectionsListFacade.fetchRegionNames(query);
+		return this._regionRequestService.fetchRegionNames(query);
 	};
 
 	async load() {
@@ -138,14 +140,14 @@ export class IntersectionsList {
 		this.loading.set(true);
 		if (this.displayNodes) {
 			this.requestFilter.set(this.nodeFilter);
-			const data = await this._intersectionsListFacade.getIntersectionNodeAggregateWithFilter(this.nodeFilter);
+			const data = await this._requestService.getIntersectionNodeMetricsPageable(this.nodeFilter);
 			this.pagedGeoResponse.set(data);
-			this.rows.set(mapIntersectionNodeAggregateToRows(data.geoData));
+			this.rows.set(mapNodeMetricToRows(data.geoData));
 		} else {
 			this.requestFilter.set(this.edgeFilter);
-			const data = await this._intersectionsListFacade.getIntersectionEdgeAggregateWithFilter(this.edgeFilter);
+			const data = await this._requestService.getIntersectionEdgeMetricsPageable(this.edgeFilter);
 			this.pagedGeoResponse.set(data);
-			this.rows.set(mapIntersectionEdgeAggregateToRows(data.geoData));
+			this.rows.set(mapEdgeMetricToRows(data.geoData));
 		}
   		this.loading.set(false);
 	}
@@ -202,7 +204,7 @@ export class IntersectionsList {
 	onFilterChange(event: any) {
 		if (!event) return;
 
-		const keyMapNode: Record<string, keyof IntersectionNodeMetricsPageableRequest> = {
+		const keyMapNode: Record<string, keyof NodePageableMetricRequest> = {
 			region: 'region',
 			streetNames: 'streetNames',
 			name: 'streetNames',
@@ -214,7 +216,7 @@ export class IntersectionsList {
 		let changed = this.applyFilter(event, keyMapNode, this.nodeFilter);
 		
 		
-		const keyMapEdge: Record<string, keyof IntersectionEdgeAggregateRequest> = {
+		const keyMapEdge: Record<string, keyof EdgePageableMetricRequest> = {
 			region: 'region',
 			streetNames: 'name',
 			name: 'name',

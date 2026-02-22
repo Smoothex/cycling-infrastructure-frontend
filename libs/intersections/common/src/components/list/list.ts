@@ -5,7 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
 import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
-import { BaseRow, ListColumn } from '@simra/intersections-common';
+import { IntersectionRow, ListColumn } from '@simra/intersections-common';
 import { TranslatePipe } from '@ngx-translate/core';
 
 
@@ -15,7 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 	templateUrl: './list.html',
 	styleUrl: './list.scss',
 })
-export class IntersectionList<T extends BaseRow> {
+export class IntersectionList<T extends IntersectionRow> {
 	private readonly _router = inject(Router);
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);

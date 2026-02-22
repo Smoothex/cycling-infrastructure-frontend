@@ -1,79 +1,27 @@
 
 <div class="flex items-center">
-    <p-checkbox inputId="FlyToRide" [(ngModel)]="flyToRide" binary="true"/>
-    <label for="FlyToRide" class="ml-2"> FlyToRide </label>
-</div>
-<div class="flex items-center">
     <p-checkbox inputId="TrafficSignals" [(ngModel)]="showTrafficSignals" (onChange)="onShowTrafficSignalsChange()" binary="true"/>
     <label for="TrafficSignals" class="ml-2"> TrafficSignals </label>
 </div>
 <div class="flex items-center">
-    <p-checkbox inputId="IntersectionEdgeAggregate" [(ngModel)]="showIntersectionEdgeAggregate" (onChange)="onShowIntersectionEdgeAggregateChange()" binary="true"/>
-    <label for="IntersectionEdgeAggregate" class="ml-2"> IntersectionEdgeAggregate </label>
+    <p-checkbox inputId="IntersectionMetrics" [(ngModel)]="showIntersectionMetrics" (onChange)="onShowIntersectionMetrics()" binary="true"/>
+    <label for="IntersectionMetrics" class="ml-2"> IntersectionMetrics </label>
 </div>
 <div class="flex items-center">
-    <p-checkbox inputId="IntersectionNodeAggregate" [(ngModel)]="showIntersectionNodeAggregate" (onChange)="onShowIntersectionNodeAggregate()" binary="true"/>
-    <label for="IntersectionNodeAggregate" class="ml-2"> IntersectionNodeAggregate </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="RidePoints" [(ngModel)]="showRidePoints" (onChange)="onRouteSelectionChange()" binary="true"/>
-    <label for="RidePoints" class="ml-2"> RidePoints </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="MatchedRidePoints" [(ngModel)]="showMatchedRidePoints" (onChange)="onRouteSelectionChange()" binary="true"/>
-    <label for="MatchedRidePoints" class="ml-2"> MatchedRidePoints </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="RideEdges" [(ngModel)]="showRideEdges" (onChange)="onRouteSelectionChange()" binary="true"/>
-    <label for="RideEdges" class="ml-2"> RideEdges </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="RideIntersectionNodes" [(ngModel)]="showRideIntersectionNodes" (onChange)="onRouteSelectionChange()" binary="true"/>
-    <label for="RideIntersectionNodes" class="ml-2"> RideIntersectionNodes </label>
+    <p-checkbox inputId="Ride" [(ngModel)]="showRide" (onChange)="onShowRide()" binary="true"/>
+    <label for="Ride" class="ml-2"> Ride </label>
 </div>
 
-<p-inputgroup>
-  <p-multiSelect
-    [options]="routes"
-    optionLabel="label"
-    optionValue="id"
-    [(ngModel)]="selectedRouteIds"
-    (onChange)="onRouteSelectionChange()"
-    display="chip"
-    placeholder="Select routes"
-  >
-  </p-multiSelect>
-</p-inputgroup>
-<p-inputgroup>
-  <p-button label="Search" (click)="loadRideIdsAndTrafficSignalsByOsmId()"/>
-  <p-inputnumber [(ngModel)]="osmIdInput" placeholder="Enter OSM ID"/>
-</p-inputgroup>
-<p-dialog 
-  header="Ride and Traffic Signals IDs" 
-  [(visible)]="showRideIdDialog"
-  [modal]="true" 
-  [style]="{width: '30vw'}">
+<p-select 
+  [options]="routes"
+  [(ngModel)]="selectedRideId"
+  optionLabel="label"
+  optionValue="id"
+  [filter]="true"
+  filterBy="label"
+  [showClear]="true"
+  (onChange)="onRideSelection()"
+  placeholder="Select Ride ID">
+</p-select>
 
-  <div>Ride Ids</div>
-  <div *ngIf="rideIdsOsmID?.length">
-    <ul>
-      <li *ngFor="let id of rideIdsOsmID">{{ id }}</li>
-    </ul>
-  </div>
-
-  <div *ngIf="rideIdsOsmID && rideIdsOsmID.length === 0">
-    No ride IDs found.
-  </div>
-
-  <div>Traffic Signal Ids</div>
-  <div *ngIf="trafficSignalIdsOsmID?.length">
-    <ul>
-      <li *ngFor="let id of trafficSignalIdsOsmID">{{ id }}</li>
-    </ul>
-  </div>
-
-  <div *ngIf="trafficSignalIdsOsmID && trafficSignalIdsOsmID.length === 0">
-    No trafficSignal IDs found.
-  </div>
-</p-dialog>
 <t-map-component (mapReady)="onMapReady($event)" [isNavigable]="true" id="intersection-map"></t-map-component>

@@ -6,14 +6,17 @@ import { EPin, MapPage, MapUtils } from '@simra/common-components';
 import { TableModule } from 'primeng/table';
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import * as maplibregl from 'maplibre-gl';
-import { IntersectionsAggregateFacade } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import {
-	loadAndDisplayTrafficSignalPolygonsByTrafficSignalClusterId,
-	loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId,
+	addedOnMap,
+	displayTrafficSignalClusters,
+	displayTrafficSignals,
 	displayIntersection,
-	highlightLineFromQueryParams,
-	zoomOnLineMidPoint,
-	displayIntersectionAggregate
+	displayIntersectionAggregate,
+	displayRidePoints,
+	displayMatchedPoints,
+	highlightLine,
+	zoomOnLineMidPoint
 } from '@simra/intersections-common';
 
 
@@ -23,14 +26,15 @@ import {
 	templateUrl: './map.html'
 })
 export class IntersectionMap {
-	private readonly _intersectionsAggregateFacade = inject(IntersectionsAggregateFacade);
+	private readonly _requestService = inject(IntersectionsRequestService);
 	private readonly _router = inject(Router);
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
 
-	trafficSignalClusterId = input.required<number>();
-	isAggregateData = input.required<boolean>();
-	intersectionData = input.required<FeatureCollection<LineString> | undefined>();
+	public trafficSignalClusterId = input.required<number>();
+	public isAggregateData = input.required<boolean>();
+	public intersectionData = input.required<FeatureCollection<LineString> | undefined>();
+	private intersectionDataAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	private readonly mapDataLoaded = signal(false);
@@ -43,17 +47,30 @@ export class IntersectionMap {
 			const data = this.intersectionData();
 			if (!data || !this.mapReady() || !this.map) return;
 
-			if (!isNaN(this.trafficSignalClusterId())) {
-				await loadAndDisplayTrafficSignalPolygonsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId());
-				await loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId(this._intersectionsAggregateFacade, this.map, this.trafficSignalClusterId());
-			} else {
-				zoomOnLineMidPoint(this.map, data);
+			zoomOnLineMidPoint(this.map, data);
+
+			const trafficSignalClusterId = this.trafficSignalClusterId();
+			if (!isNaN(trafficSignalClusterId)) {
+				const trafficSignalClusters = await this._requestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
+				displayTrafficSignalClusters(this.map, trafficSignalClusters, false);
+
+				const trafficSignals = await this._requestService.getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId);
+				displayTrafficSignals(this.map, trafficSignals);
 			}
 
 			if (this.isAggregateData()) {
-				displayIntersectionAggregate(this._router, data, this.map, "intersectionLineData");
+				this.intersectionDataAdded = displayIntersectionAggregate(this._router, data, this.map, "intersectionLineData");
 			} else {
-				displayIntersection(this._router, data, this.map, "intersectionLineData");
+				this.intersectionDataAdded = displayIntersection(this._router, data, this.map, "intersectionLineData");
+				const firstId = data.features[0].properties?.["id"];
+				// TODO: use selected id instead of 0
+
+				const matchedPoints = await this._requestService.getMatchedPointsIntersectionBase({id: firstId});
+				displayMatchedPoints(this.map, matchedPoints, "matchedPoints");
+
+				const ridePoints = await this._requestService.getRidePointsIntersectionBase({id: firstId});
+				displayRidePoints(this.map, ridePoints, "ridePoints");
+
 			}
 			this.mapDataLoaded.set(true);
 		});
@@ -64,7 +81,9 @@ export class IntersectionMap {
 			if (!this.map || !dataLoaded || !params) return;
 
 			// Highlight line specified by query parameters
-			highlightLineFromQueryParams(params, this.map);	
+			const selectedId: number = Number(params["id"]);
+    		const sourceId: string = params["sourceId"];
+			highlightLine(this.map, this.intersectionDataAdded, sourceId, selectedId);	
 		})
 	}
 

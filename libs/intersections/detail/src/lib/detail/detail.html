@@ -1,5 +1,5 @@
 <div class="flex flex-col gap-4">
-    @if (displayNodes()) {
+    @if (isNode()) {
         <chart-detail
             [rows]="nodeRows()"
         ></chart-detail>
@@ -11,9 +11,9 @@
     <p-card>
         <div class="flex flex-row gap-4">
             <div class="w-1/3 flex flex-col">
-                @if (displayNodes()) {
+                @if (isNode()) {
                     <h4 class="p-card-title">
-                    trafficSignalClusterId <a [routerLink]="['/intersections/node', trafficSignalClusterId()]" class="link-button">{{ trafficSignalClusterId() }}</a>
+                    trafficSignalClusterId <a [routerLink]="['/intersections/trafficSignalCluster', trafficSignalClusterId()]" class="link-button">{{ trafficSignalClusterId() }}</a>
                     </h4>
 
                     <h5 class="p-card-subtitle">
@@ -46,7 +46,7 @@
         </div>
     </p-card>
 
-    @if (displayNodes()) {
+    @if (isNode()) {
         <intersection-list
             [columns]="nodeColumns"
             [rows]="nodeRows()"

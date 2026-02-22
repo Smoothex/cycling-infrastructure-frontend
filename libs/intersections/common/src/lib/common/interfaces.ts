@@ -2,6 +2,7 @@ import { FeatureCollection, LineString, Polygon, Position, Geometry } from 'geoj
 import { calculateMidPoint } from '@simra/intersections-common';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
+import { centroid } from '@turf/turf';
 
 
 export interface PagedGeoResponse<T extends Geometry> {
@@ -13,37 +14,41 @@ export interface PagedGeoResponse<T extends Geometry> {
     geoData: FeatureCollection<T>;
 }
 
-interface linkLabelValue {
+export interface linkLabelValue {
     label: string; 
     value: string;
 }
 
-export interface BaseRow {
+export interface IntersectionRow {
     id: number;
     midPoint: Position;
 }
 
 export interface BaseRequest {
+    id: number;
+}
+
+export interface MetricRequest {
     weekDay: EWeekDays;
     trafficTime: ETrafficTimes;
     year: EYear;
     numberOfRides: number;
 }
 
-interface BasePageableRequest extends BaseRequest {
+interface PageableMetricRequest extends MetricRequest {
     sort?: string;
     page?: number;
     size?: number;
 }
 
 
-export interface IntersectionNodeMetricsPageableRequest extends BasePageableRequest {
+export interface NodePageableMetricRequest extends PageableMetricRequest {
     trafficSignalClusterId?: number; 
     region?: string; 
     streetNames?: string;
 }
 
-export interface IntersectionNodeAggregateRow extends BaseRow {
+export interface NodeMetricRow extends IntersectionRow {
 	startOsmId: number;
 	endOsmId: number;
 	trafficSignalClusterId: number;
@@ -63,7 +68,7 @@ export interface IntersectionNodeAggregateRow extends BaseRow {
 	medianWaitingTime: number;
 }
 
-export interface IntersectionNodeRow extends BaseRow {
+export interface NodeRow extends IntersectionRow {
 	startOsmId: number;
 	endOsmId: number;
 	trafficSignalClusterId: number;
@@ -78,12 +83,13 @@ export interface IntersectionNodeRow extends BaseRow {
 }
 
 
-export interface IntersectionEdgeAggregateRequest extends BasePageableRequest {
+export interface EdgePageableMetricRequest extends PageableMetricRequest {
     region?: string; 
     name?: string;
+    osmId?: number;
 }
 
-export interface IntersectionEdgeAggregateRow extends BaseRow {
+export interface EdgeMetricRow extends IntersectionRow {
 	osmId: number;
 	prevOsmId: number;
 	nextOsmId: number;
@@ -100,7 +106,7 @@ export interface IntersectionEdgeAggregateRow extends BaseRow {
 	medianWaitingTime: number;
 }
 
-export interface IntersectionEdgeRow extends BaseRow {
+export interface EdgeRow extends IntersectionRow {
 	osmId: number;
 	prevOsmId: number;
     nextOsmId: number;
@@ -115,12 +121,12 @@ export interface IntersectionEdgeRow extends BaseRow {
 }
 
 
-export interface RegionAggregateRequest extends BaseRequest {
+export interface RegionMetricRequest extends MetricRequest {
     regionId?: number;
 }
 
-export interface RegionAggregateRow {
-    regionId: number;
+export interface RegionMetricRow extends IntersectionRow {
+    regionIdLink: linkLabelValue;
     name: string;
     adminLevel: number; 
     numberOfRides: number; 
@@ -175,13 +181,13 @@ export interface ListColumn<T, K extends keyof T = keyof T> {
 }
 
 
-export function mapIntersectionNodeAggregateToRows(fc: FeatureCollection<LineString>): IntersectionNodeAggregateRow[] {
+export function mapNodeMetricToRows(fc: FeatureCollection<LineString>): NodeMetricRow[] {
     return fc.features.map(f => ({
         startOsmId: f.properties?.['startOsmId'],
         endOsmId: f.properties?.['endOsmId'],
         trafficSignalClusterId: f.properties?.['trafficSignalClusterId'],
-        trafficSignalClusterLink: {label: String(f.properties?.['trafficSignalClusterId']), value: `/intersections/node/${f.properties?.['trafficSignalClusterId']}`},
-        clusterStartEndLink: {label: `${f.properties?.['startOsmId']}-${f.properties?.['endOsmId']}`, value: `/intersections/node/${f.properties?.['trafficSignalClusterId']}/${f.properties?.['startOsmId']}/${f.properties?.['endOsmId']}`},
+        trafficSignalClusterLink: {label: String(f.properties?.['trafficSignalClusterId']), value: `/intersections/trafficSignalCluster/${f.properties?.['trafficSignalClusterId']}`},
+        clusterStartEndLink: {label: `${f.properties?.['startOsmId']}-${f.properties?.['endOsmId']}`, value: `/intersections/base/${f.properties?.['id']}`},
         weekDay : f.properties?.['weekDay'],
         trafficTime: f.properties?.['trafficTime'],
         year: f.properties?.['year'],
@@ -199,7 +205,7 @@ export function mapIntersectionNodeAggregateToRows(fc: FeatureCollection<LineStr
     }));
 }
 
-export function mapIntersectionNodeToRows(fc: FeatureCollection<LineString>): IntersectionNodeRow[] {
+export function mapNodeToRows(fc: FeatureCollection<LineString>): NodeRow[] {
     return fc.features.map(f => ({
         id: f.properties?.['id'],
         startOsmId: f.properties?.['startOsmId'],
@@ -218,12 +224,12 @@ export function mapIntersectionNodeToRows(fc: FeatureCollection<LineString>): In
 }
 
 
-export function mapIntersectionEdgeAggregateToRows(fc: FeatureCollection<LineString>): IntersectionEdgeAggregateRow[] {
+export function mapEdgeMetricToRows(fc: FeatureCollection<LineString>): EdgeMetricRow[] {
     return fc.features.map(f => ({
         osmId: f.properties?.['osmId'],
         prevOsmId: f.properties?.['prevOsmId'],
         nextOsmId: f.properties?.['nextOsmId'],
-        prevOsmNextLink: {label: `${f.properties?.['prevOsmId']}-${f.properties?.['osmId']}-${f.properties?.['nextOsmId']}`, value: `/intersections/edge/${f.properties?.['prevOsmId']}/${f.properties?.['osmId']}/${f.properties?.['nextOsmId']}`},
+        prevOsmNextLink: {label: `${f.properties?.['prevOsmId']}-${f.properties?.['osmId']}-${f.properties?.['nextOsmId']}`, value: `/intersections/base/${f.properties?.['id']}`},
         weekDay : f.properties?.['weekDay'],
         trafficTime: f.properties?.['trafficTime'],
         year: f.properties?.['year'],
@@ -239,7 +245,7 @@ export function mapIntersectionEdgeAggregateToRows(fc: FeatureCollection<LineStr
     }));
 }
 
-export function mapIntersectionEdgeToRows(fc: FeatureCollection<LineString>): IntersectionEdgeRow[] {
+export function mapEdgeToRows(fc: FeatureCollection<LineString>): EdgeRow[] {
     return fc.features.map(f => ({
         id: f.properties?.['id'],
         osmId: f.properties?.['osmId'],
@@ -257,9 +263,10 @@ export function mapIntersectionEdgeToRows(fc: FeatureCollection<LineString>): In
     }));
 }
 
-export function mapIntersectionRegionAggregateToRows(fc: FeatureCollection<Polygon>): RegionAggregateRow[] {
+export function mapRegionMetricToRows(fc: FeatureCollection<Polygon>): RegionMetricRow[] {
     return fc.features.map(f => ({
-        regionId: f.properties?.['regionId'],
+        id: f.properties?.['regionId'],
+        regionIdLink: {label: f.properties?.['regionId'], value: `/intersections/regions/${f.properties?.['regionId']}`},
         name: f.properties?.['name'],
         adminLevel: f.properties?.['adminLevel'],
         numberOfRides: f.properties?.['numberOfRides'],
@@ -267,7 +274,6 @@ export function mapIntersectionRegionAggregateToRows(fc: FeatureCollection<Polyg
         length: f.properties?.['length'],
         nodeWaitingSPerKm: f.properties?.['nodeWaitingSPerKm'],
         edgeWaitingSPerKm: f.properties?.['edgeWaitingSPerKm'],
+        midPoint: centroid(f).geometry.coordinates
     }));
 }
-
-

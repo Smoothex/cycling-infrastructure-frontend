@@ -9,11 +9,11 @@ import { centroid } from '@turf/turf';
 import { EPin, MapPage, MapUtils } from '@simra/common-components';
 import {
 	displayPolygons,
-	RegionAggregateRow,
-	mapIntersectionRegionAggregateToRows,
+	RegionMetricRow,
+	mapRegionMetricToRows,
 	displayRegions
 } from '@simra/intersections-common';
-import { IntersectionsRegionFacade } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 
 
 @Component({
@@ -25,7 +25,7 @@ import { IntersectionsRegionFacade } from '@simra/intersections-domain';
 export class OverviewRegionDetail {
 	regionAggregate = input<FeatureCollection<Polygon, GeoJsonProperties> | undefined>();
 	regionName = input<string>();
-	protected readonly row = signal<RegionAggregateRow | undefined>(undefined);
+	protected readonly row = signal<RegionMetricRow | undefined>(undefined);
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	map: maplibregl.Map | undefined;
@@ -41,7 +41,7 @@ export class OverviewRegionDetail {
 			const polygonCentroid = centroid(regionPolygon);
 			this.map.jumpTo({ center: [polygonCentroid.geometry.coordinates[0], polygonCentroid.geometry.coordinates[1]], zoom: 10 });
 
-			const row = mapIntersectionRegionAggregateToRows(regionPolygon);
+			const row = mapRegionMetricToRows(regionPolygon);
 			if (row.length === 1) {
 				this.row.set(row[0]);
 			}

@@ -1,28 +1,26 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { IntersectionsRegionFacade } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import {
 	ListColumn,
-	RegionAggregateRow,
-	mapIntersectionRegionAggregateToRows
+	RegionMetricRow,
+	mapRegionMetricToRows
 } from '@simra/intersections-common';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
-import { TranslateModule, TranslatePipe } from '@ngx-translate/core';
-import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
+import { IntersectionList } from '@simra/intersections-common';
 
 @Component({
 	selector: 'region-list',
-	imports: [CommonModule, FormsModule, Card, TableModule, RouterLink],
+	imports: [CommonModule, FormsModule, TableModule, IntersectionList],
 	templateUrl: './region-list.html'
 })
 export class IntersectionsRegionList {
-	private readonly _intersectionsRegionFacade = inject(IntersectionsRegionFacade);
+	private readonly _requestService = inject(IntersectionsRequestService);
 
-	protected readonly columns: ListColumn<RegionAggregateRow>[] = [
-		{ field: 'name', header: 'regionId', sortable: true,  }, // display: "regionLink"
+	protected readonly columns: ListColumn<RegionMetricRow>[] = [
+		{ field: 'regionIdLink', header: 'regionId', sortable: true, display: "link" }, // display: "regionLink"
 		{ field: 'name', header: 'Name', sortable: true,  }, 
 		{ field: 'numberOfRides', header: 'Count', sortable: true },
 		{ field: 'nodeMedianWaitingTime', header: 'Median Waiting Node', sortable: true, display: "decimal" },
@@ -32,17 +30,17 @@ export class IntersectionsRegionList {
 	];
 
 	protected readonly loading = signal(false);
-	protected readonly rows = signal<RegionAggregateRow[]>([]);
+	protected readonly rows = signal<RegionMetricRow[]>([]);
 
 	async load() {
 		this.loading.set(true);
-		const data = await this._intersectionsRegionFacade.getRegionAggregate({
+		const data = await this._requestService.getIntersectionRegionMetricsPageable({
 			numberOfRides: 0,
 			weekDay: EWeekDays.ALL_WEEK,
 			trafficTime: ETrafficTimes.ALL_DAY,
 			year: EYear.ALL
 		});
-		this.rows.set(mapIntersectionRegionAggregateToRows(data.geoData));
+		this.rows.set(mapRegionMetricToRows(data.geoData));
   		this.loading.set(false);
 	}
 

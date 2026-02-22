@@ -1,7 +1,6 @@
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import { along, length } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
-import { IntersectionsAggregateFacade } from '@simra/intersections-domain';
 import { MapUtils } from '@simra/common-components';
 import { Router, Params } from '@angular/router';
 
@@ -19,9 +18,9 @@ export function calculateMidPoint(lineString: LineString) {
 export interface displayOptions {
     sourceId: string; 
     color: any;
-    visible: boolean;
     minzoom?: number;
     maxzoom?: number;
+    popupFunc?: Function;
 }
 
 function zoomProps(opts: { minzoom?: number; maxzoom?: number }) {
@@ -31,15 +30,21 @@ function zoomProps(opts: { minzoom?: number; maxzoom?: number }) {
     };
 }
 
+export interface addedOnMap {
+    sourceIds: string[];
+    layerIds: string[];
+    highlightLayerIds: string[];
+}
+
+
 export interface displayOptionsPoint extends displayOptions {
-    popupFunc?: Function;
     width: any;
 }
 
-export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.Map, options: displayOptionsPoint) {
-    const visible = options.visible ? 'visible' : 'none';
+export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.Map, options: displayOptionsPoint): addedOnMap {
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
     const layerId = options.sourceId + '-layer';
+    options.minzoom = options.minzoom ?? 14;
 
     map.addSource(options.sourceId, {
         type: 'geojson',
@@ -58,26 +63,35 @@ export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.
         },
         ...zoomProps(options)
     });
-    map.setLayoutProperty(layerId, 'visibility', visible);
+    // TODO: do clean up of map.on
     map.on('click', layerId, e => {
         const properties = e.features?.[0].properties;
         if (properties) {
             popupFunc(map, e.lngLat, properties);
         }
     });
+
+    return {
+        sourceIds: [options.sourceId],
+        layerIds: [layerId],
+        highlightLayerIds: []
+    }
 }
 
 export interface displayOptionsPolygon extends displayOptions {
-    popupFunc?: Function;
     outlineWidth?: any;
     filter?: any;
 }
 
-export function displayPolygons(polygons: FeatureCollection<Polygon>, map: maplibregl.Map, options: displayOptionsPolygon) {
-    const visible = options.visible ? 'visible' : 'none';
+export function displayPolygons(polygons: FeatureCollection<Polygon>, map: maplibregl.Map, options: displayOptionsPolygon) : addedOnMap {
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
     const layerId = options.sourceId + '-layer';
     const outlineLayerId = options.sourceId + '-outline-layer';
+    const added: addedOnMap = {
+        sourceIds: [options.sourceId],
+        layerIds: [layerId],
+        highlightLayerIds: []
+    };
     
     map.addSource(options.sourceId, {
         type: 'geojson',
@@ -96,7 +110,6 @@ export function displayPolygons(polygons: FeatureCollection<Polygon>, map: mapli
         ...zoomProps(options),
         ...(options.filter && {filter: options.filter})
     });
-    map.setLayoutProperty(layerId, 'visibility', visible);
     map.on('click', layerId, e => {
         const properties = e.features?.[0].properties;
         if (properties) {
@@ -117,8 +130,10 @@ export function displayPolygons(polygons: FeatureCollection<Polygon>, map: mapli
             ...zoomProps(options),
             ...(options.filter && {filter: options.filter})
         });
-        map.setLayoutProperty(outlineLayerId, 'visibility', visible);
-    }    
+        added.highlightLayerIds.push(outlineLayerId);
+    }
+
+    return added;
 }
 
 export interface displayOptionsLineString extends displayOptions {
@@ -126,10 +141,11 @@ export interface displayOptionsLineString extends displayOptions {
     width?: any;
     highlightWidth?: any;
     sortKey?: string;
+    startMarker: boolean;
 }
 
-export function displayLineString(lineString: FeatureCollection<LineString>, map: maplibregl.Map, options: displayOptionsLineString) {
-    const visible = options.visible ? 'visible' : 'none';
+export function displayLineString(lineString: FeatureCollection<LineString>, map: maplibregl.Map, options: displayOptionsLineString) : addedOnMap {
+    const popupFunc = options.popupFunc ?? setDefaultPopUp;
     const width = options.width ?? 2;
     const highlightWidth = options.highlightWidth ?? 3;
 
@@ -137,24 +153,28 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
     const highlightColorLayerId = options.sourceId + '-highlight-color';
     const highlightLayerId = options.sourceId + '-highlight';
 
-    const startMarkerSource = options.sourceId + 'start';
-    const startMarkerLayerId = options.sourceId + '-circle-layer';
-    const startMarkerHighlightLayer = options.sourceId + '-start-layer';
-
-    const startCoordinates = []
-    for (let i = 0; i < lineString.features.length; i++) {
-        const props = lineString.features[i].properties;
-        if (props) {
-            const start = lineString.features[i].geometry.coordinates[0];
-            const p: Point = { "type": "Point", "coordinates": start};
-            const f: Feature<Point> = {"type": "Feature", "geometry": p, "properties": props};
-            startCoordinates.push(f);
-        }
-    }
+    const startMarkerSource = options.sourceId + '-start';
+    const startMarkerLayerId = startMarkerSource + '-layer';
+    const startMarkerHighlightLayer = startMarkerSource + '-highlight';
 
     const startFeature:FeatureCollection<Point> = {
         type: 'FeatureCollection',
-        features: startCoordinates,
+        features: lineString.features.map((f) => {
+            const props = f.properties;
+            if (!props || !props["id"] || typeof props["id"] !== "number") {
+                console.error("Properties not properly defined: ", props);
+            }
+
+            const startPoint: Point = { "type": "Point", "coordinates": f.geometry.coordinates[0]};
+            const startFeature: Feature<Point> = {"type": "Feature", "geometry": startPoint, "properties": props};
+            return startFeature;
+        })
+    };
+
+    const added: addedOnMap = {
+        sourceIds: [options.sourceId],
+        layerIds: [layerId],
+        highlightLayerIds: []
     };
 
     map.addSource(options.sourceId, {
@@ -173,11 +193,11 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
         ...zoomProps(options),
         ...(options.sortKey && {'line-sort-key': ['get', options.sortKey]})
     });
-    map.setLayoutProperty(layerId, 'visibility', visible);
     MapUtils.changeCursor(map, layerId);
     map.on('click', layerId, e => {
         const properties = e.features?.[0].properties;
         if (properties) {
+            popupFunc(map, e.lngLat, properties);
             applyQueryParamsForLineHighlight(options._router, properties['id'], e.lngLat.lat, e.lngLat.lng, false, options.sourceId);
         }
     });
@@ -190,9 +210,10 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'line-color': options.color,
             'line-width': width,
         },
-        filter: ['==', ['get', "id"], ''],
+        filter: ['==', ['get', "id"], NaN],
         ...zoomProps(options)
     });
+    added.highlightLayerIds.push(highlightColorLayerId);
 
     map.addLayer({
         id: highlightLayerId,
@@ -203,40 +224,44 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'line-width': highlightWidth,
             'line-gap-width':  width,
         },
-        filter: ['==', ['get', 'id'], ''],
+        filter: ['==', ['get', 'id'], NaN],
         ...zoomProps(options)
     });
+    added.highlightLayerIds.push(highlightLayerId);
 
     map.addSource(startMarkerSource, {
         type: 'geojson',
         data: startFeature,
     });
+    added.sourceIds.push(startMarkerSource);
 
     const circleZoom = zoomProps(options);
     if (circleZoom.minzoom) {
         circleZoom.minzoom += 3;
     }
 
-    map.addLayer({
-        id: startMarkerLayerId,
-        type: 'circle',
-        source: startMarkerSource,
-        paint: {
-            'circle-color': options.color,
-            'circle-radius': 5,
-        },
-        ...circleZoom,
-        ...(options.sortKey && {'circle-sort-key': ["*", -1, 'get', options.sortKey]})
-    })
-    map.setLayoutProperty(startMarkerLayerId, 'visibility', visible);
-    MapUtils.changeCursor(map, startMarkerLayerId);
-    map.on('click', startMarkerLayerId, e => {
-        const properties = e.features?.[0].properties;
-        if (properties) {
-            applyQueryParamsForLineHighlight(options._router, properties['id'], e.lngLat.lat, e.lngLat.lng, false, options.sourceId);
-        }
-    });
-
+    if (options.startMarker) {
+        map.addLayer({
+            id: startMarkerLayerId,
+            type: 'circle',
+            source: startMarkerSource,
+            paint: {
+                'circle-color': options.color,
+                'circle-radius': 5,
+            },
+            ...circleZoom,
+            ...(options.sortKey && {'circle-sort-key': ["*", NaN, 'get', options.sortKey]})
+        })
+        added.layerIds.push(startMarkerLayerId);
+        MapUtils.changeCursor(map, startMarkerLayerId);
+        map.on('click', startMarkerLayerId, e => {
+            const properties = e.features?.[0].properties;
+            if (properties) {
+                popupFunc(map, e.lngLat, properties);
+                applyQueryParamsForLineHighlight(options._router, properties['id'], e.lngLat.lat, e.lngLat.lng, false, options.sourceId);
+            }
+        });
+    }
     map.addLayer({
         id: startMarkerHighlightLayer,
         type: 'circle',
@@ -245,24 +270,25 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'circle-color': '#000000ff',
             'circle-radius': 7,
         },
-        filter: ['==', ['get', 'id'], ''],
+        filter: ['==', ['get', 'id'], NaN],
         ...circleZoom
     })
+    added.highlightLayerIds.push(startMarkerHighlightLayer);
 
-    removeLineHighlightOnDblclick(options._router, map, options.sourceId);
+    return added;
 }
 
-function getLineHighlightLayers(sourceId: string) : string[] {
-    const lineHighlightLayers = [
-        `${sourceId}-highlight-color`,
-        `${sourceId}-highlight`,
-        `${sourceId}-start-layer`
-    ]
+export function deleteDisplay(map: maplibregl.Map, added: addedOnMap) {
+    added.layerIds.map((id) => map.removeLayer(id));
+    added.highlightLayerIds.map((id) => map.removeLayer(id));
+    added.sourceIds.map((id) => map.removeSource(id));
 
-    return lineHighlightLayers;
+    added.highlightLayerIds = [];
+    added.layerIds = [];
+    added.sourceIds = [];
 }
 
-export function setPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, unknown>, keys: string[], header: string = "") {
+export function setPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>, keys: string[], header: string = "", ) {
     let html = header ? `<h1><b>${header}</h1></b>` : "";
     for (const key of keys) {
         if (Object.hasOwn(properties, key)) {
@@ -275,83 +301,93 @@ export function setPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, prope
         .addTo(mlMap);
 }
 
-export function setDefaultPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, unknown>) {
+function setDefaultPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
     setPopUp(mlMap, lngLat, properties, Object.keys(properties));
 }
 
-export function setTrafficSignalClusterPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, unknown>) {
-    setPopUp(mlMap, lngLat, properties, ["id"], "Intersection");
+function setTrafficSignalClusterPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["Id"], "Traffic Signal Cluster");
 }
 
-export function setTrafficSignalPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: {[name: string]: any;}) {
+function setTrafficSignalPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
     setPopUp(mlMap, lngLat, properties, ["id"], "Traffic Signal");
 }
 
-
-function removeLineHighlightOnDblclick(_router: Router, map: maplibregl.Map, sourceId: string) {
-    map.on('dblclick', e => {
-        removeQueryParamsForLineHighlight(_router);
-        removeLineHighlight(map, sourceId);
-    });
+function setMatchedPointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["id", "Time", "IntersectionId", "ridePointId", "DistanceRidePoint", "AccuracyGPS", "stops"], "Matched Point");
 }
 
-export function removeLineHighlight(map: maplibregl.Map, sourceId: string) {
-    for (const layer of getLineHighlightLayers(sourceId)) {
+function setRidePointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["id", "Time", "File"], "Ride Point");
+}
+
+function setIntersectionBasePopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["Id", "PrevSegmentId", "NextSegmentId", "Start", "TrafficSignalClusterId", "Speed", "Duration", "WaitingTime"], "Segment");
+}
+
+function setIntersectionMetricsPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["TrafficSignalClusterId", "OsmId", "SegmentId", "name", "streetNames",  "numberOfRides", "Speed", "Duration", "WaitingTime"], "Metrics");
+}
+
+function setRegionPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUp(mlMap, lngLat, properties, ["Id", "name", "numberOfRides", "NodeWaitingTime", "NodeWaitingSPerKm", "EdgeWaitingSPerKm"], "Region");
+}
+
+export function removeLineHighlight(map: maplibregl.Map, added: addedOnMap) {
+    for (const layer of added.highlightLayerIds) {
         map.setFilter(layer, [
             '==',
             ['get', 'id'],
-            ""
+            NaN
         ])
     }
 }
 
-export async function displayTrafficSignalPolygons(map: maplibregl.Map, trafficSignalClusters: FeatureCollection<Polygon, GeoJsonProperties>, zoom: boolean = false) {
-    displayPolygons(trafficSignalClusters, map, {
+
+export function displayMatchedPoints(map: maplibregl.Map, matchedPoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string) {
+    return displayPoints(matchedPoints, map, {
+        sourceId: sourceId,
+        width: 4,
+        color: '#ff0000ff',
+        popupFunc: setMatchedPointPopUp
+    });
+}
+
+export function displayRidePoints(map: maplibregl.Map, ridePoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string) {
+    return displayPoints(ridePoints, map, {
+        sourceId: sourceId,
+        width: 4,
+        color: '#007AFF',
+        popupFunc: setRidePointPopUp
+    });
+}
+
+export function displayTrafficSignalClusters(map: maplibregl.Map, trafficSignalClusters: FeatureCollection<Polygon, GeoJsonProperties>, zoom: boolean = false) {
+    return displayPolygons(trafficSignalClusters, map, {
         sourceId: "trafficSignalClustersPolygons",
-        visible: true,
         color: "#b1b1b1d5",
         popupFunc: setTrafficSignalClusterPopUp,
         ...(zoom && { minzoom: 11 })
     });
 }
 
-export async function loadAndDisplayTrafficSignalPolygonsByTrafficSignalClusterId(_intersectionsAggregateFacade: IntersectionsAggregateFacade, map: maplibregl.Map, trafficSignalClusterId: number) {
-    const trafficSignalClusterPolygons = await _intersectionsAggregateFacade.getTrafficSignalPolygonsByTrafficSignalClusterId(trafficSignalClusterId);
-    displayTrafficSignalPolygons(map, trafficSignalClusterPolygons);
-}
-
-
-export async function displayTrafficSignals(map: maplibregl.Map, trafficSignals: FeatureCollection<Point, GeoJsonProperties>, zoom: boolean = false) {
-    displayPoints(trafficSignals, map, {
+export function displayTrafficSignals(map: maplibregl.Map, trafficSignals: FeatureCollection<Point, GeoJsonProperties>) {
+    return displayPoints(trafficSignals, map, {
         sourceId: "trafficSignals",
         width: 6,
-        visible: true,
-        color: "#585858d5",
-        popupFunc: setTrafficSignalPopUp,
-        ...(zoom && { minzoom: 14 })
-    });
-}
-
-export async function loadDisplayAndZoomTrafficSignalsByTrafficSignalClusterId(_intersectionsAggregateFacade: IntersectionsAggregateFacade, map: maplibregl.Map, trafficSignalClusterId: number) {
-    const trafficSignals = await _intersectionsAggregateFacade.getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId);
-    displayPoints(trafficSignals, map, {
-        sourceId: "trafficSignals",
-        width: 6,
-        visible: true,
         color: "#585858d5",
         popupFunc: setTrafficSignalPopUp
     });
-
-    const coordiante = trafficSignals.features[0].geometry.coordinates;
-    map.flyTo({ center: [coordiante[0], coordiante[1]], zoom: 16 });
 }
 
 
-export function displayIntersectionAggregate (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, sourceId: string, zoom: boolean = false) {
-    displayLineString(data, map, {
+export function displayIntersectionAggregate (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map,
+    sourceId: string, zoom: boolean = false, startMarker: boolean = true
+) {
+    return displayLineString(data, map, {
         sourceId: sourceId,
+        startMarker: startMarker,
         sortKey: "numberOfRides",
-        visible: true,
         _router: _router,
         color: [
             'interpolate',
@@ -376,21 +412,24 @@ export function displayIntersectionAggregate (_router: Router, data: FeatureColl
         highlightWidth: [
             'interpolate',
             ['linear'],
-            ['get', 'count'],
+            ['get', 'numberOfRides'],
             1, 2.0,
             2, 3.0,
             5, 4.0,
             10, 5.0,
             50, 7.0
         ],
-        ...(zoom && { minzoom: 11 })
+        ...(zoom && { minzoom: 11 }),
+        popupFunc: setIntersectionMetricsPopUp
     })
 }
 
-export function displayIntersection (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, sourceId: string, zoom: boolean = false) {
-    displayLineString(data, map, {
+export function displayIntersection (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, 
+    sourceId: string, zoom: boolean = false, startMarker: boolean = true
+) {
+    return displayLineString(data, map, {
         sourceId: sourceId,
-        visible: true,
+        startMarker: startMarker,
         _router: _router,
         color: [
             'interpolate',
@@ -402,15 +441,15 @@ export function displayIntersection (_router: Router, data: FeatureCollection<Li
             60, '#ff9900ff',
             120, '#ff0000ff'
         ],
-        ...(zoom && { minzoom: 11 })
+        ...(zoom && { minzoom: 11 }),
+        popupFunc: setIntersectionBasePopUp
     });
 }
 
 export function displayRegions(data: FeatureCollection<Polygon, GeoJsonProperties>, map: maplibregl.Map, 
     sourceId: string, minzoom?:number, maxzoom?: number, filter?: any) {
-    displayPolygons(data, map, {
+    return displayPolygons(data, map, {
         sourceId: sourceId,
-        visible: true,
         minzoom: minzoom,
         maxzoom: maxzoom,
         color: [
@@ -431,7 +470,8 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
             50, 3.0,
             500, 10.0
         ],
-        filter: filter
+        filter: filter,
+        popupFunc: setRegionPopUp
     });
 }
 
@@ -448,40 +488,24 @@ export function removeQueryParamsForLineHighlight(_router: Router) {
     });
 }
 
-export function highlightLineFromQueryParams(params: Params, map: maplibregl.Map): boolean {
-    const selectedId: number = Number(params["id"]);
-    const lng: number = Number(params["lng"]);
-    const lat: number = Number(params["lat"]);
-    const sourceId: string = params["sourceId"];
+export function highlightLine(map: maplibregl.Map, added: addedOnMap, sourceId: string, selectedId: number) {
+    if (!selectedId || !sourceId) return;
 
-    if (!selectedId || !lat || !lng || !sourceId) return false;
+    if (!added.sourceIds.includes(sourceId)) {
+        removeLineHighlight(map, added);
+        return;
+    }
 
     // Make highlight layer visible for specified id
-    for (const layer of getLineHighlightLayers(sourceId)) {
+    for (const layer of added.highlightLayerIds) {
         if (map.getLayer(layer)) {
             map.setFilter(layer, [
                 '==',
-                ['get', "id"],
+                ['number', ['get', 'id'], NaN],
                 selectedId
             ]);
-        } else {
-            return false;
         }
     }
-
-    const features = map.querySourceFeatures(sourceId, {
-        filter: ["==", ["get", "id"], selectedId]
-    });
-    
-    if (features.length > 0) {
-        // Display PopUp for specified id
-        const lngLat = new maplibregl.LngLat(lng, lat);
-        setDefaultPopUp(map, lngLat, features[0].properties);
-
-        return true;
-    }
-    console.warn("Source not found: ", sourceId);
-    return false;
 }
 
 export function applyQueryParamsForLineHighlight(_router: Router, id: number, lat: number, lon: number, moveTo: boolean, sourceId: string) {

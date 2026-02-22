@@ -5,11 +5,11 @@ import { TableModule } from 'primeng/table';
 import { ChartModule } from 'primeng/chart';
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import { 
-	IntersectionNodeRow,
-	IntersectionEdgeRow,
+	NodeRow,
+	EdgeRow,
 	ListColumn,
-	mapIntersectionNodeToRows,
-	BaseRow
+	mapNodeToRows,
+	IntersectionRow
 } from '@simra/intersections-common';
 
 
@@ -20,7 +20,7 @@ import {
 	templateUrl: './chart-detail.html',
 	styleUrl: './chart-detail.scss',
 })
-export class ChartDetail<T extends BaseRow & IntersectionNodeRow | IntersectionEdgeRow>  {
+export class ChartDetail<T extends IntersectionRow & NodeRow | EdgeRow>  {
 	rows = input.required<T[]>();
 
 	protected durationChartData = signal<any>(null);
