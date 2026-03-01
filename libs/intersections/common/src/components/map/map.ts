@@ -15,7 +15,11 @@ import {
 	displayIntersectionAggregate,
 	displayRidePoints,
 	displayMatchedPoints,
+	deleteDisplay,
 	highlightLine,
+	mergeAdded,
+	removeLineHighlight,
+	removeQueryParamsForLineHighlight,
 	zoomOnLineMidPoint
 } from '@simra/intersections-common';
 
@@ -35,6 +39,8 @@ export class IntersectionMap {
 	public isAggregateData = input.required<boolean>();
 	public intersectionData = input.required<FeatureCollection<LineString> | undefined>();
 	private intersectionDataAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
+	private ridePointsMatchedPointsAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
+
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	private readonly mapDataLoaded = signal(false);
@@ -62,15 +68,6 @@ export class IntersectionMap {
 				this.intersectionDataAdded = displayIntersectionAggregate(this._router, data, this.map, "intersectionLineData");
 			} else {
 				this.intersectionDataAdded = displayIntersection(this._router, data, this.map, "intersectionLineData");
-				const firstId = data.features[0].properties?.["id"];
-				// TODO: use selected id instead of 0
-
-				const matchedPoints = await this._requestService.getMatchedPointsIntersectionBase({id: firstId});
-				displayMatchedPoints(this.map, matchedPoints, "matchedPoints");
-
-				const ridePoints = await this._requestService.getRidePointsIntersectionBase({id: firstId});
-				displayRidePoints(this.map, ridePoints, "ridePoints");
-
 			}
 			this.mapDataLoaded.set(true);
 		});
@@ -83,12 +80,36 @@ export class IntersectionMap {
 			// Highlight line specified by query parameters
 			const selectedId: number = Number(params["id"]);
     		const sourceId: string = params["sourceId"];
-			highlightLine(this.map, this.intersectionDataAdded, sourceId, selectedId);	
+			if (!sourceId || !selectedId) return;
+			highlightLine(this.map, this.intersectionDataAdded, sourceId, selectedId);
+			if (!this.isAggregateData()) {
+				this.displayRidePointsAndMatchedPoints(selectedId);
+			}
+		})
+
+		effect(() => {
+			const dataLoaded = this.mapDataLoaded();
+			if (!this.map || !dataLoaded) return;
+			this.map.on('dblclick', e => {
+				removeQueryParamsForLineHighlight(this._router);
+				if (!this.map) return;
+				removeLineHighlight(this.map, this.intersectionDataAdded);
+				deleteDisplay(this.map, this.ridePointsMatchedPointsAdded);
+			});
 		})
 	}
 
 	onMapReady(mlMap: maplibregl.Map) {
 		this.map = mlMap;
 		this.mapReady.set(mlMap);
+	}
+
+	async displayRidePointsAndMatchedPoints(intersectionId: number) {
+		if (!this.map) return;
+   		deleteDisplay(this.map, this.ridePointsMatchedPointsAdded);
+		mergeAdded(this.ridePointsMatchedPointsAdded, displayRidePoints(
+			this.map, await this._requestService.getRidePointsIntersectionBase({id: intersectionId}), `ridePoints-${intersectionId}`));
+		mergeAdded(this.ridePointsMatchedPointsAdded, displayMatchedPoints(
+			this.map, await this._requestService.getMatchedPointsIntersectionBase({id: intersectionId}), `matchedPoints-${intersectionId}`));
 	}
 }

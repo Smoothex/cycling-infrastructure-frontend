@@ -1,27 +1,27 @@
+<div class="relative w-full">
+    <div class="absolute top-4 left-4 z-10">
+        <map-legend
+            [items]="legendItems()"
+        >
+        </map-legend>
+    </div>
 
-<div class="flex items-center">
-    <p-checkbox inputId="TrafficSignals" [(ngModel)]="showTrafficSignals" (onChange)="onShowTrafficSignalsChange()" binary="true"/>
-    <label for="TrafficSignals" class="ml-2"> TrafficSignals </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="IntersectionMetrics" [(ngModel)]="showIntersectionMetrics" (onChange)="onShowIntersectionMetrics()" binary="true"/>
-    <label for="IntersectionMetrics" class="ml-2"> IntersectionMetrics </label>
-</div>
-<div class="flex items-center">
-    <p-checkbox inputId="Ride" [(ngModel)]="showRide" (onChange)="onShowRide()" binary="true"/>
-    <label for="Ride" class="ml-2"> Ride </label>
-</div>
+    <div class="absolute bottom-4 left-4 z-10">
+        <map-settings
+            [(showTrafficSignals)]="showTrafficSignals" 
+            [(showIntersectionMetrics)]="showIntersectionMetrics"
+            [selectableRideIds]="selectableRideIds()"
+            [(selectedRideId)]="selectedRideId"
+            [(selectedTrafficTime)]="selectedTrafficTime"
+            [(selectedWeekDays)]="selectedWeekDay"
+            [(selectedYear)]="selectedYear"
+        >    
+        </map-settings>
+    </div>
 
-<p-select 
-  [options]="routes"
-  [(ngModel)]="selectedRideId"
-  optionLabel="label"
-  optionValue="id"
-  [filter]="true"
-  filterBy="label"
-  [showClear]="true"
-  (onChange)="onRideSelection()"
-  placeholder="Select Ride ID">
-</p-select>
-
-<t-map-component (mapReady)="onMapReady($event)" [isNavigable]="true" id="intersection-map"></t-map-component>
+    <t-map-component 
+        (mapReady)="onMapReady($event)"
+        [isNavigable]="true"
+        id="intersection-map">
+    </t-map-component>
+</div>

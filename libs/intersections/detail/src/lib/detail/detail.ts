@@ -5,8 +5,12 @@ import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
-import { ChartDetail } from '../../components/chart/chart-detail'
+import { ChartDetail } from '../../components/chart/chart-detail';
+import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
+	DateFilter,
+	DATE_FILTER_DEFAULTS,
+	ECardMode,
 	NodeRow,
 	mapNodeToRows,
 	EdgeRow,
@@ -22,7 +26,7 @@ import { scrollToElementId } from '@simra/helpers';
 
 @Component({
 	selector: 'detail',
-	imports: [CommonModule, ChartDetail, IntersectionList, IntersectionMap, Card, RouterLink],
+	imports: [CommonModule, ChartDetail, IntersectionList, IntersectionMap, Card, RouterLink, DateFilter],
 	templateUrl: './detail.html',
 })
 export class IntersectionsDetailPage {
@@ -32,14 +36,55 @@ export class IntersectionsDetailPage {
 	protected readonly id = input.required<string>();
 	protected readonly intersectionData = signal<FeatureCollection<LineString> | undefined>(undefined);
 
+	protected _mode = signal<ECardMode>(DATE_FILTER_DEFAULTS.mode);
+    protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
+    protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
+    protected _selectedTrafficTime = signal<ETrafficTimes>(DATE_FILTER_DEFAULTS.trafficTime);
+    protected _startTime = signal<Date>(DATE_FILTER_DEFAULTS.startTime);
+    protected _endTime = signal<Date>(DATE_FILTER_DEFAULTS.endTime);
+    protected _datetime$ = signal<Date[]>(DATE_FILTER_DEFAULTS.getDatetime());
+
 	constructor() {
 		effect(async () => {
 			const baseId = this.id();
 			if (!baseId) return;
 
-			this.intersectionData.set(await this._requestService.getIntersectionBase({
-				id: Number(baseId)
-			}))
+			const mode = this._mode();
+			if (mode === "PRECOMPUTED") {
+				const trafficTime = this._selectedTrafficTime();
+				const weekDay = this._selectedWeekDays();
+				const year = this._selectedYear();
+				
+				this.intersectionData.set(await this._requestService.getIntersectionBase({
+					id: Number(baseId),
+					trafficTime: trafficTime,
+					weekDay: weekDay,
+					year: year
+				}))
+			} else {
+				const datetime = this._datetime$();
+				if (datetime.length != 2) return;
+
+				const startDate = datetime[0];
+				const startHourMinute = this._startTime();
+				startDate.setHours(startHourMinute.getHours());
+				startDate.setMinutes(startHourMinute.getMinutes());
+
+				const endDate = datetime[1];
+				const endHourMinute = this._endTime();
+				endDate.setHours(endHourMinute.getHours());
+				endDate.setMinutes(endHourMinute.getMinutes());
+
+				console.log(startDate, endDate)
+
+				this.intersectionData.set(await this._requestService.getIntersectionBase({
+					id: Number(baseId),
+					startDate: startDate,
+					endDate: endDate
+				}))
+
+				// TODO: complete backend part
+			}
 		});
 	}
 

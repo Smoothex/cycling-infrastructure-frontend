@@ -1,0 +1,63 @@
+import { CommonModule } from '@angular/common';
+import { Component, input, model, ViewEncapsulation } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Button } from 'primeng/button';
+import { Checkbox } from 'primeng/checkbox';
+import { Card } from 'primeng/card';
+import { Panel } from 'primeng/panel';
+import { 
+	LegendItem
+} from '@simra/intersections-common';
+
+
+@Component({
+	selector: 'map-legend',
+	imports: [
+		CommonModule,
+		FormsModule,
+		Button,
+		Checkbox,
+		Card,
+		Panel
+	],
+	templateUrl: './map-legend.html',
+	encapsulation: ViewEncapsulation.None
+})
+export class MapLegend {
+	items = input.required<LegendItem[]>();
+
+	gradient(stops: { value: number; color: string }[]): string {
+		const min = stops[0].value;
+		const max = stops.at(-1)!.value;
+
+  		return `linear-gradient(to right, ${stops
+			.map(s => {
+				const pct = ((s.value - min) / (max - min)) * 100;
+				return `${s.color} ${pct}%`;
+			}).join(', ')})`;
+	}
+
+	getClassForGeometry(item: LegendItem): string {
+		if (item.geometry === 'point') {
+			return 'w-3 h-3 rounded-full';
+		}
+		if (item.geometry === 'polygon') {
+			return 'w-6 h-3 rounded';
+		}
+		if (item.geometry === 'line') {
+			return 'w-10 h-1 rounded';
+		}
+		return '';
+	}
+
+	getColorForGeometry(item: LegendItem): string {
+		console.log(JSON.stringify(item))
+		if (item.color) {
+			return item.color;
+		}
+		if (item.colorStops) {
+			return this.gradient(item.colorStops);
+		}
+		return '';
+	}
+}

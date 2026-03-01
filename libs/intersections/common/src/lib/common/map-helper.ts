@@ -15,6 +15,13 @@ export function calculateMidPoint(lineString: LineString) {
     return center;
 }
 
+export const ZOOM_LEVELS = {
+    'points': {'minzoom': 14, 'maxzoom': 22},
+    'lines': {'minzoom': 11, 'maxzoom': 22},
+    'polygons': {'minzoom': 11, 'maxzoom': 22},
+    'regions': {'minzoom': 0, 'maxzoom': 11}
+}
+
 export interface displayOptions {
     sourceId: string; 
     color: any;
@@ -36,6 +43,20 @@ export interface addedOnMap {
     highlightLayerIds: string[];
 }
 
+export function addedOnMapDefault() : addedOnMap {
+    return {
+        sourceIds: [],
+        layerIds: [],
+        highlightLayerIds: []
+    }
+}
+
+export function mergeAdded(target: addedOnMap, source: addedOnMap) {
+    source.layerIds.forEach((id) => target.layerIds.push(id));
+    source.highlightLayerIds.forEach((id) => target.highlightLayerIds.push(id));
+    source.sourceIds.forEach((id) => target.sourceIds.push(id));
+}
+
 
 export interface displayOptionsPoint extends displayOptions {
     width: any;
@@ -44,7 +65,7 @@ export interface displayOptionsPoint extends displayOptions {
 export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.Map, options: displayOptionsPoint): addedOnMap {
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
     const layerId = options.sourceId + '-layer';
-    options.minzoom = options.minzoom ?? 14;
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.points.minzoom;
 
     map.addSource(options.sourceId, {
         type: 'geojson',
@@ -85,6 +106,7 @@ export interface displayOptionsPolygon extends displayOptions {
 
 export function displayPolygons(polygons: FeatureCollection<Polygon>, map: maplibregl.Map, options: displayOptionsPolygon) : addedOnMap {
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.polygons.minzoom;
     const layerId = options.sourceId + '-layer';
     const outlineLayerId = options.sourceId + '-outline-layer';
     const added: addedOnMap = {
@@ -146,6 +168,7 @@ export interface displayOptionsLineString extends displayOptions {
 
 export function displayLineString(lineString: FeatureCollection<LineString>, map: maplibregl.Map, options: displayOptionsLineString) : addedOnMap {
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.lines.minzoom;
     const width = options.width ?? 2;
     const highlightWidth = options.highlightWidth ?? 3;
 
@@ -314,7 +337,7 @@ function setTrafficSignalPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat,
 }
 
 function setMatchedPointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["id", "Time", "IntersectionId", "ridePointId", "DistanceRidePoint", "AccuracyGPS", "stops"], "Matched Point");
+    setPopUp(mlMap, lngLat, properties, ["id", "Time", "rideId", "IntersectionId", "ridePointId", "DistanceRidePoint", "AccuracyGPS", "stops"], "Matched Point");
 }
 
 function setRidePointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
@@ -344,11 +367,52 @@ export function removeLineHighlight(map: maplibregl.Map, added: addedOnMap) {
 }
 
 
+
+export const COLORS = {
+    'matchedPoints': '#ff0000ff',
+    'ridePoints': '#007AFF',
+    'trafficSignalClusters': '#b1b1b1d5',
+    'trafficSignals': '#585858d5',
+    'waitingTime': {
+        0:   '#00ffb3ff',
+        10:  '#3cff00ff',
+        30:  '#fffb00ff',
+        60:  '#ff9900ff',
+        120: '#ff0000ff'
+    },
+    'regions': {
+        0:  '#00ffb3ff',
+        5:  '#3cff00ff',
+        10: '#fffb00ff',
+        20: '#ff9900ff',
+        30: '#ff0000ff'
+    }
+}
+
+
+export interface LegendItem {
+    label: string;
+    geometry: 'point' | 'line' | 'polygon';
+    color?: string;
+    colorStops?: { value: number; color: string }[];
+    widthStops?: { value: number; width: number }[];
+}
+
+
+function colorToArray(color: Record<number, string>) {
+    const colorArray = [];
+    for (const key in color) {
+        colorArray.push(Number(key));
+        colorArray.push(color[key]);
+    }
+    return colorArray;
+}
+
 export function displayMatchedPoints(map: maplibregl.Map, matchedPoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string) {
     return displayPoints(matchedPoints, map, {
         sourceId: sourceId,
         width: 4,
-        color: '#ff0000ff',
+        color: COLORS.matchedPoints,
         popupFunc: setMatchedPointPopUp
     });
 }
@@ -357,15 +421,15 @@ export function displayRidePoints(map: maplibregl.Map, ridePoints: FeatureCollec
     return displayPoints(ridePoints, map, {
         sourceId: sourceId,
         width: 4,
-        color: '#007AFF',
+        color: COLORS.ridePoints,
         popupFunc: setRidePointPopUp
     });
 }
 
 export function displayTrafficSignalClusters(map: maplibregl.Map, trafficSignalClusters: FeatureCollection<Polygon, GeoJsonProperties>, zoom: boolean = false) {
     return displayPolygons(trafficSignalClusters, map, {
-        sourceId: "trafficSignalClustersPolygons",
-        color: "#b1b1b1d5",
+        sourceId: "trafficSignalClusters",
+        color: COLORS.trafficSignalClusters,
         popupFunc: setTrafficSignalClusterPopUp,
         ...(zoom && { minzoom: 11 })
     });
@@ -375,7 +439,7 @@ export function displayTrafficSignals(map: maplibregl.Map, trafficSignals: Featu
     return displayPoints(trafficSignals, map, {
         sourceId: "trafficSignals",
         width: 6,
-        color: "#585858d5",
+        color: COLORS.trafficSignals,
         popupFunc: setTrafficSignalPopUp
     });
 }
@@ -393,11 +457,7 @@ export function displayIntersectionAggregate (_router: Router, data: FeatureColl
             'interpolate',
             ['linear'],
             ['get', 'medianWaitingTime'],
-            0,  '#00ffb3ff',
-            10, '#3cff00ff',
-            30, '#fffb00ff',
-            60, '#ff9900ff',
-            120, '#ff0000ff'
+            ...colorToArray(COLORS.waitingTime)
         ],
         width: [
             'interpolate',
@@ -435,11 +495,7 @@ export function displayIntersection (_router: Router, data: FeatureCollection<Li
             'interpolate',
             ['linear'],
             ['get', 'waitingTime'],
-            0,  '#00ffb3ff',
-            10, '#3cff00ff',
-            30, '#fffb00ff',
-            60, '#ff9900ff',
-            120, '#ff0000ff'
+            ...colorToArray(COLORS.waitingTime)
         ],
         ...(zoom && { minzoom: 11 }),
         popupFunc: setIntersectionBasePopUp
@@ -456,11 +512,7 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
             'interpolate',
             ['linear'],
             ['get', 'nodeWaitingSPerKm'],
-            0,  '#00ffb3ff',
-            5, '#3cff00ff',
-            10, '#fffb00ff',
-            20, '#ff9900ff',
-            30, '#ff0000ff'
+            ...colorToArray(COLORS.regions)
         ],
         outlineWidth: [
             'interpolate',
@@ -489,8 +541,6 @@ export function removeQueryParamsForLineHighlight(_router: Router) {
 }
 
 export function highlightLine(map: maplibregl.Map, added: addedOnMap, sourceId: string, selectedId: number) {
-    if (!selectedId || !sourceId) return;
-
     if (!added.sourceIds.includes(sourceId)) {
         removeLineHighlight(map, added);
         return;

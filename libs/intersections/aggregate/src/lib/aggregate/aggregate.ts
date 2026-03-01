@@ -78,6 +78,7 @@ export class IntersectionsAggregatePage {
 			});
 			this.intersectionNodeAggregate.set(data.geoData);
 			this.nodeRows.set(mapNodeMetricToRows(data.geoData));
+			this.isNode.set(true);
 		});
 
 		effect(async () => {
@@ -92,6 +93,7 @@ export class IntersectionsAggregatePage {
 			});
 			this.intersectionNodeAggregate.set(data.geoData);
 			this.edgeRows.set(mapEdgeMetricToRows(data.geoData));
+			this.isNode.set(false);
 		});
 	}
 

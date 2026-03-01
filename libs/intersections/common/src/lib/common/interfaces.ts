@@ -24,14 +24,23 @@ export interface IntersectionRow {
     midPoint: Position;
 }
 
-export interface BaseRequest {
+export interface BaseRequest extends StartEndDateRequest, PrecomputedRequest {
     id: number;
+    regionId?: number;
 }
 
-export interface MetricRequest {
-    weekDay: EWeekDays;
-    trafficTime: ETrafficTimes;
-    year: EYear;
+interface StartEndDateRequest {
+    startDate?: Date;
+    endDate?: Date;
+}
+
+interface PrecomputedRequest {
+    weekDay?: EWeekDays;
+    trafficTime?: ETrafficTimes;
+    year?: EYear;
+}
+
+export interface MetricRequest extends PrecomputedRequest {
     numberOfRides: number;
 }
 

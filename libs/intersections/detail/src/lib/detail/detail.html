@@ -1,4 +1,14 @@
 <div class="flex flex-col gap-4">
+    <t-date-filter
+    [changeableMode]="true"
+    [(mode)]="_mode"
+    [(selectedYear)]="_selectedYear"
+    [(selectedWeekDays)]="_selectedWeekDays"
+    [(selectedTrafficTime)]="_selectedTrafficTime"
+    [(startTime)]="_startTime"
+    [(endTime)]="_endTime"
+    [(datetime)]="_datetime$">
+    </t-date-filter>
     @if (isNode()) {
         <chart-detail
             [rows]="nodeRows()"
