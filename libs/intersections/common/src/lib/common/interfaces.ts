@@ -30,8 +30,8 @@ export interface BaseRequest extends StartEndDateRequest, PrecomputedRequest {
 }
 
 interface StartEndDateRequest {
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: number;
+    endDate?: number;
 }
 
 interface PrecomputedRequest {

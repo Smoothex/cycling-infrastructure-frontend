@@ -103,6 +103,10 @@ export class ChartDetail<T extends IntersectionRow & NodeRow | EdgeRow>  {
 				const waitingTimeHistogram = this.createHistogram(rows.map(r => r.waitingTime), 15, 'WaitingTime (s)', 'Count')
 				this.waitingTimeChartData.set(waitingTimeHistogram.chart);
 				this.waitingTimeChartOptions.set(waitingTimeHistogram.options);
+			} else {
+				this.durationChartData.set([]);
+				this.speedChartData.set([]);
+				this.waitingTimeChartData.set([]);
 			}
 		});
 	}

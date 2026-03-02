@@ -44,18 +44,16 @@ export class IntersectionMap {
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	private readonly mapDataLoaded = signal(false);
+	private readonly trafficSignalsLoaded = signal(false);
 	map: maplibregl.Map | undefined;
 
 
 
 	constructor() {
 		effect(async () => {
-			const data = this.intersectionData();
-			if (!data || !this.mapReady() || !this.map) return;
-
-			zoomOnLineMidPoint(this.map, data);
-
 			const trafficSignalClusterId = this.trafficSignalClusterId();
+			if (!this.mapReady() || !this.map) return;
+
 			if (!isNaN(trafficSignalClusterId)) {
 				const trafficSignalClusters = await this._requestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
 				displayTrafficSignalClusters(this.map, trafficSignalClusters, false);
@@ -64,6 +62,16 @@ export class IntersectionMap {
 				displayTrafficSignals(this.map, trafficSignals);
 			}
 
+			this.trafficSignalsLoaded.set(true);
+		});
+
+		effect(async () => {
+			const data = this.intersectionData();
+			if (!data || !this.mapReady() || !this.map || !this.trafficSignalsLoaded()) return;
+
+			deleteDisplay(this.map, this.ridePointsMatchedPointsAdded);
+			deleteDisplay(this.map, this.intersectionDataAdded);
+			zoomOnLineMidPoint(this.map, data);
 			if (this.isAggregateData()) {
 				this.intersectionDataAdded = displayIntersectionAggregate(this._router, data, this.map, "intersectionLineData");
 			} else {

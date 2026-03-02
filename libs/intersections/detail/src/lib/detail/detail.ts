@@ -75,15 +75,11 @@ export class IntersectionsDetailPage {
 				endDate.setHours(endHourMinute.getHours());
 				endDate.setMinutes(endHourMinute.getMinutes());
 
-				console.log(startDate, endDate)
-
 				this.intersectionData.set(await this._requestService.getIntersectionBase({
 					id: Number(baseId),
-					startDate: startDate,
-					endDate: endDate
+					startDate: startDate.getTime(),
+					endDate: endDate.getTime()
 				}))
-
-				// TODO: complete backend part
 			}
 		});
 	}
