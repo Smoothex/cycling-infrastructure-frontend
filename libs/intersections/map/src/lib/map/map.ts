@@ -3,7 +3,6 @@ import {
 	computed,
 	effect,
 	inject,
-  model,
 	signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -19,6 +18,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import {
   addedOnMap,
   addedOnMapDefault,
+  colorToStops,
   COLORS,
 	displayTrafficSignals,
 	displayTrafficSignalClusters,
@@ -27,6 +27,7 @@ import {
   displayMatchedPoints,
   displayRidePoints,
   displayRegions,
+  getVisibleLegendItems,
 	highlightLine,
   LegendItem,
   MapLegend,
@@ -77,99 +78,68 @@ export class IntersectionsMap {
   protected currentZoom = signal<number>(0);
   protected legendItems = computed<LegendItem[]>(() => {
     const zoom = this.currentZoom();
-    const items: LegendItem[] = [];
+    const trafficSignalVisible: boolean = this.showTrafficSignals();
+    const metricsVisible: boolean = this.showIntersectionMetrics();
+    const selectedRideId: number | null = this.selectedRideId();
 
-    if (this.showTrafficSignals()) {
-      if (zoom >= ZOOM_LEVELS.points.minzoom) {
-        items.push({
-          label: 'Traffic Signal',
-          geometry: 'point',
-          color: COLORS.trafficSignals
-        })
-      }
-
-      if (zoom >= ZOOM_LEVELS.polygons.minzoom) {
-        items.push({
-          label: 'Traffic Signal Intersection',
-          geometry: 'polygon',
-          color: COLORS.trafficSignalClusters
-        })
-      }
-    }
-
-    if (this.showIntersectionMetrics() && zoom >= ZOOM_LEVELS.lines.minzoom) {
-      items.push({
+    return getVisibleLegendItems([
+      {
+				label: 'Traffic Signal',
+				geometry: 'point',
+				color: COLORS.trafficSignals,
+				showIf: trafficSignalVisible && zoom >= ZOOM_LEVELS.points.minzoom
+			},
+			{
+				label: 'Traffic Signal Intersection',
+				geometry: 'polygon',
+				color: COLORS.trafficSignalClusters,
+				showIf: trafficSignalVisible && zoom >= ZOOM_LEVELS.polygons.minzoom
+			},
+      {
         label: 'Segment Median Wait Time [s] ∈ ]0, 120[',
         geometry: 'line',
-        colorStops: Object.entries(COLORS.waitingTime).map(([v, c]) => ({
-          value: Number(v),
-          color: c
-        }))
-      });
-
-      items.push({
+        colorStops: colorToStops(COLORS.waitingTime),
+        showIf: metricsVisible && zoom >= ZOOM_LEVELS.lines.minzoom
+      },
+      {
         label: 'Segment Number of Rides [#] ∈ [1, 50[',
         geometry: 'line',
-        widthStops: [
-          { value: 0, width: 1 },
-          { value: 25, width: 4 },
-          { value: 50, width: 8 }
-        ],
-        color: '#000000'
-      });
-    }
-
-    if (zoom < ZOOM_LEVELS.regions.maxzoom) {
-      items.push({
-      label: 'Region Intersection Wait Time [s/km] ∈ ]0, 30[',
-      geometry: 'polygon',
-      colorStops: Object.entries(COLORS.regions).map(([v, c]) => ({
-          value: Number(v),
-          color: c
-        }))
-      });
-
-      items.push({
+        widthStops: [{ value: 0, width: 1 }, { value: 25, width: 4 }, { value: 50, width: 8 }],
+        color: '#000000',
+        showIf: metricsVisible && zoom >= ZOOM_LEVELS.lines.minzoom
+      },
+      {
+        label: 'Region Intersection Wait Time [s/km] ∈ ]0, 30[',
+        geometry: 'polygon',
+        colorStops: colorToStops(COLORS.regions),
+        showIf: zoom < ZOOM_LEVELS.regions.maxzoom
+      },
+      {
         label: 'Region Number of Rides [#] ∈ [1, 500[',
         geometry: 'line',
-        widthStops: [
-          { value: 10, width: 1 },
-          { value: 50, width: 4 },
-          { value: 500, width: 8 }
-        ],
-        color: '#000000'
-      });
-    }
-
-    const selectedRideId = this.selectedRideId();
-    if (selectedRideId) {
-      if (zoom >= ZOOM_LEVELS.points.minzoom) {
-        items.push({
-          label: `Ride ${selectedRideId}, GPS`,
-          geometry: 'point',
-          color: COLORS.ridePoints
-        })
-
-        items.push({
-          label: `Ride ${selectedRideId}, Matched Points`,
-          geometry: 'point',
-          color: COLORS.matchedPoints
-        })
+        widthStops: [{ value: 10, width: 1 }, { value: 50, width: 4 }, { value: 500, width: 8 }],
+        color: '#000000',
+        showIf: zoom < ZOOM_LEVELS.regions.maxzoom
+      },
+      {
+        label: `Ride ${selectedRideId}, GPS`,
+        geometry: 'point',
+        color: COLORS.ridePoints,
+        showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.points.minzoom
+      },
+      {
+        label: `Ride ${selectedRideId}, Matched Points`,
+        geometry: 'point',
+        color: COLORS.matchedPoints,
+        showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.points.minzoom
+      },
+      {
+        label: `Ride ${selectedRideId}, Segment Wait Time [s] ∈ ]0, 120[`,
+        geometry: 'line',
+        colorStops: colorToStops(COLORS.waitingTime),
+        showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.lines.minzoom
       }
-
-      if (zoom >= ZOOM_LEVELS.lines.minzoom) {
-        items.push({
-          label: `Ride ${selectedRideId}, Segment Wait Time [s] ∈ [0, 120]`,
-          geometry: 'line',
-          colorStops: Object.entries(COLORS.waitingTime).map(([v, c]) => ({
-            value: Number(v),
-            color: c
-          }))
-        })
-      }
-    }
-
-    return items;
+    ]);
   });
 
   constructor() {
@@ -179,10 +149,9 @@ export class IntersectionsMap {
 			if (!map || !dataLoaded) return;
       map.on('dblclick', e => {
         removeQueryParamsForLineHighlight(this._router);
-        if (!this.map) return;
-        removeLineHighlight(this.map, this.rideAdded);
-        removeLineHighlight(this.map, this.edgeMetricsAdded);
-        removeLineHighlight(this.map, this.nodeMetricsAdded);
+        removeLineHighlight(map, this.rideAdded);
+        removeLineHighlight(map, this.edgeMetricsAdded);
+        removeLineHighlight(map, this.nodeMetricsAdded);
       });
 
       this.currentZoom.set(map.getZoom());
@@ -304,8 +273,9 @@ export class IntersectionsMap {
 
     this.regions = await this._requestService.getIntersectionRegionMetricsComplete(request);
     deleteDisplay(map, this.regionsAdded);
-    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionMedium", 8, 11, ['>=', ['get', 'adminLevel'], 6]));
     mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionBig", 0, 8, ['==', ['get', 'adminLevel'], 4]));
+    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionMedium", 8, 11, ['==', ['get', 'adminLevel'], 6]));
+    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionSmall", 8, 11, ['==', ['get', 'adminLevel'], 9]));
   }
 
   async onRideSelection(selectedRideId: number | null) {

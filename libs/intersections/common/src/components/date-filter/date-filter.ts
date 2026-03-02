@@ -1,12 +1,10 @@
 import { Component, model, input, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TranslatePipe } from '@ngx-translate/core'; // Assuming usage based on pipe
-
+import { TranslatePipe } from '@ngx-translate/core';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { DatePickerModule } from 'primeng/datepicker';
 import { Card } from 'primeng/card';
-
 import { 
     EnumSelectButtonComponent,
     EnumSelectComponent,
@@ -16,21 +14,8 @@ import {
     CARD_MODE_TO_TRANSLATION_MAP
 } from '@simra/common-components';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
+import { ECardMode } from '@simra/intersections-common';
 
-export enum ECardMode {
-	PRECOMPUTED = 'PRECOMPUTED',
-	REALTIME = 'REALTIME',
-}
-
-export const DATE_FILTER_DEFAULTS = {
-    mode: ECardMode.PRECOMPUTED,
-    year: EYear.ALL,
-    weekDays: EWeekDays.ALL_WEEK,
-    trafficTime: ETrafficTimes.ALL_DAY,
-    startTime: new Date('1970-01-01T00:00:00'),
-    endTime: new Date('1970-01-01T23:59'),
-    getDatetime: () => [new Date('2019-01-01T00:00'), new Date()]
-};
 
 @Component({
     selector: 't-date-filter',

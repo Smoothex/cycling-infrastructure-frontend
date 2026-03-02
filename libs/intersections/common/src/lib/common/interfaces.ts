@@ -286,3 +286,19 @@ export function mapRegionMetricToRows(fc: FeatureCollection<Polygon>): RegionMet
         midPoint: centroid(f).geometry.coordinates
     }));
 }
+
+
+export enum ECardMode {
+    PRECOMPUTED = 'PRECOMPUTED',
+    REALTIME = 'REALTIME',
+}
+
+export const DATE_FILTER_DEFAULTS = {
+    mode: ECardMode.PRECOMPUTED,
+    year: EYear.ALL,
+    weekDays: EWeekDays.ALL_WEEK,
+    trafficTime: ETrafficTimes.ALL_DAY,
+    startTime: new Date('1970-01-01T00:00:00'),
+    endTime: new Date('1970-01-01T23:59'),
+    getDatetime: () => [new Date('2019-01-01T00:00'), new Date()]
+};

@@ -63,7 +63,7 @@ export class IntersectionsDetailPage {
 				}))
 			} else {
 				const datetime = this._datetime$();
-				if (datetime.length != 2) return;
+				if (datetime.length != 2 || !datetime[0] || !datetime[1]) return;
 
 				const startDate = datetime[0];
 				const startHourMinute = this._startTime();

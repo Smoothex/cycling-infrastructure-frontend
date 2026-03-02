@@ -398,6 +398,22 @@ export interface LegendItem {
     widthStops?: { value: number; width: number }[];
 }
 
+export interface LegendItemVisible extends LegendItem {
+    showIf: boolean;
+}
+
+export function getVisibleLegendItems(definitions: LegendItemVisible[]): LegendItem[] {
+  return definitions
+    .filter(d => d.showIf)
+    .map(({ showIf, ...item }) => item);
+}
+
+export function colorToStops(color: Record<number, string>) {
+    return Object.entries(COLORS.waitingTime).map(([v, c]) => ({
+        value: Number(v),
+        color: c
+    }))
+}
 
 function colorToArray(color: Record<number, string>) {
     const colorArray = [];
@@ -528,6 +544,7 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
 }
 
 export function zoomOnLineMidPoint(map: maplibregl.Map, data: FeatureCollection<LineString, GeoJsonProperties>) {
+    if (data.features.length === 0) return;
     const midPoint = calculateMidPoint(data.features[0].geometry);
     map.flyTo({ center: [midPoint[0], midPoint[1]], zoom: 16 });
 }

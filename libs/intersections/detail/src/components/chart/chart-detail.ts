@@ -1,22 +1,17 @@
-import { Component, effect, input, Input, Signal, signal } from '@angular/core';
+import { Component, effect, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Card } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { ChartModule } from 'primeng/chart';
-import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
 import { 
 	NodeRow,
 	EdgeRow,
-	ListColumn,
-	mapNodeToRows,
 	IntersectionRow
 } from '@simra/intersections-common';
 
-
-
 @Component({
 	selector: 'chart-detail',
-	imports: [CommonModule,Card, TableModule, ChartModule],
+	imports: [CommonModule, Card, TableModule, ChartModule],
 	templateUrl: './chart-detail.html',
 	styleUrl: './chart-detail.scss',
 })

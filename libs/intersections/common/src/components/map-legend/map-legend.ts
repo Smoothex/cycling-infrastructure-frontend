@@ -1,10 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, input, model, ViewEncapsulation } from '@angular/core';
+import { Component, input, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Button } from 'primeng/button';
-import { Checkbox } from 'primeng/checkbox';
 import { Card } from 'primeng/card';
-import { Panel } from 'primeng/panel';
 import { 
 	LegendItem
 } from '@simra/intersections-common';
@@ -15,10 +12,7 @@ import {
 	imports: [
 		CommonModule,
 		FormsModule,
-		Button,
-		Checkbox,
-		Card,
-		Panel
+		Card
 	],
 	templateUrl: './map-legend.html',
 	encapsulation: ViewEncapsulation.None
@@ -51,7 +45,6 @@ export class MapLegend {
 	}
 
 	getColorForGeometry(item: LegendItem): string {
-		console.log(JSON.stringify(item))
 		if (item.color) {
 			return item.color;
 		}
