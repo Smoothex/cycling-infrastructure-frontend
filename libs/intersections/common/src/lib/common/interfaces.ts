@@ -161,6 +161,31 @@ export interface RegionMetricRow extends IntersectionRow {
     year: EYear;
 }
 
+export interface RideRegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
+    rideId: number;
+    regionId: number;
+    name: string;
+    adminLevel: number; 
+    numberOfEdges: number;
+    numberOfNodes: number;
+    nodeMedianWaitingTime: number;
+    length: number;
+    nodeWaitingSPerKm: number;
+    edgeWaitingSPerKm: number;
+    weekDay: TEnumW;
+    trafficTime: TEnumT;
+    year: TEnumY; 
+}
+export type RawRideRegionMetric = RideRegionMetric<string, string, number> 
+export function cleanRideRegionMetric(data: RawRideRegionMetric[]) : RideRegionMetric[] {
+    return data.map((el) => ({
+        ...el,
+        trafficTime: el.trafficTime as ETrafficTimes,
+        weekDay: el.weekDay as EWeekDays,
+        year: el.year.toString() as EYear
+    }));
+}
+
 
 export interface NumberFilterConfig {
   step: number;

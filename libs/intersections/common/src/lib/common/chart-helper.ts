@@ -50,6 +50,27 @@ export function createHistogram(
 }
 
 
+
+function getLines (
+    sortedData: any[], 
+    xKey: string, 
+    yKey: string, 
+    windowSize: number
+) {
+    return sortedData.map((_, index) => {
+        const start = Math.max(0, index - Math.floor(windowSize / 2));
+        const end = Math.min(sortedData.length, index + Math.floor(windowSize / 2));
+        const window = sortedData.slice(start, end).map(d => d[yKey]).sort((a, b) => a - b);
+        const median = window[Math.floor(window.length / 2)];
+        const average = window.reduce((a, b) => a + b) / window.length;
+
+        return {
+            median : { x: sortedData[index][xKey], y: median },
+            average: { x: sortedData[index][xKey], y: average }
+        };
+    });
+}
+
 export function createMovingMedianChart(
     data: any[], 
     xKey: string, 
@@ -64,18 +85,7 @@ export function createMovingMedianChart(
         y: d[yKey]
     }));
 
-    const lines = sortedData.map((_, index) => {
-        const start = Math.max(0, index - Math.floor(windowSize / 2));
-        const end = Math.min(sortedData.length, index + Math.floor(windowSize / 2));
-        const window = sortedData.slice(start, end).map(d => d[yKey]).sort((a, b) => a - b);
-        const median = window[Math.floor(window.length / 2)];
-        const average = window.reduce((a, b) => a + b) / window.length;
-
-        return {
-            median : { x: sortedData[index][xKey], y: median },
-            average: { x: sortedData[index][xKey], y: average }
-        };
-    });
+    const lines = getLines(sortedData, xKey, yKey, windowSize);
 
     const medianLine = lines.map((l) => l.median);
     const avgLine = lines.map((l) => l.average);
@@ -116,6 +126,72 @@ export function createMovingMedianChart(
                     type: 'time',
                     time: { unit: 'month' },
                     title: { display: true, text: 'Date' }
+                },
+                y: {
+                    title: { display: true, text: yLabel }
+                }
+            },
+            plugins: {
+            }
+        }
+    };
+}
+
+export function createScatterPlot(
+    data: any[], 
+    xKey: string, 
+    yKey: string, 
+    xLabel: string, 
+    yLabel: string,
+    windowSize: number
+){
+    const sortedData = [...data].sort((a, b) => a[xKey] - b[xKey]);
+
+    const scatterPoints = sortedData.map(d => ({
+        x: d[xKey],
+        y: d[yKey]
+    }));
+
+    const lines = getLines(sortedData, xKey, yKey, windowSize);
+
+    const medianLine = lines.map((l) => l.median);
+    const avgLine = lines.map((l) => l.average);
+
+    
+    return {
+        chart: {
+            datasets: [
+                {
+                    label: `Moving Median (Window: ${windowSize})`,
+                    type: 'line',
+                    data: medianLine,
+                    borderColor: '#42A5F5',
+                    borderWidth: 3,
+                    pointRadius: 0, // Hide points on the median line
+                },
+                {
+                    label: `Moving Average (Window: ${windowSize})`,
+                    type: 'line',
+                    data: avgLine,
+                    borderColor: '#338f33',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                },
+                {
+                    label: yLabel,
+                    type: 'scatter',
+                    data: scatterPoints,
+                    backgroundColor: 'rgba(150, 150, 150, 0.3)',
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: xLabel }
                 },
                 y: {
                     title: { display: true, text: yLabel }

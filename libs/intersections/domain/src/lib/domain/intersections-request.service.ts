@@ -12,7 +12,10 @@ import {
   RawBase,
   Base,
   BaseRequest,
-  cleanBase
+  cleanBase,
+  RawRideRegionMetric,
+  RideRegionMetric,
+  cleanRideRegionMetric
 } from '@simra/intersections-common';
 import { 
   processTrafficSignal,
@@ -190,6 +193,12 @@ export class IntersectionsRequestService {
     const data = await firstValueFrom(this._http.get<PagedGeoResponse<Polygon>>('/api/intersections/regions/pageable', { params }));
     processRegion(data.geoData);
     return data;
+  }
+
+  public async getIntersectionRideRegionMetricsProperties(request: MetricRequest): Promise<RideRegionMetric[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		const data = await firstValueFrom(this._http.get<RawRideRegionMetric[]>('/api/intersections/regions/rides', { params }));
+    return cleanRideRegionMetric(data);
   }
 }
 

@@ -1,11 +1,10 @@
-import { Component, effect, input, computed, signal } from '@angular/core';
+import { Component, input, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Card } from 'primeng/card';
 import { Select } from 'primeng/select';
 import { InputNumber } from 'primeng/inputnumber';
 import { ChartModule } from 'primeng/chart';
-import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -16,11 +15,12 @@ import {
 	Base,
 	createHistogram,
 	createMovingMedianChart,
-	createBoxPlot
+	createBoxPlot,
+	createScatterPlot
 } from '@simra/intersections-common';
 
 const ChartPropertyLabels = {
-	waitingTime: "WaitingTime (s)",
+	waitingTime: "Waiting Time (s)",
 	duration: "Duration (s)",
 	speed: "Speed (km/h)",
 	medianRideSpeed: "Median Ride Speed (km/h)"
@@ -99,6 +99,22 @@ export class IntersectionChart {
 			ChartCatergoryLabels[groupKey], 
 			labelMap,
 			ChartPropertyLabels[selected]
+		);
+	});
+
+	protected propertyChart2 = signal<keyof typeof ChartPropertyLabels>("medianRideSpeed");
+	protected readonly scatterChartProperties = computed(() => {
+		const data = this.data();
+		const window = this.windowSize();
+		const selected = this.propertyChart();
+		const selected2 = this.propertyChart2();
+		return createScatterPlot(
+			data, 
+			selected2, 
+			selected, 
+			ChartPropertyLabels[selected2], 
+			ChartPropertyLabels[selected],
+			window
 		);
 	});
 
