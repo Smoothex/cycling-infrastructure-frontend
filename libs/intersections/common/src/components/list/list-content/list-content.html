@@ -1,0 +1,36 @@
+@for (col of columns(); track col.field) {
+    @let field = getFieldValue(col.field);
+    @let isMarked = row().id === highlightedRowId();
+    <td [class.bg-yellow-100]="isMarked" class="max-w-40">
+    @switch (col.display) {
+        @case ("number") {
+            <div>{{ field | number: '1.0-1' }} </div>
+        }
+        @case ("link") {
+            @if (field?.value) {
+                <a [routerLink]="[field.value]" class="link-button">{{ field.label }}</a>
+            }
+        }
+        @case ("date") {
+            <div>{{ field | date: 'dd/MM/yyyy HH:mm' }} </div>
+        }
+        @case ("enum") {
+            <div>{{ col.translationMap[field].label | translate }}</div>
+        }
+        @case ("zoomOnLine") {
+            <p-button 
+                icon="pi pi-search-plus" 
+                [rounded]="true" 
+                [text]="true"
+                severity="secondary"
+                tooltipPosition="top"
+                pTooltip="Zoom to location"
+                (onClick)="onAction.emit(row())" />
+        }
+
+        @default {
+            <div>{{ field }}</div>
+        }
+    }
+    </td>
+}

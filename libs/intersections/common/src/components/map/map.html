@@ -1,11 +1,10 @@
 
-<div class="relative w-full">
+<div class="intersection-map relative">
     <div class="absolute top-4 left-4 z-10">
         <map-legend
             [items]="legendItems()"
-        >
-        </map-legend>
+        />
     </div>
     
-    <t-map-component (mapReady)="onMapReady($event)" [isNavigable]="true"></t-map-component>
+    <t-map-component (mapReady)="onMapReady($event)" [isNavigable]="false"></t-map-component>
 </div>

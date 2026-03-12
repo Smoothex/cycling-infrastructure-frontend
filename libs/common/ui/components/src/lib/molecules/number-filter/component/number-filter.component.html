@@ -1,11 +1,15 @@
 <p-columnFilter [field]="field()" [showMenu]="false">
 	<ng-template pTemplate="filter">
-		<input type="number" class="p-inputtext p-column-filter"
-			   [style.width]="'6rem'" [style.textAlign]="'center'"
-			   [step]="step()"
-			   [min]="min()"
-			   [placeholder]="'COMPONENTS.GENERAL.GENERAL.MIN' | translate"
-			   [(ngModel)]="defaultValue"
-			   (input)="onFilterChange($event.target)"/>
+		<p-inputNumber
+            [(ngModel)]="defaultValue"
+            (onInput)="onFilterChange()"
+			[showButtons]="true"
+            [step]="step()"
+            [min]="min()"
+            [placeholder]="'COMPONENTS.GENERAL.GENERAL.MIN' | translate"
+            [inputStyle]="{'maxWidth': '6rem'}"
+            styleClass="p-column-filter"
+            size="small"
+        />
 	</ng-template>
 </p-columnFilter>

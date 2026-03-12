@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { DatePickerModule } from 'primeng/datepicker';
+import { Card } from 'primeng/card';
 import { 
     EnumSelectComponent,
     TRAFFIC_TIMES_TO_TRANSLATION,
@@ -11,17 +12,18 @@ import {
 } from '@simra/common-components';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 
-
 @Component({
     selector: 'date-filter-precomputed',
     standalone: true,
     templateUrl: './date-filter-precomputed.html',
+    styleUrl: './date-filter-precomputed.scss',
     imports: [
         CommonModule,
         FormsModule,
         EnumSelectComponent,
         FloatLabelModule,
         DatePickerModule,
+        Card
     ],
     encapsulation: ViewEncapsulation.None,
 })

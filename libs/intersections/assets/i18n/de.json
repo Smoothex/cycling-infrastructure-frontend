@@ -2,7 +2,8 @@
     "HEADERS": {
         "PREVOSMNEXTID": "OSM IDs",
         "INTERSECTIONID": "Kreuzungs ID",
-        "STARTENDOSMID": "OSM IDs",
+        "OSMID": "OSM ID",
+        "SEGMENTID": "Segment ID",
         "RIDES": "Fahrten",
         "SPEED": "Geschwindigkeit (km/h)",
         "LENGTH": "Länge (m)",
@@ -11,7 +12,23 @@
         "MAXWAITINGTIME": "Max. Wartezeit (s)",
         "WEEKDAY": "Wochentag",
         "TRAFFICTIME": "Verkehrszeit",
-        "YEAR": "Jahr"
+        "YEAR": "Jahr",
+        "LENGTHKM": "Länge (km)",
+        "NODEMEDIANWAITINGTIME": "Wartezeit an Kreuzungen (s)",
+        "NODEMEDIANWAITINGTIMEDISTANCE": "Wartezeit durch Kreuzungen (s/km)"
+    },
+    "TIP": {
+        "RIDES": "Gesamtanzahl an Passierungen des Segments.",
+        "SPEED": "Median Geschwindigkeit (km/h) aller Passierungen des Segments.",
+        "LENGTH": "Median Länge (m) aller Passierungen des Segments.",
+        "DURATION": "Median Dauer (s) aller Passierungen des Segments.",
+        "MEDIANWAITINGTIME": "Median Wartezeit (s) aller Passierungen des Segments.\nDie Wartezeit ist die Differenz der Dauer des Segments und der Länge des Segments durch die Median Geschwindigkeit aller Segmente (ohne Kreuzungen) einer Fahrt.",
+        "MAXWAITINGTIME": "Maximale Wartezeit (s) aller Passierungen des Segments.\nDie Wartezeit ist die Differenz der Dauer des Segments und der Länge des Segments durch die Median Geschwindigkeit aller Segmente (ohne Kreuzungen) einer Fahrt.",
+        "INTERSECTIONID": "Die Kreuzungs ID identifiziert eine Kreuzung eindeutig.",
+        "SEGMENTID":"Die Segment ID identifiziert ein gefahrendes Segment eindeutig.\nEin Segment ist entweder eine Querung einer Kreuzung oder ein Teil eines Weges zwischen Kreuzungen.",
+        "STREETNAMES": "Falls vorhanden: Straßen Namen des Segments. Sonst zwei Straßennamen der Kreuzung.",
+        "OSMID": "Die OSM ID identifiziert einen durch Open Street Map festgelegten Weg.",
+        "NAME": "Straßenname des Segments."
     }
 }
 

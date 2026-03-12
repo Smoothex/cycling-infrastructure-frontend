@@ -1,19 +1,24 @@
-<div class="flex gap-2">  
-    <m-enum-select-component
-        [optionEnum]="ETrafficTimes"
-        [(selected)]="selectedTrafficTime"
-        [translationMap]="TRAFFIC_TIMES_TO_TRANSLATION">
-    </m-enum-select-component>
+<div class="date-filter flex flex-row">
+    <div class="flex-1"></div>
+    <p-card>
+        <div class="flex gap-2">  
+            <m-enum-select-component
+                [optionEnum]="ETrafficTimes"
+                [(selected)]="selectedTrafficTime"
+                [translationMap]="TRAFFIC_TIMES_TO_TRANSLATION">
+            </m-enum-select-component>
 
-    <m-enum-select-component
-        [optionEnum]="EWeekDays"
-        [(selected)]="selectedWeekDays"
-        [translationMap]="WEEK_DAYS_TO_TRANSLATION">
-    </m-enum-select-component>                
-    
-    <m-enum-select-component
-        [optionEnum]="EYear"
-        [(selected)]="selectedYear"
-        [translationMap]="YEAR_TO_TRANSLATION">
-    </m-enum-select-component>
+            <m-enum-select-component
+                [optionEnum]="EWeekDays"
+                [(selected)]="selectedWeekDays"
+                [translationMap]="WEEK_DAYS_TO_TRANSLATION">
+            </m-enum-select-component>                
+            
+            <m-enum-select-component
+                [optionEnum]="EYear"
+                [(selected)]="selectedYear"
+                [translationMap]="YEAR_TO_TRANSLATION">
+            </m-enum-select-component>
+        </div>
+    </p-card>
 </div>

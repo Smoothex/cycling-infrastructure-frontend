@@ -311,8 +311,8 @@ export function deleteDisplay(map: maplibregl.Map, added: addedOnMap) {
     added.sourceIds = [];
 }
 
-export function setPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>, keys: string[], header: string = "", ) {
-    let html = header ? `<h1><b>${header}</h1></b>` : "";
+export function setPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>, keys: string[]) {
+    let html = properties["header"] ? `<h1><b>${properties["header"]}</h1></b>` : "";
     for (const key of keys) {
         if (Object.hasOwn(properties, key)) {
             html += `<b>${key}</b>: ${properties[key]}<br>`
@@ -329,31 +329,31 @@ function setDefaultPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, prope
 }
 
 function setTrafficSignalClusterPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["Id"], "Traffic Signal Cluster");
+    setPopUp(mlMap, lngLat, properties, ["Id"]);
 }
 
 function setTrafficSignalPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["id"], "Traffic Signal");
+    setPopUp(mlMap, lngLat, properties, ["id"]);
 }
 
 function setMatchedPointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["id", "Time", "rideId", "IntersectionId", "ridePointId", "DistanceRidePoint", "AccuracyGPS", "stops"], "Matched Point");
+    setPopUp(mlMap, lngLat, properties, ["id", "Time", "rideId", "IntersectionId", "ridePointId", "DistanceRidePoint", "AccuracyGPS", "stops"]);
 }
 
 function setRidePointPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["id", "Time", "File"], "Ride Point");
+    setPopUp(mlMap, lngLat, properties, ["id", "Time", "File"]);
 }
 
 function setIntersectionBasePopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["Id", "PrevSegmentId", "NextSegmentId", "Start", "TrafficSignalClusterId", "Speed", "Duration", "WaitingTime"], "Segment");
+    setPopUp(mlMap, lngLat, properties, ["Id", "PrevSegmentId", "NextSegmentId", "Start", "IntersectionId", "Speed", "Duration", "WaitingTime"]);
 }
 
 function setIntersectionMetricsPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["TrafficSignalClusterId", "OsmId", "SegmentId", "name", "streetNames",  "numberOfRides", "Speed", "Duration", "WaitingTime"], "Metrics");
+    setPopUp(mlMap, lngLat, properties, ["Id", "SegmentId", "name", "streetNames",  "numberOfRides", "Speed", "Duration", "WaitingTime"]);
 }
 
 function setRegionPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
-    setPopUp(mlMap, lngLat, properties, ["Id", "name", "numberOfRides", "NodeWaitingTime", "NodeWaitingSPerKm", "EdgeWaitingSPerKm"], "Region");
+    setPopUp(mlMap, lngLat, properties, ["Id", "name", "numberOfRides", "NodeWaitingTime", "NodeWaitingSPerKm", "EdgeWaitingSPerKm"]);
 }
 
 export function removeLineHighlight(map: maplibregl.Map, added: addedOnMap) {
@@ -522,7 +522,7 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
     sourceId: string, minzoom?:number, maxzoom?: number, filter?: any) {
     return displayPolygons(data, map, {
         sourceId: sourceId,
-        minzoom: minzoom,
+        minzoom: minzoom ? minzoom : 0,
         maxzoom: maxzoom,
         color: [
             'interpolate',

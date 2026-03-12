@@ -25,12 +25,12 @@ import { debounceTime, firstValueFrom, Observable, of, switchMap } from 'rxjs';
 })
 export class AutocompleteComponent {
 	public readonly field = input.required<string>();
-	public readonly size = input<'small' | 'large'>();
+	public readonly size = input<'small' | 'large'>('small');
 	public readonly placeholder = input<string>();
 	public readonly showDropdown = input<boolean>(false);
 	public readonly selected = model();
 	public readonly fetchFunction = input.required<(query: string) => Observable<string[]>>();
-	protected readonly filteredOptions = model<string[]>();
+	protected readonly filteredOptions = model<string[]>([]);
 	@Output()
 	public selectionChange = new EventEmitter<Record<string, string>>();
 

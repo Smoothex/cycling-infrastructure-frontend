@@ -1,5 +1,33 @@
-<intersection-list
-        [columns]="columns"
-        [rows]="rows()"
+<p-card>
+    <p-table 
+        [value]="rows()" 
+        [loading]="loading()"
+        [paginator]="true"
+        [lazy]="true"
+        [rows]="requestFilter().size"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [totalRecords]="totalElements()"
+        (onFilter)="onFilterChange($event)"
+        (onLazyLoad)="onLazy($event)"
+        [resetPageOnSort]="true"
+        [sortField]="'nodeWaitingSPerKm'"
+        [sortOrder]="-1"
     >
-</intersection-list>
+        <ng-template pTemplate="header">
+            <tr intersection-list-header
+                [columns]="columns"
+            ></tr>
+            <tr intersection-list-header-filter
+                [columns]="columns"
+                (onFilterChange)="onFilterChange($event)">
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-rowData>
+            <tr intersection-list-content 
+                [row]="rowData" 
+                [columns]="columns">
+            </tr>
+        </ng-template>
+    </p-table>
+</p-card>

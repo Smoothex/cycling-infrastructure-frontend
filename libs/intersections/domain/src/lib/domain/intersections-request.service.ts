@@ -9,9 +9,13 @@ import {
   RegionMetricRequest,
   MetricRequest,
   PagedGeoResponse,
-  BaseRequest
+  RawBase,
+  Base,
+  BaseRequest,
+  cleanBase
 } from '@simra/intersections-common';
 import { 
+  processTrafficSignal,
   processTrafficSignalCluster,
   processMatchedPoints,
   processRidePoints,
@@ -55,6 +59,18 @@ export class IntersectionsRequestService {
     return data;
   }
 
+  public async getIntersectionNodePropertiesByTrafficSignalClusterId(request: MetricRequest): Promise<Base[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_nodes/trafficSignalClusterId/properties', { params }));
+    return cleanBase(data);
+  }
+
+  public async getIntersectionNodePropertiesByRegionId(request: MetricRequest): Promise<Base[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_nodes/regionId/properties', { params }));
+    return cleanBase(data);
+  }
+
   public async getIntersectionNodeMetricsComplete(request: MetricRequest): Promise<FeatureCollection<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
     const data = await firstValueFrom(this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_nodes/aggregate/complete', { params }));
@@ -62,15 +78,29 @@ export class IntersectionsRequestService {
     return data;
   }
  
-  public getIntersectionNodeMetricsPageable(request: NodePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
+  public async getIntersectionNodeMetricsPageable(request: NodePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params }));
+		const data = await firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params }));
+    processIntersectionMetrics(data.geoData);
+    return data;
   }
 
   public getIntersectionNodeStreetNames(request: NodePageableMetricRequest): Observable<string[]> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
 		return this._http.get<string[]>('/api/intersections/intersection_nodes/streetNames', { params });
 	}
+
+  public async getIntersectionEdgePropertiesByOsmId(request: MetricRequest): Promise<Base[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_edges/osmId/properties', { params }));
+    return cleanBase(data);
+  }
+
+  public async getIntersectionEdgePropertiesByRegionId(request: MetricRequest): Promise<Base[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_edges/regionId/properties', { params }));
+    return cleanBase(data);
+  }
 
   public async getIntersectionEdgeMetricsComplete(request: MetricRequest): Promise<FeatureCollection<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
@@ -79,9 +109,11 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public getIntersectionEdgeMetricsPageable(request: EdgePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
+  public async getIntersectionEdgeMetricsPageable(request: EdgePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges/aggregate', { params }));
+    const data = await firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges/aggregate', { params }));
+    processIntersectionMetrics(data.geoData);
+    return data;
   }
 
   public getIntersectionEdgeStreetNames(request: EdgePageableMetricRequest): Observable<string[]> {
@@ -94,6 +126,18 @@ export class IntersectionsRequestService {
     const data = await firstValueFrom(this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_base', { params }));
     processIntersectionBase(data);
     return data;
+  }
+
+  public async getIntersectionBaseProperties(request: BaseRequest): Promise<Base[]> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_base/properties', { params }));
+    return cleanBase(data);
+  }
+
+  public async getIntersectionBasePropertiesSingular(id: number): Promise<Base | null> {
+    const data = await firstValueFrom(this._http.get<RawBase | null>(`/api/intersections/${id}/intersection_base/properties`));
+    if (data) return cleanBase([data])[0];
+    return null;
   }
 
   public async getMatchedPointsIntersectionBase(request: BaseRequest): Promise<FeatureCollection<Point>> {
@@ -110,12 +154,16 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public getTrafficSignals(): Promise<FeatureCollection<Point>> {
-    return firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals`));
+  public async getTrafficSignals(): Promise<FeatureCollection<Point>> {
+    const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals`));
+    processTrafficSignal(data);
+    return data;
   }
 
-  public getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId: number): Promise<FeatureCollection<Point>> {
-    return firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals/cluster/${trafficSignalClusterId}`));
+  public async getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId: number): Promise<FeatureCollection<Point>> {
+    const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals/cluster/${trafficSignalClusterId}`));
+    processTrafficSignal(data);
+    return data;
   }
 
   public async getTrafficSignalClusters(): Promise<FeatureCollection<Polygon>> {
@@ -137,9 +185,11 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public getIntersectionRegionMetricsPageable(request: RegionMetricRequest): Promise<PagedGeoResponse<Polygon>> {
+  public async getIntersectionRegionMetricsPageable(request: RegionMetricRequest): Promise<PagedGeoResponse<Polygon>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    return firstValueFrom(this._http.get<PagedGeoResponse<Polygon>>('/api/intersections/regions/pageable', { params }));
+    const data = await firstValueFrom(this._http.get<PagedGeoResponse<Polygon>>('/api/intersections/regions/pageable', { params }));
+    processRegion(data.geoData);
+    return data;
   }
 }
 

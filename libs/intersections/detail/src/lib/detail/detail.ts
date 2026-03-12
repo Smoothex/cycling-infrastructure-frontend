@@ -1,13 +1,15 @@
-import { Component, effect, input, Input, signal, inject, computed } from '@angular/core';
+import { Component, effect, input, signal, inject, computed, model } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { Card } from 'primeng/card';
+import { ChartModule } from 'primeng/chart';
 import { TableModule } from 'primeng/table';
-import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
+import { FeatureCollection, LineString } from 'geojson';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
-import { ChartDetail } from '../../components/chart/chart-detail';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
+	IntersectionChart,
 	DateFilter,
 	DATE_FILTER_DEFAULTS,
 	ECardMode,
@@ -17,16 +19,19 @@ import {
 	mapEdgeToRows,
 	ListColumn,
 	applyQueryParamsForLineHighlight,
-	IntersectionList,
+	IntersectionListContent,
+	IntersectionListHeader,
 	IntersectionMap,
 	IntersectionRow,
-	MetricRequest
+	Base,
+	Node,
+	Edge
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
 
 @Component({
 	selector: 'detail',
-	imports: [CommonModule, ChartDetail, IntersectionList, IntersectionMap, Card, RouterLink, DateFilter],
+	imports: [CommonModule, FormsModule, TableModule, IntersectionListContent, IntersectionListHeader, IntersectionChart, IntersectionMap, Card, ChartModule, RouterLink, DateFilter],
 	templateUrl: './detail.html',
 })
 export class IntersectionsDetailPage {
@@ -35,6 +40,9 @@ export class IntersectionsDetailPage {
 
 	protected readonly id = input.required<string>();
 	protected readonly intersectionData = signal<FeatureCollection<LineString> | undefined>(undefined);
+	
+	protected readonly propertiesFiltered = signal<Base[]>([]);
+
 
 	protected _mode = signal<ECardMode>(DATE_FILTER_DEFAULTS.mode);
     protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
@@ -49,18 +57,47 @@ export class IntersectionsDetailPage {
 			const baseId = this.id();
 			if (!baseId) return;
 
+			const props = await this._requestService.getIntersectionBasePropertiesSingular(Number(baseId));
+			if (!props) {
+				console.error(`There is no segment with id ${baseId}`);
+				return;
+			}
+			
+			const node = <Node> props;
+			const isNode = node.trafficSignalClusterId ? true : false;
+			this.isNode.set(isNode);
+			this.trafficSignalClusterId.set(isNode ? node.trafficSignalClusterId : NaN);
+			if (isNode) {
+				this.firstNode.set(node);
+				this.startOsmId.set(node.startOsmId);
+				this.endOsmId.set(node.endOsmId);
+			} else {
+				const edge = <Edge> props;
+				this.firstEdge.set(edge);
+				this.prevOsmId.set(edge.prevOsmId);
+				this.osmId.set(edge.osmId);
+				this.nextOsmId.set(edge.nextOsmId);
+			}
+		});
+
+		effect(async () => {
+			const baseId = this.id();
+			if (!baseId) return;
+
 			const mode = this._mode();
 			if (mode === "PRECOMPUTED") {
 				const trafficTime = this._selectedTrafficTime();
 				const weekDay = this._selectedWeekDays();
 				const year = this._selectedYear();
 				
-				this.intersectionData.set(await this._requestService.getIntersectionBase({
+				const request = {
 					id: Number(baseId),
 					trafficTime: trafficTime,
 					weekDay: weekDay,
 					year: year
-				}))
+				};
+				this.propertiesFiltered.set(await this._requestService.getIntersectionBaseProperties(request));
+				this.intersectionData.set(await this._requestService.getIntersectionBase(request));
 			} else {
 				const datetime = this._datetime$();
 				if (datetime.length != 2 || !datetime[0] || !datetime[1]) return;
@@ -75,29 +112,30 @@ export class IntersectionsDetailPage {
 				endDate.setHours(endHourMinute.getHours());
 				endDate.setMinutes(endHourMinute.getMinutes());
 
-				this.intersectionData.set(await this._requestService.getIntersectionBase({
+				const request = {
 					id: Number(baseId),
 					startDate: startDate.getTime(),
 					endDate: endDate.getTime()
-				}))
+				};
+				this.propertiesFiltered.set(await this._requestService.getIntersectionBaseProperties(request));
+				this.intersectionData.set(await this._requestService.getIntersectionBase(request));
 			}
 		});
 	}
 
-	protected readonly isNode = computed(() => 
-        !!this.intersectionData()?.features[0]?.properties?.["trafficSignalClusterId"]
-    );
+	protected readonly firstNode = signal<Node | null>(null);
+	protected readonly firstEdge = signal<Edge | null>(null);
+	protected readonly isNode = signal<boolean | undefined>(undefined);
+
+	protected readonly tableDataIsLoading = signal(false);
+	protected readonly columns = computed<ListColumn<IntersectionRow>[]>(() => 
+		this.isNode() ? this.nodeColumns as ListColumn<IntersectionRow>[] : this.edgeColumns as ListColumn<IntersectionRow>[]);
 
 	// Node
-	protected readonly trafficSignalClusterId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["trafficSignalClusterId"] ?? NaN
-    );
-	protected readonly startOsmId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["startOsmId"] ?? null
-    );
-	protected readonly endOsmId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["endOsmId"] ?? null
-    );
+	protected readonly trafficSignalClusterId = signal<number | undefined>(undefined);
+	protected readonly startOsmId = signal<number | undefined>(undefined);
+	protected readonly endOsmId = signal<number | undefined>(undefined);
+
 	protected readonly nodeRows = computed(() => {
 		const isNode = this.isNode();
 		const intersectionData = this.intersectionData();
@@ -106,27 +144,26 @@ export class IntersectionsDetailPage {
 		}
 		return [];
 	});
-	protected readonly nodeColumns: ListColumn<NodeRow>[] = [
-		{ field: 'id', header: 'ID', display: "zoomOnLine" },
-		{ field: 'streetNames', header: 'Name', sortable: true },
-		{ field: 'rideId', header: 'Ride ID' },
+	protected readonly baseColumns: ListColumn<Base>[] = [
+		{ field: 'rideId', header: 'Ride ID', sortable: false, display: "text",  },
 		{ field: 'startTime', header: 'Start Time', sortable: true, display: "date" },
-		{ field: 'speed', header: 'INTERSECTIONS.HEADERS.SPEED', sortable: true, display: "decimal"  },
-		{ field: 'length', header: 'INTERSECTIONS.HEADERS.LENGTH', sortable: true, display: "decimal" },
-		{ field: 'duration', header: 'INTERSECTIONS.HEADERS.DURATION', sortable: true, display: "decimal"  },
-		{ field: 'waitingTime', header: 'INTERSECTIONS.HEADERS.MEDIANWAITINGTIME', sortable: true, display: "decimal"  },
+		{ field: 'speed', header: 'INTERSECTIONS.HEADERS.SPEED', sortable: true, display: "number"  },
+		{ field: 'length', header: 'INTERSECTIONS.HEADERS.LENGTH', sortable: true, display: "number" },
+		{ field: 'duration', header: 'INTERSECTIONS.HEADERS.DURATION', sortable: true, display: "number"  },
+		{ field: 'waitingTime', header: 'INTERSECTIONS.HEADERS.MEDIANWAITINGTIME', sortable: true, display: "number" },
+	] ;
+	protected readonly nodeColumns: ListColumn<NodeRow>[] = [
+		{ field: 'id', header: '', sortable: false, display: "zoomOnLine" },
+		{ field: 'id', header: 'INTERSECTIONS.HEADERS.SEGMENTID', sortable: false, display: "text" },
+		{ field: 'streetNames', header: 'Name', sortable: true, display: "text" },
+		...this.baseColumns
 	];
 
 	// Edge
-	protected readonly prevOsmId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["prevOsmId"] ?? null
-    );
-	protected readonly osmId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["osmId"] ?? null
-    );
-	protected readonly nextOsmId = computed(() => 
-        this.intersectionData()?.features[0]?.properties?.["nextOsmId"] ?? null
-    );
+	protected readonly prevOsmId = signal<number | undefined>(undefined);
+	protected readonly osmId = signal<number | undefined>(undefined);
+	protected readonly nextOsmId = signal<number | undefined>(undefined);
+
 	protected readonly edgeRows = computed(() => {
 		const isNode = this.isNode();
 		const intersectionData = this.intersectionData();
@@ -136,17 +173,11 @@ export class IntersectionsDetailPage {
 		return [];
 	});
 	protected readonly edgeColumns: ListColumn<EdgeRow>[] = [
-		{ field: 'id', header: 'ID', display: "zoomOnLine" },
-		{ field: 'name', header: 'Name', sortable: true },
-		{ field: 'rideId', header: 'Ride ID' },
-		{ field: 'startTime', header: 'Start Time', sortable: true, display: "date" },
-		{ field: 'speed', header: 'INTERSECTIONS.HEADERS.SPEED', sortable: true, display: "decimal"  },
-		{ field: 'length', header: 'INTERSECTIONS.HEADERS.LENGTH', sortable: true, display: "decimal" },
-		{ field: 'duration', header: 'INTERSECTIONS.HEADERS.DURATION', sortable: true, display: "decimal"  },
-		{ field: 'waitingTime', header: 'INTERSECTIONS.HEADERS.MEDIANWAITINGTIME', sortable: true, display: "decimal"  },
+		{ field: 'id', header: '', sortable: false, display: "zoomOnLine" },
+		{ field: 'id', header: 'INTERSECTIONS.HEADERS.SEGMENTID', sortable: false, display: "text" },
+		{ field: 'name', header: 'Name', sortable: true, display: "text" },
+		...this.baseColumns
 	];
-
-	
 
 	handleZoom(row: IntersectionRow) {
 		applyQueryParamsForLineHighlight(this._router, row.id, row.midPoint[1], row.midPoint[0], true, "intersectionLineData");

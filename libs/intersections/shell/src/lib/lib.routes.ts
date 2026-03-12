@@ -23,17 +23,17 @@ export const INTERSECTIONS_SHELL_ROUTES: Route[] = [
 			import('@simra/intersections-region-list').then((m) => m.IntersectionsRegionList),
 	},
 	{
-		path: 'trafficSignalCluster/:trafficSignalClusterId',
+		path: 'node/:nodeId',
 		loadComponent: () =>
 			import('@simra/intersections-aggregate').then((m) => m.IntersectionsAggregatePage),
 	},
 	{
-		path: 'metric/:osmId',
+		path: 'edge/:edgeId',
 		loadComponent: () =>
 			import('@simra/intersections-aggregate').then((m) => m.IntersectionsAggregatePage),
 	},
 	{
-		path: 'base/:id',
+		path: 'segment/:id',
 		loadComponent: () =>
 			import('@simra/intersections-detail').then((m) => m.IntersectionsDetailPage),
 	},

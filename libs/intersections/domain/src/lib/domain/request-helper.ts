@@ -16,28 +16,10 @@ function getLinkText(link: linkLabelValue) {
     return `<a href="${link.value}" class="link-button">${link.label}</a>`;
 }
 
-
-function setTrafficSignalClusterLink (properties: GeoJsonProperties, source: string, target: string) {
+type linkPrefixes = "segment" | "node" | "edge" | "regions";
+function setLink (prefix: linkPrefixes, properties: GeoJsonProperties, source: string, target: string) {
     if (properties?.[source]) {
-        properties[target] = getLinkText(getLink(properties[source], "trafficSignalCluster"));
-    }
-}
-
-function setBaseLink (properties: GeoJsonProperties, source: string, target: string) {
-    if (properties?.[source]) {
-        properties[target] = getLinkText(getLink(properties[source], "base"));
-    }
-}
-
-function setMetricLink (properties: GeoJsonProperties, source: string, target: string) {
-    if (properties?.[source]) {
-        properties[target] = getLinkText(getLink(properties[source], "metric"));
-    }
-}
-
-function setRegionLink (properties: GeoJsonProperties, source: string, target: string) {
-    if (properties?.[source]) {
-        properties[target] = getLinkText(getLink(properties[source], "regions"));
+        properties[target] = getLinkText(getLink(properties[source], prefix));
     }
 }
 
@@ -53,18 +35,29 @@ function setDecimalFormatted (properties: GeoJsonProperties, source: string, tar
     }
 }
 
+export function processTrafficSignal (fc: FeatureCollection<Point>) {
+    for (const feature of fc.features) {
+        const props = feature.properties;
+        if (!props) continue;
+        props["header"] =  "Traffic Signal";
+    }
+}
 
 export function processTrafficSignalCluster (fc: FeatureCollection<Polygon>) {
     for (const feature of fc.features) {
         const props = feature.properties;
-        setTrafficSignalClusterLink(props, "id", "Id");
+        if (!props) continue;
+        props["header"] =  "Traffic Signal Intersection";
+        setLink("node", props, "id", "Id");
     }
 }
 
 export function processMatchedPoints (fc: FeatureCollection<Point>) {
     for (const feature of fc.features) {
         const props = feature.properties;
-        setBaseLink(props, "intersectionId", "IntersectionId");
+        if (!props) continue;
+        props["header"] =  "Matched Location";
+        setLink("segment", props, "intersectionId", "IntersectionId");
         setTimeFormatted(props, "timestamp", "Time");
         setDecimalFormatted(props, "distanceFromTracePoint", "DistanceRidePoint");
         setDecimalFormatted(props, "accuracy", "AccuracyGPS");
@@ -74,6 +67,8 @@ export function processMatchedPoints (fc: FeatureCollection<Point>) {
 export function processRidePoints (fc: FeatureCollection<Point>) {
     for (const feature of fc.features) {
         const props = feature.properties;
+        if (!props) continue;
+        props["header"] =  "GPS Location";
         setTimeFormatted(props, "timestamp", "Time");
         if (props?.["path"]) {
             const pathParts = props["path"].split("/");
@@ -85,11 +80,13 @@ export function processRidePoints (fc: FeatureCollection<Point>) {
 export function processIntersectionBase (fc: FeatureCollection<LineString>) {
     for (const feature of fc.features) {
         const props = feature.properties;
-        setBaseLink(props, "id", "Id");
-        setBaseLink(props, "nextIntersectionId", "NextSegmentId");
-        setBaseLink(props, "prevIntersectionId", "PrevSegmentId");
+        if (!props) continue;
+        props["header"] =  "Segment";
+        setLink("segment", props, "id", "Id");
+        setLink("segment", props, "nextIntersectionId", "NextSegmentId");
+        setLink("segment", props, "prevIntersectionId", "PrevSegmentId");
         setTimeFormatted(props, "startTime", "Start");
-        setTrafficSignalClusterLink(props, "trafficSignalClusterId", "TrafficSignalClusterId");
+        setLink("node", props, "trafficSignalClusterId", "IntersectionId");
         setDecimalFormatted(props, "speed", "Speed");
         setDecimalFormatted(props, "duration", "Duration");
         setDecimalFormatted(props, "waitingTime", "WaitingTime");
@@ -99,9 +96,11 @@ export function processIntersectionBase (fc: FeatureCollection<LineString>) {
 export function processIntersectionMetrics (fc: FeatureCollection<LineString>) {
     for (const feature of fc.features) {
         const props = feature.properties;
-        setBaseLink(props, "id", "SegmentId");
-        setMetricLink(props, "osmId", "OsmId");
-        setTrafficSignalClusterLink(props, "trafficSignalClusterId", "TrafficSignalClusterId");
+        if (!props) continue;
+        props["header"] = props["trafficSignalClusterId"] ? "Intersection" : "Way";
+        setLink("segment", props, "id", "SegmentId");
+        setLink("edge", props, "osmId", "Id");
+        setLink("node", props, "trafficSignalClusterId", "Id");
         setDecimalFormatted(props, "medianSpeed", "Speed");
         setDecimalFormatted(props, "medianDuration", "Duration");
         setDecimalFormatted(props, "medianWaitingTime", "WaitingTime");
@@ -111,7 +110,9 @@ export function processIntersectionMetrics (fc: FeatureCollection<LineString>) {
 export function processRegion (fc: FeatureCollection<Polygon>) {
     for (const feature of fc.features) {
         const props = feature.properties;
-        setRegionLink(props, "regionId", "Id");
+        if (!props) continue;
+        props["header"] =  "Region";
+        setLink("regions", props, "id", "Id");
         setDecimalFormatted(props, "nodeMedianWaitingTime", "NodeWaitingTime", 2);
         setDecimalFormatted(props, "nodeWaitingSPerKm", "NodeWaitingSPerKm", 2);
         setDecimalFormatted(props, "edgeWaitingSPerKm", "EdgeWaitingSPerKm", 2);

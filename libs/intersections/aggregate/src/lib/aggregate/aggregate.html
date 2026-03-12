@@ -1,41 +1,42 @@
 <div class="flex flex-col gap-4">
-    <t-date-filter
-    [changeableMode]="false"
-    [(mode)]="_mode"
+    <date-filter-precomputed
     [(selectedYear)]="_selectedYear"
     [(selectedWeekDays)]="_selectedWeekDays"
     [(selectedTrafficTime)]="_selectedTrafficTime"
-    [(startTime)]="_startTime"
-    [(endTime)]="_endTime"
-    [(datetime)]="_datetime$">
-    </t-date-filter>
+    />
+    <intersection-chart [data]="propertiesFiltered()"/>
+
     <p-card >
         <section>
             <h4 class="p-card-title">trafficSignalClusterId {{trafficSignalClusterId()}}</h4>
         </section>
         <section id="intersection-map">
             <intersection-map
-                [intersectionData]="intersectionNodeAggregate()"
+                [metricData]="intersectionNodeAggregate()"
                 [trafficSignalClusterId]="trafficSignalClusterId()"
-                [isAggregateData]="true"
-            >
-            </intersection-map>
+            />
         </section>
     </p-card>
-    @if (isNode()) {
-        <intersection-list
-            [columns]="nodeColumns"
-            [rows]="nodeRows()"
-            (rowFocused)="handleZoom($event)"
+
+    <p-card>
+		<p-table [value]="isNode() ? nodeRows() : edgeRows()" [loading]="tableDataIsLoading()"
+        [sortField]="'medianWaitingTime'"
+		[sortOrder]="-1"
         >
-        </intersection-list>
-    } @else {
-        <intersection-list
-        [columns]="edgeColumns"
-        [rows]="edgeRows()"
-        (rowFocused)="handleZoom($event)"
-    >
-    </intersection-list>
-    }
+            <ng-template pTemplate="header">
+                <tr intersection-list-header
+                    [columns]="columns()"
+                ></tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-rowData>
+                <tr intersection-list-content 
+                    [row]="rowData" 
+                    [columns]="columns()"
+                    (onAction)="handleZoom($event)">
+                </tr>
+            </ng-template>
+        </p-table>
+    </p-card>
 </div>
 

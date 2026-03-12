@@ -9,15 +9,7 @@
     [(endTime)]="_endTime"
     [(datetime)]="_datetime$">
     </t-date-filter>
-    @if (isNode()) {
-        <chart-detail
-            [rows]="nodeRows()"
-        ></chart-detail>
-    } @else {
-        <chart-detail
-            [rows]="edgeRows()"
-        ></chart-detail>
-    }
+    <intersection-chart [data]="propertiesFiltered()"/>
     <p-card>
         <div class="flex flex-row gap-4">
             <div class="w-1/3 flex flex-col">
@@ -48,27 +40,31 @@
 
             <div class="w-2/3">
                 <intersection-map id="intersection-map"
-                    [intersectionData]="intersectionData()"
+                    [baseData]="intersectionData()"
                     [trafficSignalClusterId]="trafficSignalClusterId()"
-                    [isAggregateData]="false"
                 ></intersection-map>
             </div>
         </div>
     </p-card>
 
-    @if (isNode()) {
-        <intersection-list
-            [columns]="nodeColumns"
-            [rows]="nodeRows()"
-            (rowFocused)="handleZoom($event)"
-        >    
-        </intersection-list>
-    } @else {
-        <intersection-list
-            [columns]="edgeColumns"
-            [rows]="edgeRows()"
-            (rowFocused)="handleZoom($event)"
-        >    
-        </intersection-list>
-    }
+    <p-card>
+		<p-table [value]="isNode() ? nodeRows() : edgeRows()" [loading]="tableDataIsLoading()"
+        [sortField]="'waitingTime'"
+		[sortOrder]="-1"
+        >
+            <ng-template pTemplate="header">
+                <tr intersection-list-header
+                    [columns]="columns()"
+                ></tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-rowData>
+                <tr intersection-list-content 
+                    [row]="rowData" 
+                    [columns]="columns()"
+                    (onAction)="handleZoom($event)">
+                </tr>
+            </ng-template>
+        </p-table>
+    </p-card>
 </div>

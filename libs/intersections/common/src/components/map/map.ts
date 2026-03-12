@@ -1,10 +1,11 @@
-import { Component, effect, input, computed, signal, inject } from '@angular/core';
+import { Component, effect, input, computed, signal, inject, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MapPage } from '@simra/common-components';
 import { TableModule } from 'primeng/table';
-import { FeatureCollection, LineString } from 'geojson';
+import { FeatureCollection, LineString, Polygon } from 'geojson';
+import { centroid } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 import {
@@ -17,6 +18,7 @@ import {
 	displayIntersectionAggregate,
 	displayRidePoints,
 	displayMatchedPoints,
+	displayRegions,
 	deleteDisplay,
 	getVisibleLegendItems,
 	highlightLine,
@@ -33,7 +35,9 @@ import {
 @Component({
 	selector: 'intersection-map',
 	imports: [CommonModule, MapPage, TableModule, MapLegend],
-	templateUrl: './map.html'
+	templateUrl: './map.html',
+	styleUrl: './map.scss',
+	encapsulation: ViewEncapsulation.None,
 })
 export class IntersectionMap {
 	private readonly _requestService = inject(IntersectionsRequestService);
@@ -41,9 +45,12 @@ export class IntersectionMap {
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
 
-	public trafficSignalClusterId = input.required<number>();
-	public isAggregateData = input.required<boolean>();
-	public intersectionData = input.required<FeatureCollection<LineString> | undefined>();
+	public trafficSignalClusterId = input.required<number | undefined>();
+	public baseData = input<FeatureCollection<LineString>>();
+	public metricData = input<FeatureCollection<LineString>>();
+	public regionData = input<FeatureCollection<Polygon>>();
+
+
 	private intersectionDataAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
 	private ridePointsMatchedPointsAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
 
@@ -51,13 +58,15 @@ export class IntersectionMap {
 	private readonly mapDataLoaded = signal(false);
 	private readonly trafficSignalsLoaded = signal(false);
 	
-	protected selectedRideId = signal<number | null>(null);
+	protected selectedSegmentId = signal<number | null>(null);
 	protected currentZoom = signal<number>(0);
 	protected legendItems = computed<LegendItem[]>(() => {
 		const zoom = this.currentZoom();
 		const trafficSignalVisible: boolean = this.trafficSignalClusterId() ? true : false;
-		const isAggregateData: boolean = this.isAggregateData();
-		const selectedRideId: number | null = this.selectedRideId();
+		const isMetricData: boolean = this.metricData() ? true : false;
+		const isBaseData: boolean = this.baseData() ? true : false;
+		const isRegionData: boolean = this.regionData() ? true : false;
+		const selectedSegmentId: number | null = this.selectedSegmentId();
 
 		return getVisibleLegendItems([
 			{
@@ -73,35 +82,48 @@ export class IntersectionMap {
 				showIf: trafficSignalVisible && zoom >= ZOOM_LEVELS.polygons.minzoom
 			},
 			{
-				label: 'Segment Median Wait Time [s] ∈ ]0, 120[',
+				label: 'Segment Median Wait Time [s] ∈ [0, 120]',
 				geometry: 'line',
 				colorStops: colorToStops(COLORS.waitingTime),
-				showIf: isAggregateData && zoom >= ZOOM_LEVELS.lines.minzoom
+				showIf: isMetricData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: 'Segment Number of Rides [#] ∈ [1, 50[',
+				label: 'Segment Number of Rides [#] ∈ [1, 50]',
 				geometry: 'line',
 				widthStops: [{ value: 0, width: 1 }, { value: 25, width: 4 }, { value: 50, width: 8 }],
 				color: '#000000',
-				showIf: isAggregateData && zoom >= ZOOM_LEVELS.lines.minzoom
+				showIf: isMetricData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: `Segment Wait Time [s] ∈ ]0, 120[`,
+				label: `Segment Wait Time [s] ∈ [0, 120]`,
 				geometry: 'line',
 				colorStops: colorToStops(COLORS.waitingTime),
-				showIf: !isAggregateData && zoom >= ZOOM_LEVELS.lines.minzoom
+				showIf: isBaseData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: `Ride ${selectedRideId}, GPS`,
+				label: `Segment ${selectedSegmentId}, GPS`,
 				geometry: 'point',
 				color: COLORS.ridePoints,
-				showIf: !isAggregateData && selectedRideId !== null && zoom >= ZOOM_LEVELS.points.minzoom
+				showIf: isBaseData && selectedSegmentId !== null && zoom >= ZOOM_LEVELS.points.minzoom
 			},
 			{
-				label: `Ride ${selectedRideId}, Matched Points`,
+				label: `Segment ${selectedSegmentId}, Matched Points`,
 				geometry: 'point',
 				color: COLORS.matchedPoints,
-				showIf: !isAggregateData && selectedRideId !== null && zoom >= ZOOM_LEVELS.points.minzoom
+				showIf: isBaseData && selectedSegmentId !== null && zoom >= ZOOM_LEVELS.points.minzoom
+			},
+			{
+				label: 'Region Intersection Wait Time [s/km] ∈ [0, 30]',
+				geometry: 'polygon',
+				colorStops: colorToStops(COLORS.regions),
+				showIf: isRegionData
+			},
+			{
+				label: 'Region Number of Rides [#] ∈ [1, 500]',
+				geometry: 'line',
+				widthStops: [{ value: 10, width: 1 }, { value: 50, width: 4 }, { value: 500, width: 8 }],
+				color: '#000000',
+				showIf: isRegionData
 			}
 		]);
   	});
@@ -109,8 +131,10 @@ export class IntersectionMap {
 	constructor() {
 		effect(async () => {
 			const trafficSignalClusterId = this.trafficSignalClusterId();
+			const alreadyLoaded = this.trafficSignalsLoaded();
 			const map = this.mapReady();
-			if (!map || this.trafficSignalsLoaded()) return;
+
+			if (!map || trafficSignalClusterId === undefined || alreadyLoaded) return;
 
 			if (!isNaN(trafficSignalClusterId)) {
 				const trafficSignalClusters = await this._requestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
@@ -124,17 +148,28 @@ export class IntersectionMap {
 		});
 
 		effect(async () => {
-			const data = this.intersectionData();
+			const metricData = this.metricData();
+			const baseData = this.baseData();
+			const regionData = this.regionData();
+			const trafficSignalsLoaded = this.trafficSignalsLoaded();
 			const map = this.mapReady();
-			if (!data || !map || !this.trafficSignalsLoaded()) return;
 
-			deleteDisplay(map, this.ridePointsMatchedPointsAdded);
+			if (!map || !trafficSignalsLoaded || !(metricData || baseData || regionData)) return;
+			
 			deleteDisplay(map, this.intersectionDataAdded);
-			zoomOnLineMidPoint(map, data);
-			if (this.isAggregateData()) {
-				this.intersectionDataAdded = displayIntersectionAggregate(this._router, data, map, "intersectionLineData");
-			} else {
-				this.intersectionDataAdded = displayIntersection(this._router, data, map, "intersectionLineData");
+			if (baseData) {
+				deleteDisplay(map, this.ridePointsMatchedPointsAdded);
+				zoomOnLineMidPoint(map, baseData);
+				this.intersectionDataAdded = displayIntersection(this._router, baseData, map, "intersectionLineData");
+			}
+			if (metricData) {
+				zoomOnLineMidPoint(map, metricData);
+				this.intersectionDataAdded = displayIntersectionAggregate(this._router, metricData, map, "intersectionLineData");
+			}
+			if (regionData) {
+				const polygonCentroid = centroid(regionData);
+				map.jumpTo({ center: [polygonCentroid.geometry.coordinates[0], polygonCentroid.geometry.coordinates[1]], zoom: 9 });
+				this.intersectionDataAdded = displayRegions(regionData, map, "region");
 			}
 			this.mapDataLoaded.set(true);
 		});
@@ -143,18 +178,24 @@ export class IntersectionMap {
 			const map = this.mapReady();
 			const params = this.queryParams();
 			const dataLoaded = this.mapDataLoaded();
-			if (!map || !dataLoaded || !params) return;
+
+			const metricData = this.metricData();
+			const baseData = this.baseData();
+			if (!map || !dataLoaded || !params || !(metricData || baseData)) return;
 
 			// Highlight line specified by query parameters
 			const selectedId: number = Number(params["id"]);
     		const sourceId: string = params["sourceId"];
 			if (!sourceId || !selectedId) {
-				this.selectedRideId.set(null);
+				this.selectedSegmentId.set(null);
 				return;
 			}
-			this.selectedRideId.set(selectedId);
+			
 			highlightLine(map, this.intersectionDataAdded, sourceId, selectedId);
-			this.displayRidePointsAndMatchedPoints(map, selectedId);
+			if (baseData) {
+				this.selectedSegmentId.set(selectedId);
+				this.displayRidePointsAndMatchedPoints(map, selectedId);
+			}
 		})
 
 		effect(() => {
@@ -179,7 +220,6 @@ export class IntersectionMap {
 	}
 
 	async displayRidePointsAndMatchedPoints(map: maplibregl.Map, intersectionId: number) {
-		if (!this.isAggregateData()) return;
    		deleteDisplay(map, this.ridePointsMatchedPointsAdded);
 		mergeAdded(this.ridePointsMatchedPointsAdded, displayRidePoints(
 			map, await this._requestService.getRidePointsIntersectionBase({id: intersectionId}), `ridePoints-${intersectionId}`));

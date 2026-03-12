@@ -1,0 +1,31 @@
+@for(col of columns(); track col.field) {
+<th class="max-w-64">
+    @if(col.headerFilter && col.display === "autocomplete") {
+        <m-autocomplete 
+            class="table__autocomplete"
+            [fetchFunction]="col.headerFilter.fetchFunction"
+            (selectionChange)="onFilterChange.emit($event)"
+            [field]="col.field"
+        />
+    }
+    @else if(col.headerFilter && col.display === "enum") {
+        <m-enum-select-component
+            [field]="col.field"
+            [optionEnum]="col.headerFilter.enum"
+            [selected]="col.headerFilter.default"
+            [translationMap]="col.translationMap"
+            (selectionChange)="onFilterChange.emit($event)"
+        />
+    }
+    @else if (col.headerFilter && col.display === "number") {
+        <m-number-filter
+            [defaultEventName]="true"
+            [field]="col.field"
+            [step]="col.headerFilter.step"
+            [min]="col.headerFilter.min"
+            [defaultValue]="col.headerFilter.default ?? 0"
+            (filterChange)="onFilterChange.emit($event)"
+        />
+    }
+</th>
+}

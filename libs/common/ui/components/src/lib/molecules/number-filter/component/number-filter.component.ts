@@ -1,12 +1,13 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, input, model, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, input, model, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TableModule } from 'primeng/table';
+import { InputNumber } from 'primeng/inputnumber';
 
 @Component({
 	selector: 'm-number-filter',
-	imports: [CommonModule, TranslatePipe, FormsModule, TableModule],
+	imports: [CommonModule, TranslatePipe, FormsModule, TableModule, InputNumber],
 	templateUrl: './number-filter.component.html',
 	styleUrl: './number-filter.component.scss',
 	host: {
@@ -19,10 +20,19 @@ export class NumberFilterComponent {
 	field = input.required<string>();
 	step = input<number>(1);
 	min = input<number>(0);
+
+	
 	defaultValue = model<number>(0);
 
-	onFilterChange(eventTarget: EventTarget) {
-		const minFieldName = 'min' + this.field().charAt(0).toUpperCase() + this.field().slice(1);
-		this.filterChange.emit({ [minFieldName]: +(eventTarget as HTMLInputElement).value });
+	defaultEventName = input<boolean>(false);
+
+	onFilterChange() {
+		const value = this.defaultValue();
+		if (this.defaultEventName()) {
+			this.filterChange.emit({ [this.field()]: value });
+		} else {
+			const minFieldName = 'min' + this.field().charAt(0).toUpperCase() + this.field().slice(1);
+			this.filterChange.emit({ [minFieldName]: value });
+		}
 	}
 }

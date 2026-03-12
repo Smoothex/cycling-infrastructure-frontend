@@ -16,75 +16,24 @@
         >
             <ng-template pTemplate="caption" class="pt-0">
 				<div class="title-filter">
-                    <p-togglebutton [(ngModel)]="displayNodes" (onChange)="onDisplayChange()" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
+                    <p-togglebutton [(ngModel)]="isNode" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
 					<m-autocomplete class="region__autocomplete" [fetchFunction]="fetchRegionNames" [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate" (selectionChange)="onFilterChange($event)" field="region" [showDropdown]="true" />
                 </div>
 			</ng-template>
             <ng-template pTemplate="header">
-                <tr>
-                    @for (col of columns; track col.field) {
-                        <th>
-                            @if (col.sortable) {
-                                <div [pSortableColumn]="col.field">
-									{{ col.header | translate}}
-									<p-sortIcon [field]="col.field"></p-sortIcon>
-								</div>
-                            }
-                            @else {
-                                <div>
-                                    {{col.header | translate}}
-                                </div>
-                            }
-                        </th>
-                    }
-                </tr>
-                <tr>
-					@for(col of columns; track col.field) {
-					<th>
-                        @if(col.headerFilter && col.headerFilter.dataType === "autocomplete") {
-							<m-autocomplete class="table__autocomplete" [fetchFunction]="col.headerFilter.fetchFunction" (selectionChange)="onFilterChange($event)" [field]="col.headerFilter.field" />
-						}
-                        @else if(col.headerFilter && col.headerFilter.dataType === "enum") {
-                            <m-enum-select-component
-                                [field]="col.headerFilter.field"
-                                [optionEnum]="col.headerFilter.enum"
-                                [selected]="col.headerFilter.default"
-                                [translationMap]="col.headerFilter.translationMap"
-                                (selectionChange)="onFilterChange($event)">
-                            </m-enum-select-component>
-						}
-						@else if (col.headerFilter && col.headerFilter.dataType === "number") {
-                            <m-number-filter
-                                [field]="col.headerFilter.field"
-                                [step]="col.headerFilter.step"
-                                [min]="col.headerFilter.min"
-                                [defaultValue]="col.headerFilter.default ?? 0"
-                                (filterChange)="onFilterChange($event)">
-                            </m-number-filter>
-						}
-					</th>
-					}
+                <tr intersection-list-header
+                    [columns]="columns()"
+                ></tr>
+                <tr intersection-list-header-filter
+                    [columns]="columns()"
+                    (onFilterChange)="onFilterChange($event)">
 				</tr>
             </ng-template>
 
-            <ng-template pTemplate="body" let-row>
-                <tr>
-                    @for (col of columns; track col.field) {
-                        @switch (col.display) {
-                            @case ("decimal") {
-                                <td>{{ row[col.field] | number: '1.0-1' }} </td>
-                            }
-                            @case ("link") {
-                                <td><a [routerLink]="[row[col.field].value]" class="link-button">{{ row[col.field].label }}</a></td>
-                            }
-                            @case ("enum") {
-                                 <td>{{ col.translationMap[row[col.field]].label | translate }} </td>
-                            }
-                            @default {
-                                <td>{{ row[col.field] }} </td>
-                            }
-                        }
-                    }
+            <ng-template pTemplate="body" let-rowData>
+                <tr intersection-list-content 
+                    [row]="rowData" 
+                    [columns]="columns()">
                 </tr>
             </ng-template>
 		</p-table>

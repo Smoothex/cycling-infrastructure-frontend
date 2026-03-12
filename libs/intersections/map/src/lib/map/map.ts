@@ -96,26 +96,26 @@ export class IntersectionsMap {
 				showIf: trafficSignalVisible && zoom >= ZOOM_LEVELS.polygons.minzoom
 			},
       {
-        label: 'Segment Median Wait Time [s] ∈ ]0, 120[',
+        label: 'Segment Median Wait Time [s] ∈ [0, 120]',
         geometry: 'line',
         colorStops: colorToStops(COLORS.waitingTime),
         showIf: metricsVisible && zoom >= ZOOM_LEVELS.lines.minzoom
       },
       {
-        label: 'Segment Number of Rides [#] ∈ [1, 50[',
+        label: 'Segment Number of Rides [#] ∈ [1, 50]',
         geometry: 'line',
         widthStops: [{ value: 0, width: 1 }, { value: 25, width: 4 }, { value: 50, width: 8 }],
         color: '#000000',
         showIf: metricsVisible && zoom >= ZOOM_LEVELS.lines.minzoom
       },
       {
-        label: 'Region Intersection Wait Time [s/km] ∈ ]0, 30[',
+        label: 'Region Intersection Wait Time [s/km] ∈ [0, 30]',
         geometry: 'polygon',
         colorStops: colorToStops(COLORS.regions),
         showIf: zoom < ZOOM_LEVELS.regions.maxzoom
       },
       {
-        label: 'Region Number of Rides [#] ∈ [1, 500[',
+        label: 'Region Number of Rides [#] ∈ [1, 500]',
         geometry: 'line',
         widthStops: [{ value: 10, width: 1 }, { value: 50, width: 4 }, { value: 500, width: 8 }],
         color: '#000000',
@@ -134,7 +134,7 @@ export class IntersectionsMap {
         showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.points.minzoom
       },
       {
-        label: `Ride ${selectedRideId}, Segment Wait Time [s] ∈ ]0, 120[`,
+        label: `Ride ${selectedRideId}, Segment Wait Time [s] ∈ [0, 120]`,
         geometry: 'line',
         colorStops: colorToStops(COLORS.waitingTime),
         showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.lines.minzoom
