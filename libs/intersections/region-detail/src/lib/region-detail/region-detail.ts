@@ -13,6 +13,7 @@ import {
 	Base,
 	DateFilterPrecomputed,
 	DATE_FILTER_DEFAULTS,
+	RegionMetric,
 	RegionMetricRow,
 	RegionMetricRequest,
 	mapRegionMetricToRows,
@@ -24,6 +25,7 @@ import {
 import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
 
 const ChartPropertyLabels = {
+	nodesPerKm: "Intersections On Distance (#/km)",
 	nodeMedianWaitingTime: "Median Intersection Waiting Time (s)",
 	nodeWaitingSPerKm: "Intersection Waiting Time (s/km)",
 	length: "Length (km)"
@@ -45,7 +47,7 @@ export class IntersectionsRegionDetail {
 
 	protected readonly trafficSignalClusterId = NaN;
 	protected readonly regionId = input<string>();
-	protected readonly region = signal<RegionMetricRow | undefined>(undefined);
+	protected readonly region = signal<RegionMetric | undefined>(undefined);
 	protected readonly regionFeature = signal<FeatureCollection<Polygon, GeoJsonProperties> | undefined>(undefined);
 
 	protected readonly nodeProperties = signal<Base[]>([]);
@@ -57,7 +59,7 @@ export class IntersectionsRegionDetail {
 			value: value as keyof typeof ChartPropertyLabels
 	}));
 	protected propertyChart = signal<keyof typeof ChartPropertyLabels>("length");
-	protected bucketSize = signal<number>(10);
+	protected bucketSize = signal<number>(0.5);
 	protected offset = signal<number>(5);
 	protected readonly histogram = computed(() => {
 		const props = this.rideProperties();
@@ -115,6 +117,4 @@ export class IntersectionsRegionDetail {
 			console.log(this.rideProperties());
 		});
 	}
-
-	// TODO: get per Ride data and plot nice stuff, length of rides, waiting time percentages???
 }

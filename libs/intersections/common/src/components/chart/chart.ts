@@ -44,6 +44,7 @@ const ChartCatergoryLabelTranslations = {
 	templateUrl: './chart.html'
 })
 export class IntersectionChart {
+	public readonly header = input.required<string>();
 	public readonly data = input.required<Base[]>();
 
 	protected readonly propertyOptions = Object.entries(ChartPropertyLabels).map(([value, label]) => ({

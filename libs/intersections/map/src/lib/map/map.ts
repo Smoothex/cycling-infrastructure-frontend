@@ -75,6 +75,18 @@ export class IntersectionsMap {
   protected selectedWeekDay = signal<EWeekDays>(EWeekDays.ALL_WEEK);
   protected selectedYear = signal<EYear>(EYear.ALL);
 
+  protected readonly requestFilter = computed<MetricRequest>(() => {
+    const trafficTime = this.selectedTrafficTime();
+    const weekDay = this.selectedWeekDay();
+    const year = this.selectedYear();
+    return {
+      numberOfRides: 0,
+      trafficTime: trafficTime,
+      weekDay: weekDay,
+      year: year
+    }
+  })
+
   protected currentZoom = signal<number>(0);
   protected legendItems = computed<LegendItem[]>(() => {
     const zoom = this.currentZoom();
@@ -193,17 +205,13 @@ export class IntersectionsMap {
     });
 
     effect(() => {
-      const trafficTime = this.selectedTrafficTime();
-      const weekDay = this.selectedWeekDay();
-      const year = this.selectedYear();
 			if (!this.map) return;
+      this.applyIntersectionData(this.map, this.requestFilter());
+    });
 
-      this.applyIntersectionData(this.map, {
-        numberOfRides: 0,
-        trafficTime: trafficTime,
-        weekDay: weekDay,
-        year: year
-      })
+    effect(() => {
+			if (!this.map) return;
+      this.applyRegionData(this.map, this.requestFilter());
     });
   }
 
@@ -226,7 +234,8 @@ export class IntersectionsMap {
 
   async onMapReady(mlMap: maplibregl.Map) {
     try {
-      this.map = mlMap;  
+      this.map = mlMap;
+      this.applyRegionData(mlMap, this.requestFilter());
 
       this.trafficSignalClusterPolygons = await this._requestService.getTrafficSignalClusters();
       displayTrafficSignalClusters(mlMap, this.trafficSignalClusterPolygons, true);
@@ -234,12 +243,7 @@ export class IntersectionsMap {
       this.trafficSignals = await this._requestService.getTrafficSignals();
       displayTrafficSignals(mlMap, this.trafficSignals);
 
-      await this.applyIntersectionData(mlMap, {
-        numberOfRides: 0,
-        trafficTime: this.selectedTrafficTime(),
-        weekDay: this.selectedWeekDay(),
-        year: this.selectedYear()
-      })
+      await this.applyIntersectionData(mlMap, this.requestFilter());
 
       this.rideIds = await this._requestService.getIds();
       this.selectableRideIds.set(this.rideIds.map((id) => { return {id: id, label: `${id}` }}));  
@@ -270,7 +274,9 @@ export class IntersectionsMap {
     this.nodeMetrics = await this._requestService.getIntersectionNodeMetricsComplete(request);
     deleteDisplay(map, this.nodeMetricsAdded);
     this.nodeMetricsAdded = displayIntersectionAggregate(this._router, this.nodeMetrics, map, "intersectionNodeAggregate", true);
+  }
 
+  async applyRegionData(map: maplibregl.Map, request: MetricRequest) {
     this.regions = await this._requestService.getIntersectionRegionMetricsComplete(request);
     deleteDisplay(map, this.regionsAdded);
     mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionBig", 0, 8, ['==', ['get', 'adminLevel'], 4]));

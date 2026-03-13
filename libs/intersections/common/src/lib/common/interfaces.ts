@@ -147,18 +147,35 @@ export interface RegionMetricRequest extends PageableMetricRequest {
     adminLevel?: number;
 }
 
-export interface RegionMetricRow extends IntersectionRow {
-    regionIdLink: linkLabelValue;
+export interface RegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
+    id: number;
     name: string;
-    adminLevel: number; 
+    adminLevel: number;
+    numberOfEdges: number;
+    numberOfNodes: number;
     numberOfRides: number; 
     nodeMedianWaitingTime: number;
     length: number;
     nodeWaitingSPerKm: number;
     edgeWaitingSPerKm: number;
-    weekDay: EWeekDays;
-    trafficTime: ETrafficTimes;
-    year: EYear;
+    nodesPerKm : number;
+    weekDay: TEnumW;
+    trafficTime: TEnumT;
+    year: TEnumY; 
+}
+export type RawRegionMetric = RegionMetric<string, string, number>
+export function cleanRegionMetric(data: RawRegionMetric[]) : RegionMetric[] {
+    return data.map((el) => ({
+        ...el,
+        nodesPerKm: el.numberOfNodes / el.length,
+        trafficTime: el.trafficTime as ETrafficTimes,
+        weekDay: el.weekDay as EWeekDays,
+        year: el.year.toString() as EYear
+    }));
+}
+
+export interface RegionMetricRow extends IntersectionRow, RegionMetric {
+    regionIdLink: linkLabelValue;
 }
 
 export interface RideRegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
@@ -172,6 +189,7 @@ export interface RideRegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TE
     length: number;
     nodeWaitingSPerKm: number;
     edgeWaitingSPerKm: number;
+    nodesPerKm : number;
     weekDay: TEnumW;
     trafficTime: TEnumT;
     year: TEnumY; 
@@ -180,6 +198,7 @@ export type RawRideRegionMetric = RideRegionMetric<string, string, number>
 export function cleanRideRegionMetric(data: RawRideRegionMetric[]) : RideRegionMetric[] {
     return data.map((el) => ({
         ...el,
+        nodesPerKm: el.numberOfNodes / el.length,
         trafficTime: el.trafficTime as ETrafficTimes,
         weekDay: el.weekDay as EWeekDays,
         year: el.year.toString() as EYear

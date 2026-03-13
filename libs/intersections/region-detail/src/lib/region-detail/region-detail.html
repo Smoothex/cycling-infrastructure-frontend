@@ -10,13 +10,38 @@
                 <table class="simple-table">
                     @if (region(); as r) {
                         <tr>
-                            <td>Count</td>
-                            <td>{{ r.numberOfRides| number }}</td>
+                            <td>OSM ID</td>
+                            <td>{{ r.id }}</td>
                         </tr>
                         <p-divider/>
                         <tr>
-                            <td>Median</td>
+                            <td>Number of Rides</td>
+                            <td>{{ r.numberOfRides| number }}</td>
+                        </tr>
+                        <p-divider/>
+                         <tr>
+                            <td>Traveled Distance (km)</td>
+                            <td>{{ r.length| number: '1.0-2' }}</td>
+                        </tr>
+                        <p-divider/>
+                        <tr>
+                            <td>Median Intersection Waiting Time (s)</td>
                             <td>{{ r.nodeMedianWaitingTime| number: '1.0-2' }}</td>
+                        </tr>
+                        <p-divider/>
+                        <tr>
+                            <td>Intersections on Ride (#/km)</td>
+                            <td>{{ r.nodesPerKm| number: '1.0-2' }}</td>
+                        </tr>
+                        <p-divider/>
+                        <tr>
+                            <td>Intersection Waiting Time (s/km)</td>
+                            <td>{{ r.nodeWaitingSPerKm| number: '1.0-2' }}</td>
+                        </tr>
+                        <p-divider/>
+                        <tr>
+                            <td>Way Waiting Time (s/km)</td>
+                            <td>{{ r.edgeWaitingSPerKm| number: '1.0-2' }}</td>
                         </tr>
                     }
                 </table>
@@ -82,6 +107,6 @@
             </div>
         </div>
     </p-card>
-    <intersection-chart [data]="nodeProperties()"/>
-    <intersection-chart [data]="edgeProperties()"/>
+    <intersection-chart [header]="'Intersections'" [data]="nodeProperties()"/>
+    <intersection-chart [header]="'Edges'" [data]="edgeProperties()"/>
 </div>

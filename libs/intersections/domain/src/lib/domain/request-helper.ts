@@ -1,7 +1,9 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FeatureCollection, Point, LineString, Polygon, GeoJsonProperties } from 'geojson';
 import {
-  linkLabelValue
+  linkLabelValue,
+  cleanRegionMetric,
+  RawRegionMetric
 } from '@simra/intersections-common';
 
 function getLink (id: string, path: string) {
@@ -111,10 +113,13 @@ export function processRegion (fc: FeatureCollection<Polygon>) {
     for (const feature of fc.features) {
         const props = feature.properties;
         if (!props) continue;
-        props["header"] =  "Region";
-        setLink("regions", props, "id", "Id");
-        setDecimalFormatted(props, "nodeMedianWaitingTime", "NodeWaitingTime", 2);
-        setDecimalFormatted(props, "nodeWaitingSPerKm", "NodeWaitingSPerKm", 2);
-        setDecimalFormatted(props, "edgeWaitingSPerKm", "EdgeWaitingSPerKm", 2);
+        const cleaned = <GeoJsonProperties> cleanRegionMetric([<RawRegionMetric> props])[0];
+        if (!cleaned) continue;
+        feature.properties = cleaned;
+        cleaned["header"] =  "Region";
+        setLink("regions", cleaned, "id", "Id");
+        setDecimalFormatted(cleaned, "nodeMedianWaitingTime", "NodeWaitingTime", 2);
+        setDecimalFormatted(cleaned, "nodeWaitingSPerKm", "NodeWaitingSPerKm", 2);
+        setDecimalFormatted(cleaned, "edgeWaitingSPerKm", "EdgeWaitingSPerKm", 2);
     }
 }

@@ -50,7 +50,10 @@ export class IntersectionsAggregatePage {
 	protected readonly edgeId = input<string>();
 	protected osmId = signal<number | undefined>(undefined);
 
+	
+
 	protected readonly isNode = signal<Boolean>(false);
+	protected readonly header = computed(() => this.isNode() ? `Intersection ${this.trafficSignalClusterId()}` : `Way ${this.osmId()}`)
 
     protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
     protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
