@@ -37,6 +37,12 @@ function setDecimalFormatted (properties: GeoJsonProperties, source: string, tar
     }
 }
 
+function addSpaceIntoName (properties: GeoJsonProperties, source: string, target: string) {
+    if (properties?.[source]) {
+        properties[target] = properties[source].replaceAll(";", "; ");
+    }
+}
+
 export function processTrafficSignal (fc: FeatureCollection<Point>) {
     for (const feature of fc.features) {
         const props = feature.properties;
@@ -106,6 +112,7 @@ export function processIntersectionMetrics (fc: FeatureCollection<LineString>) {
         setDecimalFormatted(props, "medianSpeed", "Speed");
         setDecimalFormatted(props, "medianDuration", "Duration");
         setDecimalFormatted(props, "medianWaitingTime", "WaitingTime");
+        addSpaceIntoName(props, "streetNames", "streetNames");
     }
 }
 

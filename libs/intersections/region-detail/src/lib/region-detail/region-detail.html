@@ -50,63 +50,12 @@
                 <intersection-map id="intersection-map"
                     [regionData]="regionFeature()"
                     [trafficSignalClusterId]="trafficSignalClusterId"
+                    [loading]="mapLoading()"
                 ></intersection-map>
             </div>
         </div>
 	</p-card>
-    <p-card header="Charts">
-    <div class="flex flex-col gap-20">
-        <div class="flex flex-row flex-wrap gap-5">
-            <div class="flex-1 flex flex-col">
-                <label for="metric" class="font-bold text-sm">Select Metric</label>
-                <p-select 
-                    id="metric"
-                    [options]="propertyOptions"
-                    [(ngModel)]="propertyChart"
-                    optionLabel="label" 
-                    optionValue="value"
-                    size="small" />
-            </div>
-
-            <div class="flex-1 flex flex-col">
-                <label for="buckets" class="font-bold text-sm">Bucket Size</label>
-                <p-inputNumber 
-                    id="buckets"
-                    [(ngModel)]="bucketSize" 
-                    [showButtons]="true" 
-                    buttonLayout="horizontal"
-                    incrementButtonIcon="pi pi-plus" 
-                    decrementButtonIcon="pi pi-minus" 
-                    [step]="5"
-                    [min]="1" 
-                    [max]="100"
-                    size="small" />
-            </div>
-            <div class="flex-1 flex flex-col">
-                <label for="buckets" class="font-bold text-sm">Offset</label>
-                <p-inputNumber 
-                    id="buckets"
-                    [(ngModel)]="offset" 
-                    [showButtons]="true" 
-                    buttonLayout="horizontal"
-                    incrementButtonIcon="pi pi-plus" 
-                    decrementButtonIcon="pi pi-minus" 
-                    [step]="5"
-                    [min]="0" 
-                    [max]="100"
-                    size="small" />
-            </div>
-        </div>
-        <div class="flex flex-row flex-wrap gap-10">
-                <p-chart class="flex-1"
-                    type="bar"
-                    [data]="histogram().chart"
-                    [options]="histogram().options"
-                    height="21rem"
-                ></p-chart>
-            </div>
-        </div>
-    </p-card>
-    <intersection-chart [header]="'Intersections'" [data]="nodeProperties()"/>
-    <intersection-chart [header]="'Edges'" [data]="edgeProperties()"/>
+    <intersection-chart [header]="'Rides'" [config]="rideConfig" [data]="rideProperties()" [loading]="rideLoading()" [hasStartTime]="false"/>
+    <intersection-chart [header]="'Intersections'" [config]="baseConfig"  [data]="nodeProperties()" [loading]="nodeLoading()"/>
+    <intersection-chart [header]="'Edges'" [config]="baseConfig" [data]="edgeProperties()" [loading]="edgeLoading()"/>
 </div>

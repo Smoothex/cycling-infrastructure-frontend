@@ -180,9 +180,16 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
     const startMarkerLayerId = startMarkerSource + '-layer';
     const startMarkerHighlightLayer = startMarkerSource + '-highlight';
 
+    const sortKey = options.sortKey;
+    if (sortKey) {
+        lineString.features = lineString.features.sort((a, b) => {
+            return (a.properties?.[sortKey] ?? 0) - (b.properties?.[sortKey] ?? 0);
+        });
+    }
+
     const startFeature:FeatureCollection<Point> = {
         type: 'FeatureCollection',
-        features: lineString.features.map((f) => {
+        features: [...lineString.features].reverse().map((f) => {
             const props = f.properties;
             if (!props || !props["id"] || typeof props["id"] !== "number") {
                 console.error("Properties not properly defined: ", props);
@@ -199,7 +206,7 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
         layerIds: [layerId],
         highlightLayerIds: []
     };
-
+    
     map.addSource(options.sourceId, {
         type: 'geojson',
         data: lineString,
@@ -214,7 +221,6 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             'line-width': width,
         },
         ...zoomProps(options),
-        ...(options.sortKey && {'line-sort-key': ['get', options.sortKey]})
     });
     MapUtils.changeCursor(map, layerId);
     map.on('click', layerId, e => {
@@ -273,7 +279,6 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
                 'circle-radius': 5,
             },
             ...circleZoom,
-            ...(options.sortKey && {'circle-sort-key': ["*", NaN, 'get', options.sortKey]})
         })
         added.layerIds.push(startMarkerLayerId);
         MapUtils.changeCursor(map, startMarkerLayerId);

@@ -323,3 +323,11 @@ export const DATE_FILTER_DEFAULTS = {
     endTime: new Date('1970-01-01T23:59'),
     getDatetime: () => [new Date('2019-01-01T00:00'), new Date()]
 };
+
+export interface ChartConfig<T> {
+    labels: Record<keyof T, string>;
+    selectableProperties: (keyof T)[];
+    defaultProperty: keyof T;
+    defaultProperty2: keyof T;
+}
+

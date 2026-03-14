@@ -4,8 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Card } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
 import { TableModule } from 'primeng/table';
-import { Select } from 'primeng/select';
-import { InputNumber } from 'primeng/inputnumber';
 import { Divider } from 'primeng/divider';
 import { FeatureCollection, GeoJsonProperties,  Polygon } from 'geojson';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
@@ -20,21 +18,15 @@ import {
 	IntersectionMap,
 	IntersectionChart,
 	RideRegionMetric,
-	createHistogram,
+	ChartConfig,
+	BASE_CHART_CONFIG,
 } from '@simra/intersections-common';
 import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
-
-const ChartPropertyLabels = {
-	nodesPerKm: "Intersections On Distance (#/km)",
-	nodeMedianWaitingTime: "Median Intersection Waiting Time (s)",
-	nodeWaitingSPerKm: "Intersection Waiting Time (s/km)",
-	length: "Length (km)"
-}
 
 
 @Component({
 	selector: 'region-detail',
-	imports: [CommonModule, FormsModule, Card, ChartModule, TableModule, Divider, Select, InputNumber, IntersectionMap, IntersectionChart, DateFilterPrecomputed],
+	imports: [CommonModule, FormsModule, Card, ChartModule, TableModule, Divider, IntersectionMap, IntersectionChart, DateFilterPrecomputed],
 	templateUrl: './region-detail.html'
 })
 export class IntersectionsRegionDetail {
@@ -49,25 +41,38 @@ export class IntersectionsRegionDetail {
 	protected readonly regionId = input<string>();
 	protected readonly region = signal<RegionMetric | undefined>(undefined);
 	protected readonly regionFeature = signal<FeatureCollection<Polygon, GeoJsonProperties> | undefined>(undefined);
+	protected readonly mapLoading = signal<boolean>(true);
 
 	protected readonly nodeProperties = signal<Base[]>([]);
+	protected readonly nodeLoading = signal<boolean>(true);
 	protected readonly edgeProperties = signal<Base[]>([]);
+	protected readonly edgeLoading = signal<boolean>(true);
 	protected readonly rideProperties = signal<RideRegionMetric[]>([]);
+	protected readonly rideLoading = signal<boolean>(true);
 
-	protected readonly propertyOptions = Object.entries(ChartPropertyLabels).map(([value, label]) => ({
-			label,
-			value: value as keyof typeof ChartPropertyLabels
-	}));
-	protected propertyChart = signal<keyof typeof ChartPropertyLabels>("length");
-	protected bucketSize = signal<number>(0.5);
-	protected offset = signal<number>(5);
-	protected readonly histogram = computed(() => {
-		const props = this.rideProperties();
-		const selected = this.propertyChart(); 
-		const size = this.bucketSize();
-		const offset = this.offset();
-		return createHistogram(props.map(r => r[selected]), size, offset, ChartPropertyLabels[selected], 'Number of Rides');
-	});
+	
+	protected readonly rideConfig: ChartConfig<RideRegionMetric> = {
+		labels: {
+			regionId: "",
+			rideId: "",
+			trafficTime: "",
+			weekDay: "",
+			year: "",
+			name: "", 
+			adminLevel: "", 
+			numberOfEdges: "", 
+			numberOfNodes: "",
+			edgeWaitingSPerKm: "",
+			nodesPerKm: "Intersections On Distance (#/km)",
+			nodeMedianWaitingTime: "Median Intersection Waiting Time (s)",
+			nodeWaitingSPerKm: "Intersection Waiting Time (s/km)",
+			length: "Length (km)"
+		},
+		selectableProperties: ['nodesPerKm', 'nodeMedianWaitingTime', 'nodeWaitingSPerKm', 'length'],
+		defaultProperty: 'nodeMedianWaitingTime',
+		defaultProperty2: 'nodesPerKm'
+	};
+	protected readonly baseConfig = BASE_CHART_CONFIG;
 
 	constructor() {
 		effect(async () => {
@@ -86,35 +91,38 @@ export class IntersectionsRegionDetail {
 		effect(async () => {
 			const request = this.regionRequest();
 			if (!request) return;
-
+			this.mapLoading.set(true);
 			const data = await this._requestService.getIntersectionRegionMetricsPageable(request);
 			this.regionFeature.set(data.geoData);
 			const regions: RegionMetricRow[] = mapRegionMetricToRows(data.geoData);
 			if (regions.length === 1) {
 				this.region.set(regions[0]);
 			}
+			this.mapLoading.set(false);
 		});
 
 		effect(async () => {
 			const request = this.regionRequest();
 			if (!request) return;
-
+			this.nodeLoading.set(true);
 			this.nodeProperties.set(await this._requestService.getIntersectionNodePropertiesByRegionId(request));
+			this.nodeLoading.set(false);
 		});
 
 		effect(async () => {
 			const request = this.regionRequest();
 			if (!request) return;
-
+			this.edgeLoading.set(true);
 			this.edgeProperties.set(await this._requestService.getIntersectionEdgePropertiesByRegionId(request));
+			this.edgeLoading.set(false);
 		});
 
 		effect(async () => {
 			const request = this.regionRequest();
 			if (!request) return;
-
+			this.rideLoading.set(true);
 			this.rideProperties.set(await this._requestService.getIntersectionRideRegionMetricsProperties(request));
-			console.log(this.rideProperties());
+			this.rideLoading.set(false);
 		});
 	}
 }

@@ -2,8 +2,34 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Chart, registerables, ChartData, ChartOptions } from 'chart.js';
 import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 import 'chartjs-adapter-date-fns';
+import {
+    Base,
+	ChartConfig
+} from '@simra/intersections-common';
 
 Chart.register(...registerables, BoxPlotController, BoxAndWiskers);
+
+
+export const BASE_CHART_CONFIG: ChartConfig<Base> = {
+    labels: {
+        id: "",
+        rideId: "",
+        length: "",
+        startTime: "", 
+        endTime: "",
+        trafficTime: "",
+        weekDay: "",
+        year: "",
+        waitingTime: "Waiting Time (s)",
+        duration: "Duration (s)",
+        speed: "Speed (km/h)",
+        medianRideSpeed: "Median Ride Speed (km/h)"
+    },
+    selectableProperties: ['waitingTime', 'duration', 'speed', 'medianRideSpeed'],
+    defaultProperty: 'waitingTime',
+    defaultProperty2: 'medianRideSpeed'
+};
+
 
 export function createHistogram(
     data: number[], 

@@ -25,7 +25,8 @@ import {
 	IntersectionRow,
 	Base,
 	Node,
-	Edge
+	Edge,
+	BASE_CHART_CONFIG
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
 
@@ -84,6 +85,7 @@ export class IntersectionsDetailPage {
 			const baseId = this.id();
 			if (!baseId) return;
 
+			this.tableDataIsLoading.set(true);
 			const mode = this._mode();
 			if (mode === "PRECOMPUTED") {
 				const trafficTime = this._selectedTrafficTime();
@@ -120,6 +122,7 @@ export class IntersectionsDetailPage {
 				this.propertiesFiltered.set(await this._requestService.getIntersectionBaseProperties(request));
 				this.intersectionData.set(await this._requestService.getIntersectionBase(request));
 			}
+			this.tableDataIsLoading.set(false);
 		});
 	}
 
@@ -183,4 +186,6 @@ export class IntersectionsDetailPage {
 		applyQueryParamsForLineHighlight(this._router, row.id, row.midPoint[1], row.midPoint[0], true, "intersectionLineData");
 		scrollToElementId('intersection-map');
 	}
+
+	protected readonly config = BASE_CHART_CONFIG;
 }

@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MapPage } from '@simra/common-components';
 import { TableModule } from 'primeng/table';
+import { ProgressSpinner} from 'primeng/progressspinner'
 import { FeatureCollection, LineString, Polygon } from 'geojson';
 import { centroid } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
@@ -34,7 +35,7 @@ import {
 
 @Component({
 	selector: 'intersection-map',
-	imports: [CommonModule, MapPage, TableModule, MapLegend],
+	imports: [CommonModule, MapPage, TableModule, MapLegend, ProgressSpinner],
 	templateUrl: './map.html',
 	styleUrl: './map.scss',
 	encapsulation: ViewEncapsulation.None,
@@ -50,12 +51,14 @@ export class IntersectionMap {
 	public metricData = input<FeatureCollection<LineString>>();
 	public regionData = input<FeatureCollection<Polygon>>();
 
+	public loading = input.required<boolean>();
+
 
 	private intersectionDataAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
 	private ridePointsMatchedPointsAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
-	private readonly mapDataLoaded = signal(false);
+	protected readonly mapDataLoaded = signal(false);
 	private readonly trafficSignalsLoaded = signal(false);
 	
 	protected selectedSegmentId = signal<number | null>(null);

@@ -4,7 +4,7 @@
     [(selectedWeekDays)]="_selectedWeekDays"
     [(selectedTrafficTime)]="_selectedTrafficTime"
     />
-    <intersection-chart [header]="header()" [data]="propertiesFiltered()"/>
+    <intersection-chart [header]="header()" [config]="config" [data]="propertiesFiltered()" [loading]="chartDataIsLoading()"/>
 
     <p-card >
         <section>
@@ -12,14 +12,26 @@
         </section>
         <section id="intersection-map">
             <intersection-map
-                [metricData]="intersectionNodeAggregate()"
+                [metricData]="pagedGeoResponse()?.geoData"
                 [trafficSignalClusterId]="trafficSignalClusterId()"
+                [loading]="tableDataIsLoading()"
             />
         </section>
     </p-card>
 
     <p-card>
-		<p-table [value]="isNode() ? nodeRows() : edgeRows()" [loading]="tableDataIsLoading()"
+        @let rows = isNode() ? nodeRows() : edgeRows();
+		<p-table 
+        [value]="rows"
+        [loading]="tableDataIsLoading()"
+        [paginator]="true"
+        [lazy]="true"
+        [rows]="pagedRequest().size"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [totalRecords]="totalElements()"
+        (onFilter)="onFilterChange($event)"
+        (onLazyLoad)="onLazy($event)"
+        [resetPageOnSort]="true"
         [sortField]="'medianWaitingTime'"
 		[sortOrder]="-1"
         >

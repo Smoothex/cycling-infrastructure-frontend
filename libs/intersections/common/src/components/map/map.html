@@ -5,6 +5,12 @@
             [items]="legendItems()"
         />
     </div>
+
+    @if (loading() || !mapDataLoaded()) {
+        <div class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/20 backdrop-blur-[1px]">
+            <p-progressSpinner strokeWidth="4" styleClass="w-12 h-12" />
+        </div>
+    }
     
     <t-map-component (mapReady)="onMapReady($event)" [isNavigable]="false"></t-map-component>
 </div>

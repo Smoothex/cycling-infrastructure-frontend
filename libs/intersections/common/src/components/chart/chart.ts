@@ -1,10 +1,11 @@
-import { Component, input, computed, signal } from '@angular/core';
+import { Component, input, computed, signal, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Card } from 'primeng/card';
 import { Select } from 'primeng/select';
 import { InputNumber } from 'primeng/inputnumber';
 import { ChartModule } from 'primeng/chart';
+import { Skeleton } from 'primeng/skeleton';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -12,19 +13,12 @@ import {
 } from '@simra/common-components';
 import { TranslateService } from '@ngx-translate/core';
 import {
-	Base,
+	ChartConfig,
 	createHistogram,
 	createMovingMedianChart,
 	createBoxPlot,
 	createScatterPlot
 } from '@simra/intersections-common';
-
-const ChartPropertyLabels = {
-	waitingTime: "Waiting Time (s)",
-	duration: "Duration (s)",
-	speed: "Speed (km/h)",
-	medianRideSpeed: "Median Ride Speed (km/h)"
-}
 
 const ChartCatergoryLabels = {
 	trafficTime: "Traffic Time",
@@ -40,39 +34,52 @@ const ChartCatergoryLabelTranslations = {
 
 @Component({
 	selector: 'intersection-chart',
-	imports: [CommonModule, FormsModule, Card, Select, InputNumber, ChartModule],
+	imports: [CommonModule, FormsModule, Card, Select, InputNumber, ChartModule, Skeleton],
 	templateUrl: './chart.html'
 })
-export class IntersectionChart {
+export class IntersectionChart<T> {
 	public readonly header = input.required<string>();
-	public readonly data = input.required<Base[]>();
+	public readonly data = input.required<T[]>();
+    public readonly config = input.required<ChartConfig<T>>();
+	public loading = input.required<boolean>();
+	public hasStartTime = input<boolean>(true);
 
-	protected readonly propertyOptions = Object.entries(ChartPropertyLabels).map(([value, label]) => ({
-		label,
-		value: value as keyof typeof ChartPropertyLabels
-	}));
-	protected propertyChart = signal<keyof typeof ChartPropertyLabels>("waitingTime");
-	protected bucketSize = signal<number>(10);
+	protected readonly propertyOptions = computed(() => 
+        this.config().selectableProperties.map(key => ({
+            label: this.config().labels[key],
+            value: key
+        }))
+    );
+	protected propertyChart = signal<keyof T>(null!);
+	protected bucketSize = signal<number>(10.0);
 	protected offset = signal<number>(5);
 	protected readonly histogram = computed(() => {
 		const props = this.data();
 		const selected = this.propertyChart(); 
     	const size = this.bucketSize();
 		const offset = this.offset();
-		return createHistogram(props.map(r => r[selected]), size, offset, ChartPropertyLabels[selected], 'Number of Rides');
+		return createHistogram(
+			props.map(r => r[selected] as number), 
+			size, 
+			offset, 
+			this.config().labels[selected], 
+			'Number of Rides'
+		);
 	});
 
 	protected readonly windowSize = signal(30);
 	protected readonly scatterChart = computed(() => {
+		const displayChart = this.hasStartTime();
+		if (!displayChart) return;
 		const data = this.data();
 		const selected = this.propertyChart();
 		const window = this.windowSize();
 		return createMovingMedianChart(
 			data, 
 			'startTime', 
-			selected, 
+			selected as string, 
 			window, 
-			ChartPropertyLabels[selected]
+			this.config().labels[selected], 
 		);
 	});
 
@@ -95,15 +102,15 @@ export class IntersectionChart {
 
 		return createBoxPlot(
 			data, 
-			groupKey, 
+			groupKey as keyof T, 
 			selected, 
 			ChartCatergoryLabels[groupKey], 
 			labelMap,
-			ChartPropertyLabels[selected]
+			this.config().labels[selected], 
 		);
 	});
 
-	protected propertyChart2 = signal<keyof typeof ChartPropertyLabels>("medianRideSpeed");
+	protected propertyChart2 = signal<keyof T>(null!);
 	protected readonly scatterChartProperties = computed(() => {
 		const data = this.data();
 		const window = this.windowSize();
@@ -111,13 +118,21 @@ export class IntersectionChart {
 		const selected2 = this.propertyChart2();
 		return createScatterPlot(
 			data, 
-			selected2, 
-			selected, 
-			ChartPropertyLabels[selected2], 
-			ChartPropertyLabels[selected],
+			selected2 as string, 
+			selected as string, 
+			this.config().labels[selected2], 
+			this.config().labels[selected], 
 			window
 		);
 	});
 
-	constructor(private translate: TranslateService) {}
+	constructor(private translate: TranslateService) {
+        effect(() => {
+            this.propertyChart.set(this.config().defaultProperty);
+        });
+
+		effect(() => {
+            this.propertyChart2.set(this.config().defaultProperty2);
+        });
+	}
 }
