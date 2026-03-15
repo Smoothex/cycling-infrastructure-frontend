@@ -43,21 +43,21 @@ function addSpaceIntoName (properties: GeoJsonProperties, source: string, target
     }
 }
 
-export function processTrafficSignal (fc: FeatureCollection<Point>) {
-    for (const feature of fc.features) {
-        const props = feature.properties;
-        if (!props) continue;
-        props["header"] =  "Traffic Signal";
-    }
+export function setPopUpPropertiesTrafficSignal(props: GeoJsonProperties) {
+    if (!props) return;
+    props["header"] = "Traffic Signal";
+}
+export function processTrafficSignals (fc: FeatureCollection<Point>) {
+    fc.features.forEach(f => setPopUpPropertiesTrafficSignal(f.properties));
 }
 
+export function setPopUpPropertiesTrafficSignalCluster(props: GeoJsonProperties) {
+    if (!props) return;
+    props["header"] =  "Traffic Signal Intersection";
+    setLink("node", props, "id", "Id");
+}
 export function processTrafficSignalCluster (fc: FeatureCollection<Polygon>) {
-    for (const feature of fc.features) {
-        const props = feature.properties;
-        if (!props) continue;
-        props["header"] =  "Traffic Signal Intersection";
-        setLink("node", props, "id", "Id");
-    }
+    fc.features.forEach(f => setPopUpPropertiesTrafficSignalCluster(f.properties));
 }
 
 export function processMatchedPoints (fc: FeatureCollection<Point>) {
@@ -101,19 +101,19 @@ export function processIntersectionBase (fc: FeatureCollection<LineString>) {
     }
 }
 
+export function setPopUpIntersectionMetrics(props: GeoJsonProperties) {
+    if (!props) return;
+    props["header"] = props["trafficSignalClusterId"] ? "Intersection" : "Way";
+    setLink("segment", props, "id", "SegmentId");
+    setLink("edge", props, "osmId", "Id");
+    setLink("node", props, "trafficSignalClusterId", "Id");
+    setDecimalFormatted(props, "medianSpeed", "Speed");
+    setDecimalFormatted(props, "medianDuration", "Duration");
+    setDecimalFormatted(props, "medianWaitingTime", "WaitingTime");
+    addSpaceIntoName(props, "streetNames", "streetNames");
+}
 export function processIntersectionMetrics (fc: FeatureCollection<LineString>) {
-    for (const feature of fc.features) {
-        const props = feature.properties;
-        if (!props) continue;
-        props["header"] = props["trafficSignalClusterId"] ? "Intersection" : "Way";
-        setLink("segment", props, "id", "SegmentId");
-        setLink("edge", props, "osmId", "Id");
-        setLink("node", props, "trafficSignalClusterId", "Id");
-        setDecimalFormatted(props, "medianSpeed", "Speed");
-        setDecimalFormatted(props, "medianDuration", "Duration");
-        setDecimalFormatted(props, "medianWaitingTime", "WaitingTime");
-        addSpaceIntoName(props, "streetNames", "streetNames");
-    }
+    fc.features.forEach(f => setPopUpIntersectionMetrics(f.properties));
 }
 
 export function processRegion (fc: FeatureCollection<Polygon>) {

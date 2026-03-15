@@ -17,8 +17,8 @@ import {
   RideRegionMetric,
   cleanRideRegionMetric
 } from '@simra/intersections-common';
-import { 
-  processTrafficSignal,
+import {
+  processTrafficSignals,
   processTrafficSignalCluster,
   processMatchedPoints,
   processRidePoints,
@@ -159,13 +159,13 @@ export class IntersectionsRequestService {
 
   public async getTrafficSignals(): Promise<FeatureCollection<Point>> {
     const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals`));
-    processTrafficSignal(data);
+    processTrafficSignals(data);
     return data;
   }
 
   public async getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId: number): Promise<FeatureCollection<Point>> {
     const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals/cluster/${trafficSignalClusterId}`));
-    processTrafficSignal(data);
+    processTrafficSignals(data);
     return data;
   }
 

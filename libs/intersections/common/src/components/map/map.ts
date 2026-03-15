@@ -33,6 +33,7 @@ import {
 } from '@simra/intersections-common';
 
 
+
 @Component({
 	selector: 'intersection-map',
 	imports: [CommonModule, MapPage, TableModule, MapLegend, ProgressSpinner],
@@ -141,7 +142,7 @@ export class IntersectionMap {
 
 			if (!isNaN(trafficSignalClusterId)) {
 				const trafficSignalClusters = await this._requestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
-				displayTrafficSignalClusters(map, trafficSignalClusters, false);
+				displayTrafficSignalClusters(map, trafficSignalClusters);
 
 				const trafficSignals = await this._requestService.getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId);
 				displayTrafficSignals(map, trafficSignals);

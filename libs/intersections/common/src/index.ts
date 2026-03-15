@@ -8,7 +8,7 @@ export { IntersectionListHeaderFilter } from './components/list/list-header-filt
 export { IntersectionMap } from './components/map/map';
 export { IntersectionChart } from './components/chart/chart';
 
-export * from './lib/common/interfaces';
 export * from './lib/common/map-helper';
 export * from './lib/common/chart-helper';
 export * from './lib/common/list-helper';
+export * from './lib/common/interfaces';

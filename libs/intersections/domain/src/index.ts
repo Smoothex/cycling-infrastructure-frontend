@@ -1,1 +1,2 @@
-export * from './lib/domain/intersections-request.service'
+export * from './lib/domain/request-helper';
+export * from './lib/domain/intersections-request.service';

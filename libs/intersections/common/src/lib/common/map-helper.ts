@@ -2,7 +2,16 @@ import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polyg
 import { along, length } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import { MapUtils } from '@simra/common-components';
-import { Router, Params } from '@angular/router';
+import { Router } from '@angular/router';
+import {
+  MetricRequest
+} from '@simra/intersections-common';
+import {
+    setPopUpPropertiesTrafficSignal,
+    setPopUpPropertiesTrafficSignalCluster,
+    setPopUpIntersectionMetrics
+} from '@simra/intersections-domain';
+
 
 export function calculateMidPoint(lineString: LineString) {
     const line: Feature<LineString> = {
@@ -16,10 +25,15 @@ export function calculateMidPoint(lineString: LineString) {
 }
 
 export const ZOOM_LEVELS = {
-    'points': {'minzoom': 14, 'maxzoom': 22},
+    'points': {'minzoom': 15, 'maxzoom': 22},
     'lines': {'minzoom': 11, 'maxzoom': 22},
     'polygons': {'minzoom': 11, 'maxzoom': 22},
     'regions': {'minzoom': 0, 'maxzoom': 11}
+}
+
+interface vectorTileOptions {
+    apiUrl: string;
+    endPoint: string;
 }
 
 export interface displayOptions {
@@ -28,6 +42,7 @@ export interface displayOptions {
     minzoom?: number;
     maxzoom?: number;
     popupFunc?: Function;
+    vectorTileOptions?: vectorTileOptions;
 }
 
 function zoomProps(opts: { minzoom?: number; maxzoom?: number }) {
@@ -42,7 +57,6 @@ export interface addedOnMap {
     layerIds: string[];
     highlightLayerIds: string[];
 }
-
 export function addedOnMapDefault() : addedOnMap {
     return {
         sourceIds: [],
@@ -50,7 +64,6 @@ export function addedOnMapDefault() : addedOnMap {
         highlightLayerIds: []
     }
 }
-
 export function mergeAdded(target: addedOnMap, source: addedOnMap) {
     source.layerIds.forEach((id) => target.layerIds.push(id));
     source.highlightLayerIds.forEach((id) => target.highlightLayerIds.push(id));
@@ -62,17 +75,71 @@ export interface displayOptionsPoint extends displayOptions {
     width: any;
 }
 
-export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.Map, options: displayOptionsPoint): addedOnMap {
+export function setSourceGeoJson(data: FeatureCollection, map: maplibregl.Map, options: displayOptions, added: addedOnMap, extraLineStart: boolean = false) {
+    addSourceOnMap(map, added, options.sourceId, {
+        type: 'geojson',
+        data: data,
+    });
+    if (!extraLineStart) return;
+    addSourceOnMap(map, added, `${ options.sourceId }-start`, {
+        type: 'geojson',
+        data: getStartGeometries(data as FeatureCollection<LineString>)
+    })
+}
+
+
+export function setSourceVectorTiles(map: maplibregl.Map, options: displayOptions, added: addedOnMap, request: MetricRequest | undefined = undefined) {
+    const tileOptions = options.vectorTileOptions;
+    if (!tileOptions) {
+        console.error("Vector Tile configuration is missing.");
+        return;
+    }
+    const requestString = request ? `?numberOfRides=${request.numberOfRides}&weekDay=${request.weekDay}&trafficTime=${request.trafficTime}&year=${request.year}` : "";
+    addSourceOnMap(map, added, options.sourceId, {
+        type: 'vector',
+        tiles: [`${tileOptions.apiUrl}/api/${tileOptions.endPoint}/${options.sourceId}/tiles/{z}/{x}/{y}.pbf${requestString}`],
+        minzoom: options.minzoom
+    });
+    if (!request) return;
+    addSourceOnMap(map, added, `${ options.sourceId }-start`, {
+        type: 'vector',
+        tiles: [`${tileOptions.apiUrl}/api/${tileOptions.endPoint}/${options.sourceId}/start/tiles/{z}/{x}/{y}.pbf${requestString}`],
+        minzoom: options.minzoom
+    })
+}
+
+function addSourceOnMap(map: maplibregl.Map, added: addedOnMap, sourceId: string, sourceSpecs: maplibregl.SourceSpecification) {
+    map.addSource(sourceId, sourceSpecs);
+    added.sourceIds.push(sourceId);
+}
+
+type LayerSpec = maplibregl.FillLayerSpecification | maplibregl.LineLayerSpecification | maplibregl.CircleLayerSpecification;
+function _addLayer(map: maplibregl.Map, layerSpecs: LayerSpec) : boolean {
+    if (!map.getSource(layerSpecs.source)) {
+        console.error(`No source for layer ${layerSpecs.id}`);
+        return false;
+    }
+    map.addLayer(layerSpecs);
+    return true;
+}
+function addLayerOnMap(map: maplibregl.Map, added: addedOnMap, layerSpecs: LayerSpec) {
+    if (_addLayer(map, layerSpecs)) {
+        added.layerIds.push(layerSpecs.id);
+    }
+}
+function addHighLightLayerOnMap(map: maplibregl.Map, added: addedOnMap, layerSpecs: LayerSpec) {
+    if (_addLayer(map, layerSpecs)) {
+        added.highlightLayerIds.push(layerSpecs.id);
+    }
+}
+
+
+export function addLayersPoint(map: maplibregl.Map, options: displayOptionsPoint, added: addedOnMap) {
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.points.minzoom;
     const popupFunc = options.popupFunc ?? setDefaultPopUp;
     const layerId = options.sourceId + '-layer';
-    options.minzoom = options.minzoom ?? ZOOM_LEVELS.points.minzoom;
 
-    map.addSource(options.sourceId, {
-        type: 'geojson',
-        data: points,
-    });
-
-    map.addLayer({
+    addLayerOnMap(map, added, {
         id: layerId,
         type: 'circle',
         source: options.sourceId,
@@ -82,8 +149,9 @@ export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.
             'circle-stroke-width': 1,
             'circle-stroke-color': '#fff',
         },
+        ...(options.vectorTileOptions && {"source-layer": layerId }),
         ...zoomProps(options)
-    });
+    })
     // TODO: do clean up of map.on
     map.on('click', layerId, e => {
         const properties = e.features?.[0].properties;
@@ -91,12 +159,6 @@ export function displayPoints(points: FeatureCollection<Point>, map: maplibregl.
             popupFunc(map, e.lngLat, properties);
         }
     });
-
-    return {
-        sourceIds: [options.sourceId],
-        layerIds: [layerId],
-        highlightLayerIds: []
-    }
 }
 
 export interface displayOptionsPolygon extends displayOptions {
@@ -104,34 +166,28 @@ export interface displayOptionsPolygon extends displayOptions {
     filter?: any;
 }
 
-export function displayPolygons(polygons: FeatureCollection<Polygon>, map: maplibregl.Map, options: displayOptionsPolygon) : addedOnMap {
-    const popupFunc = options.popupFunc ?? setDefaultPopUp;
-    options.minzoom = options.minzoom ?? ZOOM_LEVELS.polygons.minzoom;
-    const layerId = options.sourceId + '-layer';
-    const outlineLayerId = options.sourceId + '-outline-layer';
-    const added: addedOnMap = {
-        sourceIds: [options.sourceId],
-        layerIds: [layerId],
-        highlightLayerIds: []
-    };
-    
-    map.addSource(options.sourceId, {
-        type: 'geojson',
-        data: polygons,
-    });
 
-    map.addLayer({
+
+export function addLayersPolygon(map: maplibregl.Map, options: displayOptionsPolygon, added: addedOnMap) {
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.polygons.minzoom;
+    const popupFunc = options.popupFunc ?? setDefaultPopUp;
+    const layerId = options.sourceId + '-layer';
+    const commonLayerSettings = {
+        source: options.sourceId,
+        ...(options.vectorTileOptions && {"source-layer": layerId }),
+        ...zoomProps(options),
+        ...(options.filter && {filter: options.filter})
+    }
+
+    addLayerOnMap(map, added, {
         id: layerId,
         type: 'fill',
-        source: options.sourceId,
-        layout: {},
         paint: {
             'fill-color': options.color,
             'fill-opacity': 0.8
         },
-        ...zoomProps(options),
-        ...(options.filter && {filter: options.filter})
-    });
+        ...commonLayerSettings
+    })
     map.on('click', layerId, e => {
         const properties = e.features?.[0].properties;
         if (properties) {
@@ -139,57 +195,33 @@ export function displayPolygons(polygons: FeatureCollection<Polygon>, map: mapli
         }
     });
 
-    if (options.outlineWidth) {
-        map.addLayer({
-            id: outlineLayerId,
-            type: 'line',
-            source: options.sourceId,
-            layout: {},
-            paint: {
-                'line-color': 'rgb(0, 0, 0)',
-                'line-width': options.outlineWidth,
-            },
-            ...zoomProps(options),
-            ...(options.filter && {filter: options.filter})
-        });
-        added.highlightLayerIds.push(outlineLayerId);
-    }
+    if (!options.outlineWidth) return;
+    addHighLightLayerOnMap(map, added, {
+        id: options.sourceId + '-outline-layer',
+        type: 'line',
+        paint: {
+            'line-color': 'rgb(0, 0, 0)',
+            'line-width': options.outlineWidth,
+        },
+        ...commonLayerSettings
+    })
+}
 
-    return added;
+function withOffset (baseWidth: number | any[], offset: number) {
+    return ['+', baseWidth, offset];
 }
 
 export interface displayOptionsLineString extends displayOptions {
     _router: Router;
     width?: any;
-    highlightWidth?: any;
     sortKey?: string;
     startMarker: boolean;
 }
 
-export function displayLineString(lineString: FeatureCollection<LineString>, map: maplibregl.Map, options: displayOptionsLineString) : addedOnMap {
-    const popupFunc = options.popupFunc ?? setDefaultPopUp;
-    options.minzoom = options.minzoom ?? ZOOM_LEVELS.lines.minzoom;
-    const width = options.width ?? 2;
-    const highlightWidth = options.highlightWidth ?? 3;
-
-    const layerId = options.sourceId + '-layer';
-    const highlightColorLayerId = options.sourceId + '-highlight-color';
-    const highlightLayerId = options.sourceId + '-highlight';
-
-    const startMarkerSource = options.sourceId + '-start';
-    const startMarkerLayerId = startMarkerSource + '-layer';
-    const startMarkerHighlightLayer = startMarkerSource + '-highlight';
-
-    const sortKey = options.sortKey;
-    if (sortKey) {
-        lineString.features = lineString.features.sort((a, b) => {
-            return (a.properties?.[sortKey] ?? 0) - (b.properties?.[sortKey] ?? 0);
-        });
-    }
-
-    const startFeature:FeatureCollection<Point> = {
+function getStartGeometries(lineString: FeatureCollection<LineString>): FeatureCollection<Point>  {
+    return {
         type: 'FeatureCollection',
-        features: [...lineString.features].reverse().map((f) => {
+        features: lineString.features.map((f) => {
             const props = f.properties;
             if (!props || !props["id"] || typeof props["id"] !== "number") {
                 console.error("Properties not properly defined: ", props);
@@ -200,27 +232,31 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             return startFeature;
         })
     };
+}
 
-    const added: addedOnMap = {
-        sourceIds: [options.sourceId],
-        layerIds: [layerId],
-        highlightLayerIds: []
-    };
+export function displayLineString(map: maplibregl.Map, options: displayOptionsLineString, added: addedOnMap) {
+    options.minzoom = options.minzoom ?? ZOOM_LEVELS.lines.minzoom;
+    const popupFunc = options.popupFunc ?? setDefaultPopUp;
+    const width = options.width ?? 2;
+    const layerId = options.sourceId + '-layer';
+    const commonLayerSettings = {
+        source: options.sourceId,
+        ...(options.vectorTileOptions && {"source-layer": layerId }),
+        ...zoomProps(options),
+        
+    }
     
-    map.addSource(options.sourceId, {
-        type: 'geojson',
-        data: lineString,
-    });
-
-    map.addLayer({
+    addLayerOnMap(map, added, {
         id: layerId,
         type: 'line',
-        source: options.sourceId,
         paint: {
             'line-color': options.color,
             'line-width': width,
         },
-        ...zoomProps(options),
+        layout: {
+            "line-sort-key": ['get', options.sortKey || options.sourceId]
+        },
+        ...commonLayerSettings,
     });
     MapUtils.changeCursor(map, layerId);
     map.on('click', layerId, e => {
@@ -231,56 +267,50 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
         }
     });
 
-    map.addLayer({
-        id: highlightColorLayerId,
+    addHighLightLayerOnMap(map, added, {
+        id: options.sourceId + '-highlight-color',
         type: 'line',
-        source: options.sourceId,
         paint: {
             'line-color': options.color,
             'line-width': width,
         },
         filter: ['==', ['get', "id"], NaN],
-        ...zoomProps(options)
+        ...commonLayerSettings
     });
-    added.highlightLayerIds.push(highlightColorLayerId);
-
-    map.addLayer({
-        id: highlightLayerId,
+    addHighLightLayerOnMap(map, added, {
+        id: options.sourceId + '-highlight',
         type: 'line',
-        source: options.sourceId,
         paint: {
             'line-color': '#000000ff',
-            'line-width': highlightWidth,
+            'line-width': withOffset(width, 1) as any,
             'line-gap-width':  width,
         },
         filter: ['==', ['get', 'id'], NaN],
-        ...zoomProps(options)
+        ...commonLayerSettings
     });
-    added.highlightLayerIds.push(highlightLayerId);
 
-    map.addSource(startMarkerSource, {
-        type: 'geojson',
-        data: startFeature,
-    });
-    added.sourceIds.push(startMarkerSource);
-
-    const circleZoom = zoomProps(options);
-    if (circleZoom.minzoom) {
-        circleZoom.minzoom += 3;
+    const startMarkerSourceId = `${ options.sourceId }-start`;
+    const startMarkerLayerId = startMarkerSourceId + '-layer';
+    const startMarkerSettings = {...commonLayerSettings};
+    startMarkerSettings.source = startMarkerSourceId;
+    startMarkerSettings.minzoom = ZOOM_LEVELS.points.minzoom;
+    if (options.vectorTileOptions) {
+        startMarkerSettings['source-layer'] = startMarkerLayerId;
     }
 
     if (options.startMarker) {
-        map.addLayer({
+        addLayerOnMap(map, added, {
             id: startMarkerLayerId,
             type: 'circle',
-            source: startMarkerSource,
             paint: {
                 'circle-color': options.color,
-                'circle-radius': 5,
+                'circle-radius': withOffset(width, 3) as any,
             },
-            ...circleZoom,
+            layout: {
+                "circle-sort-key": ["*", ['get', options.sortKey || options.sourceId], -1] 
+            },
+            ...startMarkerSettings,
         })
-        added.layerIds.push(startMarkerLayerId);
         MapUtils.changeCursor(map, startMarkerLayerId);
         map.on('click', startMarkerLayerId, e => {
             const properties = e.features?.[0].properties;
@@ -290,20 +320,17 @@ export function displayLineString(lineString: FeatureCollection<LineString>, map
             }
         });
     }
-    map.addLayer({
-        id: startMarkerHighlightLayer,
+
+    addHighLightLayerOnMap(map, added, {
+        id: startMarkerSourceId + '-highlight',
         type: 'circle',
-        source: startMarkerSource,
         paint: {
             'circle-color': '#000000ff',
-            'circle-radius': 7,
+            'circle-radius': withOffset(width, 5) as any,
         },
         filter: ['==', ['get', 'id'], NaN],
-        ...circleZoom
+        ...startMarkerSettings
     })
-    added.highlightLayerIds.push(startMarkerHighlightLayer);
-
-    return added;
 }
 
 export function deleteDisplay(map: maplibregl.Map, added: addedOnMap) {
@@ -334,10 +361,12 @@ function setDefaultPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, prope
 }
 
 function setTrafficSignalClusterPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUpPropertiesTrafficSignalCluster(properties);
     setPopUp(mlMap, lngLat, properties, ["Id"]);
 }
 
 function setTrafficSignalPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUpPropertiesTrafficSignal(properties);
     setPopUp(mlMap, lngLat, properties, ["id"]);
 }
 
@@ -354,6 +383,7 @@ function setIntersectionBasePopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngL
 }
 
 function setIntersectionMetricsPopUp(mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) {
+    setPopUpIntersectionMetrics(properties);
     setPopUp(mlMap, lngLat, properties, ["Id", "SegmentId", "name", "streetNames",  "numberOfRides", "Speed", "Duration", "WaitingTime"]);
 }
 
@@ -414,7 +444,7 @@ export function getVisibleLegendItems(definitions: LegendItemVisible[]): LegendI
 }
 
 export function colorToStops(color: Record<number, string>) {
-    return Object.entries(COLORS.waitingTime).map(([v, c]) => ({
+    return Object.entries(color).map(([v, c]) => ({
         value: Number(v),
         color: c
     }))
@@ -429,47 +459,87 @@ function colorToArray(color: Record<number, string>) {
     return colorArray;
 }
 
-export function displayMatchedPoints(map: maplibregl.Map, matchedPoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string) {
-    return displayPoints(matchedPoints, map, {
+export function displayMatchedPoints(map: maplibregl.Map, matchedPoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string): addedOnMap{
+    const added = addedOnMapDefault();
+    const options: displayOptionsPoint = {
         sourceId: sourceId,
         width: 4,
         color: COLORS.matchedPoints,
         popupFunc: setMatchedPointPopUp
-    });
+    };
+    setSourceGeoJson(matchedPoints, map, options, added);
+    addLayersPoint(map, options, added);
+    return added;
 }
 
-export function displayRidePoints(map: maplibregl.Map, ridePoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string) {
-    return displayPoints(ridePoints, map, {
+export function displayRidePoints(map: maplibregl.Map, ridePoints: FeatureCollection<Point, GeoJsonProperties>, sourceId: string): addedOnMap {
+    const added = addedOnMapDefault();
+    const options: displayOptionsPoint = {
         sourceId: sourceId,
         width: 4,
         color: COLORS.ridePoints,
         popupFunc: setRidePointPopUp
-    });
+    };
+    setSourceGeoJson(ridePoints, map, options, added);
+    addLayersPoint(map, options, added);
+    return added;
 }
 
-export function displayTrafficSignalClusters(map: maplibregl.Map, trafficSignalClusters: FeatureCollection<Polygon, GeoJsonProperties>, zoom: boolean = false) {
-    return displayPolygons(trafficSignalClusters, map, {
-        sourceId: "trafficSignalClusters",
-        color: COLORS.trafficSignalClusters,
-        popupFunc: setTrafficSignalClusterPopUp,
-        ...(zoom && { minzoom: 11 })
-    });
+const TRAFFIC_SIGNAL_CLUSTER_CONFIG : displayOptionsPolygon = {
+    sourceId: "cluster",
+    color: COLORS.trafficSignalClusters,
+    popupFunc: setTrafficSignalClusterPopUp,
+    minzoom: ZOOM_LEVELS.polygons.minzoom
+};
+export function displayTrafficSignalClusters(map: maplibregl.Map, trafficSignalClusters: FeatureCollection<Polygon, GeoJsonProperties>): addedOnMap {
+    const added = addedOnMapDefault();
+    setSourceGeoJson(trafficSignalClusters, map, TRAFFIC_SIGNAL_CLUSTER_CONFIG, added);
+    addLayersPolygon(map, TRAFFIC_SIGNAL_CLUSTER_CONFIG, added);
+    return added;
+}
+export function displayTrafficSignalClustersVectorTiles(map: maplibregl.Map, apiUrlVectorTile: string): addedOnMap {
+    const added = addedOnMapDefault();
+    const options: displayOptionsPolygon = {
+        ...TRAFFIC_SIGNAL_CLUSTER_CONFIG,
+        vectorTileOptions: {
+            apiUrl: apiUrlVectorTile,
+            endPoint: "osm"
+        }
+    }
+    setSourceVectorTiles(map, options, added);
+    addLayersPolygon(map, options, added);
+    return added;
 }
 
-export function displayTrafficSignals(map: maplibregl.Map, trafficSignals: FeatureCollection<Point, GeoJsonProperties>) {
-    return displayPoints(trafficSignals, map, {
-        sourceId: "trafficSignals",
-        width: 6,
-        color: COLORS.trafficSignals,
-        popupFunc: setTrafficSignalPopUp
-    });
+const TRAFFIC_SIGNAL_CONFIG : displayOptionsPoint= {
+    sourceId: "signal",
+    width: 6,
+    color: COLORS.trafficSignals,
+    popupFunc: setTrafficSignalPopUp,
+    minzoom: ZOOM_LEVELS.points.minzoom
+};
+export function displayTrafficSignals(map: maplibregl.Map, trafficSignals: FeatureCollection<Point, GeoJsonProperties>): addedOnMap {
+    const added = addedOnMapDefault();
+    setSourceGeoJson(trafficSignals, map, TRAFFIC_SIGNAL_CONFIG, added);
+    addLayersPoint(map, TRAFFIC_SIGNAL_CONFIG, added);
+    return added;
+}
+export function displayTrafficSignalsVectorTiles(map: maplibregl.Map, apiUrlVectorTile: string): addedOnMap {
+    const data = addedOnMapDefault();
+    const options: displayOptionsPoint = {
+        ...TRAFFIC_SIGNAL_CONFIG,
+        vectorTileOptions: {
+            apiUrl: apiUrlVectorTile,
+            endPoint: "osm",
+        }
+    }
+    setSourceVectorTiles(map, options, data);
+    addLayersPoint(map, options, data);
+    return data;
 }
 
-
-export function displayIntersectionAggregate (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map,
-    sourceId: string, zoom: boolean = false, startMarker: boolean = true
-) {
-    return displayLineString(data, map, {
+function INTERSECTION_METRICS_CONFIG(_router: Router, sourceId: string, startMarker: boolean): displayOptionsLineString {
+    return {
         sourceId: sourceId,
         startMarker: startMarker,
         sortKey: "numberOfRides",
@@ -490,25 +560,44 @@ export function displayIntersectionAggregate (_router: Router, data: FeatureColl
             10, 4.0,
             50, 6.0
         ],
-        highlightWidth: [
-            'interpolate',
-            ['linear'],
-            ['get', 'numberOfRides'],
-            1, 2.0,
-            2, 3.0,
-            5, 4.0,
-            10, 5.0,
-            50, 7.0
-        ],
-        ...(zoom && { minzoom: 11 }),
-        popupFunc: setIntersectionMetricsPopUp
-    })
+        popupFunc: setIntersectionMetricsPopUp,
+        minzoom: ZOOM_LEVELS.lines.minzoom
+    }
+}
+    
+export function displayIntersectionAggregate (
+    _router: Router, lines: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map,
+    sourceId: string, startMarker: boolean = true
+): addedOnMap {
+    const data = addedOnMapDefault();
+    const options = INTERSECTION_METRICS_CONFIG(_router, sourceId, startMarker);
+    setSourceGeoJson(lines, map, options, data, true);
+    displayLineString(map, options, data);
+    return data;
+}
+export function displayIntersectionAggregateVectorTiles (
+    _router: Router, map: maplibregl.Map, apiUrlVectorTile: string,
+    sourceId: string, request: MetricRequest, startMarker: boolean = true
+): addedOnMap {
+    const data = addedOnMapDefault();
+    const options: displayOptionsLineString = {
+        ...INTERSECTION_METRICS_CONFIG(_router, sourceId, startMarker),
+        vectorTileOptions: {
+            apiUrl: apiUrlVectorTile,
+            endPoint: "intersections"
+        }
+    };
+    setSourceVectorTiles(map, options, data, request);
+    displayLineString(map, options, data);
+    return data;
 }
 
-export function displayIntersection (_router: Router, data: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, 
+export function displayIntersection (
+    _router: Router, lines: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, 
     sourceId: string, zoom: boolean = false, startMarker: boolean = true
-) {
-    return displayLineString(data, map, {
+): addedOnMap {
+    const data = addedOnMapDefault();
+    const options: displayOptionsLineString = {
         sourceId: sourceId,
         startMarker: startMarker,
         _router: _router,
@@ -520,12 +609,18 @@ export function displayIntersection (_router: Router, data: FeatureCollection<Li
         ],
         ...(zoom && { minzoom: 11 }),
         popupFunc: setIntersectionBasePopUp
-    });
+    };
+    setSourceGeoJson(lines, map, options, data, true);
+    displayLineString(map, options, data);
+    return data;
 }
 
-export function displayRegions(data: FeatureCollection<Polygon, GeoJsonProperties>, map: maplibregl.Map, 
-    sourceId: string, minzoom?:number, maxzoom?: number, filter?: any) {
-    return displayPolygons(data, map, {
+export function displayRegions(
+    polygons: FeatureCollection<Polygon, GeoJsonProperties>, map: maplibregl.Map, 
+    sourceId: string, minzoom?:number, maxzoom?: number, filter?: any
+): addedOnMap {
+    const data = addedOnMapDefault();
+    const options: displayOptionsPolygon = {
         sourceId: sourceId,
         minzoom: minzoom ? minzoom : 0,
         maxzoom: maxzoom,
@@ -545,7 +640,10 @@ export function displayRegions(data: FeatureCollection<Polygon, GeoJsonPropertie
         ],
         filter: filter,
         popupFunc: setRegionPopUp
-    });
+    };
+    setSourceGeoJson(polygons, map, options, data);
+    addLayersPolygon(map, options, data);
+    return data;
 }
 
 export function zoomOnLineMidPoint(map: maplibregl.Map, data: FeatureCollection<LineString, GeoJsonProperties>) {

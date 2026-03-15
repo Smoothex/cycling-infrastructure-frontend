@@ -3,6 +3,7 @@ import {
 	computed,
 	effect,
 	inject,
+  Inject,
 	signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -20,10 +21,10 @@ import {
   addedOnMapDefault,
   colorToStops,
   COLORS,
-	displayTrafficSignals,
-	displayTrafficSignalClusters,
+	displayTrafficSignalsVectorTiles,
+	displayTrafficSignalClustersVectorTiles,
 	displayIntersection,
-  displayIntersectionAggregate,
+  displayIntersectionAggregateVectorTiles,
   displayMatchedPoints,
   displayRidePoints,
   displayRegions,
@@ -40,7 +41,7 @@ import {
   MetricRequest,
   ZOOM_LEVELS
 } from '@simra/intersections-common';
-import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
+import { APP_CONFIG, AppEnvironmentInterface, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 
 @Component({
 	selector: 'lib-map',
@@ -58,14 +59,10 @@ export class IntersectionsMap {
 
   private rideIds: number[] = [];
   private rideAdded: addedOnMap = addedOnMapDefault();
-  private edgeMetrics: FeatureCollection<LineString> | undefined;
   private edgeMetricsAdded: addedOnMap = addedOnMapDefault();
-  private nodeMetrics: FeatureCollection<LineString> | undefined;
   private nodeMetricsAdded: addedOnMap = addedOnMapDefault();
-  private trafficSignals: FeatureCollection<Point> | undefined;
-  private trafficSignalClusterPolygons: FeatureCollection<Polygon> | undefined;
-  private regions: FeatureCollection<Polygon> | undefined;
   private regionsAdded: addedOnMap = addedOnMapDefault();
+  private trafficSignalsAdded: addedOnMap = addedOnMapDefault();
 
   protected selectableRideIds = signal<{ id: number; label: string }[]>([]);
   protected selectedRideId = signal<number | null>(null);
@@ -154,7 +151,7 @@ export class IntersectionsMap {
     ]);
   });
 
-  constructor() {
+  constructor(@Inject(APP_CONFIG) private config: AppEnvironmentInterface) {
     effect(() => {
 			const dataLoaded = this.mapDataLoaded();
       const map = this.map;
@@ -194,8 +191,7 @@ export class IntersectionsMap {
 
     effect(() => {
       const show = this.showTrafficSignals();
-      this.changeVisibility("trafficSignals-layer", show);
-      this.changeVisibility(`trafficSignalClustersPolygons-layer`, show);
+      this.changeVisibilityAdded(this.trafficSignalsAdded, show);
     });
 
     effect(() => {
@@ -237,19 +233,13 @@ export class IntersectionsMap {
       this.map = mlMap;
       this.applyRegionData(mlMap, this.requestFilter());
 
-      this.trafficSignalClusterPolygons = await this._requestService.getTrafficSignalClusters();
-      displayTrafficSignalClusters(mlMap, this.trafficSignalClusterPolygons, true);
+      this.trafficSignalsAdded = displayTrafficSignalClustersVectorTiles(mlMap, this.config.apiUrl);
+      mergeAdded(this.trafficSignalsAdded, displayTrafficSignalsVectorTiles(mlMap, this.config.apiUrl));
 
-      this.trafficSignals = await this._requestService.getTrafficSignals();
-      displayTrafficSignals(mlMap, this.trafficSignals);
-
-      await this.applyIntersectionData(mlMap, this.requestFilter());
+      this.applyIntersectionData(mlMap, this.requestFilter());
 
       this.rideIds = await this._requestService.getIds();
-      this.selectableRideIds.set(this.rideIds.map((id) => { return {id: id, label: `${id}` }}));  
-
-      await waitForSource(mlMap, "intersectionEdgeAggregate");
-      await waitForSource(mlMap, "intersectionNodeAggregate");
+      this.selectableRideIds.set(this.rideIds.map((id) => { return {id: id, label: `${id}` }}));
       this.mapDataLoaded.set(true);
       console.log("Loaded data.");  
     } catch (e) {
@@ -264,24 +254,23 @@ export class IntersectionsMap {
 
   changeVisibilityAdded(added: addedOnMap, visible: boolean) {
     added.layerIds.forEach((id) => this.changeVisibility(id, visible));
+    added.highlightLayerIds.forEach((id) => this.changeVisibility(id, visible));
   }
 
-  async applyIntersectionData(map: maplibregl.Map, request: MetricRequest) {
-    this.edgeMetrics = await this._requestService.getIntersectionEdgeMetricsComplete(request);
+  applyIntersectionData(map: maplibregl.Map, request: MetricRequest) {
     deleteDisplay(map, this.edgeMetricsAdded );
-    this.edgeMetricsAdded = displayIntersectionAggregate(this._router, this.edgeMetrics, map, "intersectionEdgeAggregate", true, false);
+    this.edgeMetricsAdded = displayIntersectionAggregateVectorTiles(this._router, map, this.config.apiUrl, "edge-metrics", request, false);
 
-    this.nodeMetrics = await this._requestService.getIntersectionNodeMetricsComplete(request);
     deleteDisplay(map, this.nodeMetricsAdded);
-    this.nodeMetricsAdded = displayIntersectionAggregate(this._router, this.nodeMetrics, map, "intersectionNodeAggregate", true);
+    this.nodeMetricsAdded = displayIntersectionAggregateVectorTiles(this._router, map, this.config.apiUrl, "node-metrics", request);
   }
 
   async applyRegionData(map: maplibregl.Map, request: MetricRequest) {
-    this.regions = await this._requestService.getIntersectionRegionMetricsComplete(request);
+    const regions = await this._requestService.getIntersectionRegionMetricsComplete(request);
     deleteDisplay(map, this.regionsAdded);
-    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionBig", 0, 8, ['==', ['get', 'adminLevel'], 4]));
-    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionMedium", 8, 11, ['==', ['get', 'adminLevel'], 6]));
-    mergeAdded(this.regionsAdded, displayRegions(this.regions, map, "regionSmall", 8, 11, ['==', ['get', 'adminLevel'], 9]));
+    mergeAdded(this.regionsAdded, displayRegions(regions, map, "regionBig", 0, 8, ['==', ['get', 'adminLevel'], 4]));
+    mergeAdded(this.regionsAdded, displayRegions(regions, map, "regionMedium", 8, 11, ['==', ['get', 'adminLevel'], 6]));
+    mergeAdded(this.regionsAdded, displayRegions(regions, map, "regionSmall", 8, 11, ['==', ['get', 'adminLevel'], 9]));
   }
 
   async onRideSelection(selectedRideId: number | null) {
