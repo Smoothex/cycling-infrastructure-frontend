@@ -3,7 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, Observable } from 'rxjs';
 import { defaults, isEmpty, isNumber, omitBy, pickBy } from 'lodash';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
-import { 
+import {
+  PagedIdList,
+  IdListRequest,
   NodePageableMetricRequest, 
   EdgePageableMetricRequest,
   RegionMetricRequest,
@@ -34,8 +36,9 @@ export class IntersectionsRequestService {
   private readonly _http = inject(HttpClient);
 
   
-  public getIds(): Promise<number[]> {
-    return firstValueFrom(this._http.get<number[]>('/api/intersections/ids'));
+  public getIds(request: IdListRequest): Promise<PagedIdList> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    return firstValueFrom(this._http.get<PagedIdList>('/api/intersections/ids', { params}));
   }
 
   public async getRidePoints(id: number): Promise<FeatureCollection<Point>> {

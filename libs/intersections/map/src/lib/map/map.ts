@@ -9,10 +9,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Params, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MapPage } from '@simra/common-components';
-import { IntersectionsRequestService } from '@simra/intersections-domain'
-import { FeatureCollection, LineString, Point, Polygon } from 'geojson';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import * as maplibregl from 'maplibre-gl';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -57,14 +56,12 @@ export class IntersectionsMap {
   private map: maplibregl.Map | undefined;
   private readonly mapDataLoaded = signal(false);
 
-  private rideIds: number[] = [];
   private rideAdded: addedOnMap = addedOnMapDefault();
   private edgeMetricsAdded: addedOnMap = addedOnMapDefault();
   private nodeMetricsAdded: addedOnMap = addedOnMapDefault();
   private regionsAdded: addedOnMap = addedOnMapDefault();
   private trafficSignalsAdded: addedOnMap = addedOnMapDefault();
 
-  protected selectableRideIds = signal<{ id: number; label: string }[]>([]);
   protected selectedRideId = signal<number | null>(null);
   protected showIntersectionMetrics = signal<boolean>(true);
   protected showTrafficSignals = signal<boolean>(true);
@@ -216,7 +213,7 @@ export class IntersectionsMap {
     if (parts.length !== 2 || parts[1].length === 0) return;
 
     const id = Number(parts[1]);
-    if (isNaN(id) || !this.rideIds.includes(id)) return;
+    if (isNaN(id)) return;
 
     if (!this.selectedRideId()) {
       // load ride if it is not already selected
@@ -228,23 +225,16 @@ export class IntersectionsMap {
     highlightLine(map, this.rideAdded, sourceId, selectedId);
   }
 
-  async onMapReady(mlMap: maplibregl.Map) {
-    try {
-      this.map = mlMap;
-      this.applyRegionData(mlMap, this.requestFilter());
+  onMapReady(mlMap: maplibregl.Map) {
+    this.map = mlMap;
+    
+    this.trafficSignalsAdded = displayTrafficSignalClustersVectorTiles(mlMap, this.config.apiUrl);
+    mergeAdded(this.trafficSignalsAdded, displayTrafficSignalsVectorTiles(mlMap, this.config.apiUrl));
 
-      this.trafficSignalsAdded = displayTrafficSignalClustersVectorTiles(mlMap, this.config.apiUrl);
-      mergeAdded(this.trafficSignalsAdded, displayTrafficSignalsVectorTiles(mlMap, this.config.apiUrl));
+    this.applyIntersectionData(mlMap, this.requestFilter());
+    this.applyRegionData(mlMap, this.requestFilter());
 
-      this.applyIntersectionData(mlMap, this.requestFilter());
-
-      this.rideIds = await this._requestService.getIds();
-      this.selectableRideIds.set(this.rideIds.map((id) => { return {id: id, label: `${id}` }}));
-      this.mapDataLoaded.set(true);
-      console.log("Loaded data.");  
-    } catch (e) {
-      console.error("Error during fetching rides: ", e)
-    }
+    this.mapDataLoaded.set(true);
 	}
 
   changeVisibility(layerName: string, visible: boolean) {
@@ -281,17 +271,17 @@ export class IntersectionsMap {
       removeQueryParamsForLineHighlight(this._router);
       return;
     }
-
-    const ridePoints = await this._requestService.getRidePoints(selectedRideId);
-    if (ridePoints.features.length === 0) return;
-    const coordiante = ridePoints.features[0].geometry.coordinates;
-    this.map.flyTo({ center: [coordiante[0], coordiante[1]] });
     
-    mergeAdded(this.rideAdded, displayRidePoints(this.map, ridePoints, `ridePoints-${selectedRideId}`));
-    mergeAdded(this.rideAdded, displayMatchedPoints(this.map, await this._requestService.getMatchedPoints(selectedRideId), `matchedPoints-${selectedRideId}`));
     mergeAdded(this.rideAdded, displayIntersection(this._router, await this._requestService.getIntersectionNode(selectedRideId),
       this.map, `intersectionNodes-${selectedRideId}`, true));
-    mergeAdded(this.rideAdded, displayIntersection(this._router, await this._requestService.getIntersectionEdge(selectedRideId),
-      this.map, `intersectionEdges-${selectedRideId}`, true, false));
+
+    const edges = await this._requestService.getIntersectionEdge(selectedRideId);
+    if (edges.features.length === 0) return;
+    const coordiante = edges.features[0].geometry.coordinates[0];
+    this.map.flyTo({ center: [coordiante[0], coordiante[1]], zoom: 18 });
+    
+    mergeAdded(this.rideAdded, displayIntersection(this._router, edges, this.map, `intersectionEdges-${selectedRideId}`, true, false));
+    mergeAdded(this.rideAdded, displayRidePoints(this.map, await this._requestService.getRidePoints(selectedRideId), `ridePoints-${selectedRideId}`));
+    mergeAdded(this.rideAdded, displayMatchedPoints(this.map, await this._requestService.getMatchedPoints(selectedRideId), `matchedPoints-${selectedRideId}`));
   }
 }

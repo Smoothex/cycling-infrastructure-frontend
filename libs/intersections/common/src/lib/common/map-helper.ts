@@ -254,7 +254,7 @@ export function displayLineString(map: maplibregl.Map, options: displayOptionsLi
             'line-width': width,
         },
         layout: {
-            "line-sort-key": ['get', options.sortKey || options.sourceId]
+            ...(options.sortKey && {"line-sort-key": ['get', options.sortKey]})
         },
         ...commonLayerSettings,
     });
@@ -307,7 +307,7 @@ export function displayLineString(map: maplibregl.Map, options: displayOptionsLi
                 'circle-radius': withOffset(width, 3) as any,
             },
             layout: {
-                "circle-sort-key": ["*", ['get', options.sortKey || options.sourceId], -1] 
+                ...(options.sortKey && {"circle-sort-key": ["*", ['get', options.sortKey], -1] })
             },
             ...startMarkerSettings,
         })
@@ -687,7 +687,7 @@ export function applyQueryParamsForLineHighlight(_router: Router, id: number, la
 
 export function waitForSource(map: maplibregl.Map, sourceId: string, timeoutMs = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
-        if (map.isSourceLoaded(sourceId)) {
+        if (map.getSource(sourceId) && map.isSourceLoaded(sourceId)) {
             resolve();
             return;
         }

@@ -4,15 +4,22 @@ import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
 import { centroid } from '@turf/turf';
 
-
-export interface PagedGeoResponse<T extends Geometry> {
+export type PagedResponse<K extends string, V> = {
     metadata: {
         totalElements: number;
         totalPages: number;
         currentPage: number;
     };
-    geoData: FeatureCollection<T>;
+} & Record<K, V>;
+export interface PagedGeoResponse<T extends Geometry> extends PagedResponse<"geoData", FeatureCollection<T>> {}
+export interface PagedIdList extends PagedResponse<"ids", number[]> {}
+
+export interface IdListRequest {
+    id?: number;
+    page: number;
+    size: number;
 }
+
 
 export interface linkLabelValue {
     label: string; 
