@@ -4,7 +4,9 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { defaults, isEmpty, isNumber, omitBy, pickBy } from 'lodash';
 import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
 import {
-  PagedIdList,
+  PagedIds,
+  PagedProperties,
+  PageableMetricRequest,
   IdListRequest,
   NodePageableMetricRequest, 
   EdgePageableMetricRequest,
@@ -17,7 +19,9 @@ import {
   cleanBase,
   RawRideRegionMetric,
   RideRegionMetric,
-  cleanRideRegionMetric
+  cleanRideRegionMetric,
+  NodePageableRequest,
+  EdgePageableRequest
 } from '@simra/intersections-common';
 import {
   processTrafficSignals,
@@ -36,9 +40,9 @@ export class IntersectionsRequestService {
   private readonly _http = inject(HttpClient);
 
   
-  public getIds(request: IdListRequest): Promise<PagedIdList> {
+  public getIds(request: IdListRequest): Promise<PagedIds> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    return firstValueFrom(this._http.get<PagedIdList>('/api/intersections/ids', { params}));
+    return firstValueFrom(this._http.get<PagedIds>('/api/intersections/ids', { params}));
   }
 
   public async getRidePoints(id: number): Promise<FeatureCollection<Point>> {
@@ -65,23 +69,21 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public async getIntersectionNodePropertiesByTrafficSignalClusterId(request: MetricRequest): Promise<Base[]> {
+  public async getIntersectionNodes(request: EdgePageableRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_nodes/trafficSignalClusterId/properties', { params }));
-    return cleanBase(data);
+    params["properties"] = false;
+		return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes', { params }));
   }
 
-  public async getIntersectionNodePropertiesByRegionId(request: MetricRequest): Promise<Base[]> {
+  public async getIntersectionNodeProperties(request: NodePageableRequest): Promise<PagedProperties<Base>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_nodes/regionId/properties', { params }));
-    return cleanBase(data);
-  }
-
-  public async getIntersectionNodeMetricsComplete(request: MetricRequest): Promise<FeatureCollection<LineString>> {
-    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    const data = await firstValueFrom(this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_nodes/aggregate/complete', { params }));
-    processIntersectionMetrics(data);
-    return data;
+    params["properties"] = true;
+		const data = await firstValueFrom(this._http.get<PagedProperties<RawBase>>('/api/intersections/intersection_nodes', { params }));
+    const cleaned: PagedProperties<Base> = {
+      metadata: data.metadata,
+      properties: cleanBase(data.properties)
+    }
+    return cleaned;
   }
  
   public async getIntersectionNodeMetricsPageable(request: NodePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
@@ -96,23 +98,21 @@ export class IntersectionsRequestService {
 		return this._http.get<string[]>('/api/intersections/intersection_nodes/streetNames', { params });
 	}
 
-  public async getIntersectionEdgePropertiesByOsmId(request: MetricRequest): Promise<Base[]> {
+  public async getIntersectionEdges(request: EdgePageableRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_edges/osmId/properties', { params }));
-    return cleanBase(data);
+    params["properties"] = false;
+		return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges', { params }));
   }
 
-  public async getIntersectionEdgePropertiesByRegionId(request: MetricRequest): Promise<Base[]> {
+  public async getIntersectionEdgeProperties(request: EdgePageableRequest): Promise<PagedProperties<Base>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_edges/regionId/properties', { params }));
-    return cleanBase(data);
-  }
-
-  public async getIntersectionEdgeMetricsComplete(request: MetricRequest): Promise<FeatureCollection<LineString>> {
-    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    const data = await firstValueFrom(this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_edges/aggregate/complete', { params }));
-    processIntersectionMetrics(data);
-    return data;
+		params["properties"] = true;
+    const data = await firstValueFrom(this._http.get<PagedProperties<RawBase>>('/api/intersections/intersection_edges', { params }));
+    const cleaned: PagedProperties<Base> = {
+      metadata: data.metadata,
+      properties: cleanBase(data.properties)
+    }
+    return cleaned;
   }
 
   public async getIntersectionEdgeMetricsPageable(request: EdgePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
@@ -125,19 +125,6 @@ export class IntersectionsRequestService {
   public getIntersectionEdgeStreetNames(request: EdgePageableMetricRequest): Observable<string[]> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
 		return this._http.get<string[]>('/api/intersections/intersection_edges/streetNames', { params });
-  }
-
-  public async getIntersectionBase(request: BaseRequest): Promise<FeatureCollection<LineString>> {
-    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    const data = await firstValueFrom(this._http.get<FeatureCollection<LineString>>('/api/intersections/intersection_base', { params }));
-    processIntersectionBase(data);
-    return data;
-  }
-
-  public async getIntersectionBaseProperties(request: BaseRequest): Promise<Base[]> {
-    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-    const data = await firstValueFrom(this._http.get<RawBase[]>('/api/intersections/intersection_base/properties', { params }));
-    return cleanBase(data);
   }
 
   public async getIntersectionBasePropertiesSingular(id: number): Promise<Base | null> {
@@ -160,21 +147,9 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public async getTrafficSignals(): Promise<FeatureCollection<Point>> {
-    const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals`));
-    processTrafficSignals(data);
-    return data;
-  }
-
   public async getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId: number): Promise<FeatureCollection<Point>> {
     const data = await firstValueFrom(this._http.get<FeatureCollection<Point>>(`/api/osm/traffic-signals/cluster/${trafficSignalClusterId}`));
     processTrafficSignals(data);
-    return data;
-  }
-
-  public async getTrafficSignalClusters(): Promise<FeatureCollection<Polygon>> {
-    const data = await firstValueFrom(this._http.get<FeatureCollection<Polygon>>(`/api/osm/cluster-polygons`));
-    processTrafficSignalCluster(data);
     return data;
   }
 
@@ -198,10 +173,15 @@ export class IntersectionsRequestService {
     return data;
   }
 
-  public async getIntersectionRideRegionMetricsProperties(request: MetricRequest): Promise<RideRegionMetric[]> {
+  public async getIntersectionRideRegionMetricsProperties(request: RegionMetricRequest): Promise<PagedProperties<RideRegionMetric>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<RawRideRegionMetric[]>('/api/intersections/regions/rides', { params }));
-    return cleanRideRegionMetric(data);
+		const data = await firstValueFrom(this._http.get<PagedProperties<RawRideRegionMetric>>('/api/intersections/regions/rides', { params }));
+    
+    const cleaned: PagedProperties<RideRegionMetric> = {
+      metadata: data.metadata,
+      properties: cleanRideRegionMetric(data.properties)
+    };
+    return cleaned;
   }
 }
 

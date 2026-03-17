@@ -1,4 +1,4 @@
-@for (col of columns(); track col.field) {
+@for (col of columns(); track col.header) {
     <th [pSortableColumn]="col.sortable ? col.field : undefined" [pTooltip]="col.tooltip ? (col.tooltip | translate) : undefined">
         <div class="max-w-40">{{ col.header | translate }}
         @if (col.sortable) { <p-sortIcon [field]="col.field"></p-sortIcon> }

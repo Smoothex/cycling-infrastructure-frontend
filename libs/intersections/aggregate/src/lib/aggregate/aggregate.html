@@ -4,7 +4,7 @@
     [(selectedWeekDays)]="_selectedWeekDays"
     [(selectedTrafficTime)]="_selectedTrafficTime"
     />
-    <intersection-chart [header]="header()" [config]="config" [data]="propertiesFiltered()" [loading]="chartDataIsLoading()"/>
+    <intersection-chart [header]="header()" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()"/>
 
     <p-card >
         <section>

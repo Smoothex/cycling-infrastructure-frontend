@@ -12,7 +12,7 @@ import {
 	DateFilterPrecomputed, 
 	DATE_FILTER_DEFAULTS,
 	IdListRequest,
-	PagedIdList
+	PagedIds
 } from '@simra/intersections-common';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 
@@ -52,7 +52,7 @@ export class MapSettings {
 		page: 0
 	});
 
-	protected readonly pagedResponse = signal<PagedIdList | null>(null);
+	protected readonly pagedResponse = signal<PagedIds | null>(null);
 
 	constructor(private _requestService: IntersectionsRequestService) {
 		effect(async () => {

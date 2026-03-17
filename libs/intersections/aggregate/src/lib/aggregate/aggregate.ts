@@ -28,7 +28,9 @@ import {
 	onFilterChangeHelper,
 	PageableMetricRequest,
 	PagedGeoResponse,
-	BASE_CHART_CONFIG
+	BASE_CHART_CONFIG,
+	NodePageableRequest,
+	EdgePageableRequest
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
 
@@ -43,8 +45,8 @@ export class IntersectionsAggregatePage {
 	private readonly _router = inject(Router);
 	private readonly _RequestService = inject(IntersectionsRequestService);
 
-	protected nodeRequest = signal<NodePageableMetricRequest | null>(null);
-	protected edgeRequest = signal<EdgePageableMetricRequest | null>(null);
+	protected nodeRequest = signal<NodePageableRequest | null>(null);
+	protected edgeRequest = signal<EdgePageableRequest | null>(null);
 	protected pagedRequest = signal<PageableMetricRequest>({
 		numberOfRides: 0,
 		page: 0,
@@ -122,7 +124,6 @@ export class IntersectionsAggregatePage {
 			if (!id) return;
 
 			this.nodeRequest.set({
-				numberOfRides: 0,
 				trafficSignalClusterId: id,
 				weekDay: this._selectedWeekDays(),
 				trafficTime: this._selectedTrafficTime(),
@@ -142,32 +143,17 @@ export class IntersectionsAggregatePage {
 			this.nodeRows.set(mapNodeMetricToRows(data.geoData));
 			this.tableDataIsLoading.set(false);
 		});
-		effect(async () => {
-			const request = this.nodeRequest();
-			if (!request) return;
-			this.chartDataIsLoading.set(true);
-			this.propertiesFiltered.set(await this._RequestService.getIntersectionNodePropertiesByTrafficSignalClusterId(request));
-			this.chartDataIsLoading.set(false);
-		});
 
 		effect(() => {
 			const id = this.osmId();
 			if (!id) return;
 
 			this.edgeRequest.set({
-				numberOfRides: 0,
 				osmId: id,
 				weekDay: this._selectedWeekDays(),
 				trafficTime: this._selectedTrafficTime(),
 				year: this._selectedYear()
 			});
-		});
-		effect(async () => {
-			const request = this.edgeRequest();
-			if (!request) return;
-			this.chartDataIsLoading.set(true);
-			this.propertiesFiltered.set(await this._RequestService.getIntersectionEdgePropertiesByOsmId(request));
-			this.chartDataIsLoading.set(false);
 		});
 		effect(async () => {
 			const pagedRequest = this.pagedRequest();
@@ -198,4 +184,10 @@ export class IntersectionsAggregatePage {
 	}
 
 	protected readonly config = BASE_CHART_CONFIG;
+	protected loadEdges = (req: EdgePageableRequest, page: number, size: number) => {
+		return this._RequestService.getIntersectionEdgeProperties({ ...req, page, size });
+	}
+	protected loadNodes = (req: NodePageableRequest, page: number, size: number) => {
+		return this._RequestService.getIntersectionNodeProperties({ ...req, page, size });
+	}
 }

@@ -4,7 +4,7 @@ import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
 import { centroid } from '@turf/turf';
 
-export type PagedResponse<K extends string, V> = {
+type PagedResponse<K extends string, V> = {
     metadata: {
         totalElements: number;
         totalPages: number;
@@ -12,7 +12,8 @@ export type PagedResponse<K extends string, V> = {
     };
 } & Record<K, V>;
 export interface PagedGeoResponse<T extends Geometry> extends PagedResponse<"geoData", FeatureCollection<T>> {}
-export interface PagedIdList extends PagedResponse<"ids", number[]> {}
+export interface PagedIds extends PagedResponse<"ids", number[]> {}
+export interface PagedProperties<T> extends PagedResponse<"properties", T[]> {}
 
 export interface IdListRequest {
     id?: number;
@@ -36,12 +37,12 @@ export interface BaseRequest extends StartEndDateRequest, PrecomputedRequest {
     regionId?: number;
 }
 
-interface StartEndDateRequest {
+export interface StartEndDateRequest {
     startDate?: number;
     endDate?: number;
 }
 
-interface PrecomputedRequest {
+export interface PrecomputedRequest {
     weekDay?: EWeekDays;
     trafficTime?: ETrafficTimes;
     year?: EYear;
@@ -51,11 +52,14 @@ export interface MetricRequest extends PrecomputedRequest {
     numberOfRides: number;
 }
 
-export interface PageableMetricRequest extends MetricRequest {
+export interface PageableRequest {
     sort?: string;
     page?: number;
     size?: number;
 }
+export interface PrecomputedPageableRequest extends PageableRequest, PrecomputedRequest {} 
+
+export interface PageableMetricRequest extends MetricRequest, PageableRequest {}
 
 export interface Base<TDate = Date, TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
     id: number;
@@ -96,7 +100,12 @@ export interface BaseMetric {
 	medianWaitingTime: number;
 }
 
-
+export interface NodePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
+    trafficSignalClusterId?: number;
+    startValhallaEdgeId?: number | undefined;
+    endValhallaEdgeId?: number | undefined;
+    regionId?: number;
+}
 export interface NodePageableMetricRequest extends PageableMetricRequest {
     trafficSignalClusterId?: number; 
     region?: string; 
@@ -124,6 +133,13 @@ export interface Node extends Base, NodeSpecifics {}
 export interface NodeRow extends IntersectionRow, Node {}
 
 
+export interface EdgePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
+    osmId?: number;
+    valhallaEdgeId?: number | undefined;
+	prevValhallaEdgeId?: number | undefined;
+    nextValhallaEdgeId?: number | undefined;
+    regionId?: number;
+}
 export interface EdgePageableMetricRequest extends PageableMetricRequest {
     region?: string; 
     name?: string;

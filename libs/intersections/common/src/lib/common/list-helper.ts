@@ -1,7 +1,7 @@
 import { WritableSignal } from '@angular/core';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { ESortOrder } from '@simra/common-models';
-import { PageableMetricRequest } from '@simra/intersections-common';
+import { PageableRequest } from '@simra/intersections-common';
 
 
 export function onFilterChangeHelper<T extends object>(event: any, requestFilter: WritableSignal<T>) {
@@ -31,7 +31,7 @@ export function onFilterChangeHelper<T extends object>(event: any, requestFilter
  * Called when paginating the table
  * @param event
  */
-export function onLazyHelper(event: TableLazyLoadEvent, requestFilter: WritableSignal<PageableMetricRequest>) {
+export function onLazyHelper(event: TableLazyLoadEvent, requestFilter: WritableSignal<PageableRequest>) {
     if (!event.rows || event.first === undefined) return;
 
     const sortField = event.sortField;

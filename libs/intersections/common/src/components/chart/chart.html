@@ -79,6 +79,10 @@
                         optionValue="value"
                         size="small" />
                 </div>
+                
+        </div>
+        <div>
+            <p-button label="Load Next Batch" [badge]="'(' + accumulatedData().length  + '/' + totalElements() + ')'" [disabled]="loading()" (onClick)="loadMore()" />
         </div>
         <div class="flex flex-row flex-wrap gap-10">
             @if (loading()) {

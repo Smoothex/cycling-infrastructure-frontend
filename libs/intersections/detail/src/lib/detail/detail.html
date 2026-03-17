@@ -9,7 +9,7 @@
     [(endTime)]="_endTime"
     [(datetime)]="_datetime$">
     </t-date-filter>
-    <intersection-chart [header]="'Chart'" [config]="config" [data]="propertiesFiltered()" [loading]="true" />
+    <intersection-chart [header]="'Chart'" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()" />
     <p-card>
         <div class="flex flex-row gap-4">
             <div class="w-1/3 flex flex-col">
@@ -40,7 +40,7 @@
 
             <div class="w-2/3">
                 <intersection-map id="intersection-map"
-                    [baseData]="intersectionData()"
+                    [baseData]="pagedGeoResponse()?.geoData"
                     [trafficSignalClusterId]="trafficSignalClusterId()"
                     [loading]="tableDataIsLoading()"
                 ></intersection-map>
@@ -49,9 +49,19 @@
     </p-card>
 
     <p-card>
-		<p-table [value]="isNode() ? nodeRows() : edgeRows()" [loading]="tableDataIsLoading()"
-        [sortField]="'waitingTime'"
-		[sortOrder]="-1"
+		<p-table 
+            [value]="isNode() ? nodeRows() : edgeRows()"
+            [loading]="tableDataIsLoading()"
+            [paginator]="true"
+            [lazy]="true"
+            [rows]="pagedRequest().size"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [totalRecords]="totalElements()"
+            (onFilter)="onFilterChange($event)"
+            (onLazyLoad)="onLazy($event)"
+            [resetPageOnSort]="true"
+            [sortField]="'waitingTime'"
+            [sortOrder]="-1"
         >
             <ng-template pTemplate="header">
                 <tr intersection-list-header

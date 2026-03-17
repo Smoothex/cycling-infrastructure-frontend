@@ -20,6 +20,8 @@ import {
 	RideRegionMetric,
 	ChartConfig,
 	BASE_CHART_CONFIG,
+	EdgePageableRequest,
+	NodePageableRequest,
 } from '@simra/intersections-common';
 import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
 
@@ -32,7 +34,7 @@ import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
 export class IntersectionsRegionDetail {
 	private readonly _requestService = inject(IntersectionsRequestService);
 
-	private regionRequest = signal<RegionMetricRequest | null>(null);
+	protected readonly regionRequest = signal<RegionMetricRequest | null>(null);
 	protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
     protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
     protected _selectedTrafficTime = signal<ETrafficTimes>(DATE_FILTER_DEFAULTS.trafficTime);
@@ -105,7 +107,12 @@ export class IntersectionsRegionDetail {
 			const request = this.regionRequest();
 			if (!request) return;
 			this.nodeLoading.set(true);
-			this.nodeProperties.set(await this._requestService.getIntersectionNodePropertiesByRegionId(request));
+			const data = await this._requestService.getIntersectionNodeProperties({
+				...request,
+				page: 0,
+				size: 1000
+			});
+			this.nodeProperties.set(data.properties);
 			this.nodeLoading.set(false);
 		});
 
@@ -113,7 +120,12 @@ export class IntersectionsRegionDetail {
 			const request = this.regionRequest();
 			if (!request) return;
 			this.edgeLoading.set(true);
-			this.edgeProperties.set(await this._requestService.getIntersectionEdgePropertiesByRegionId(request));
+			const data = await this._requestService.getIntersectionEdgeProperties({
+				...request,
+				page: 0,
+				size: 1000
+			});
+			this.edgeProperties.set(data.properties);
 			this.edgeLoading.set(false);
 		});
 
@@ -121,8 +133,23 @@ export class IntersectionsRegionDetail {
 			const request = this.regionRequest();
 			if (!request) return;
 			this.rideLoading.set(true);
-			this.rideProperties.set(await this._requestService.getIntersectionRideRegionMetricsProperties(request));
+			const data = await this._requestService.getIntersectionRideRegionMetricsProperties({
+				...request,
+				page: 0,
+				size: 1000
+			})
+			this.rideProperties.set(data.properties);
 			this.rideLoading.set(false);
 		});
+	}
+
+	protected loadEdges = (req: EdgePageableRequest, page: number, size: number) => {
+		return this._requestService.getIntersectionEdgeProperties({ ...req, page, size });
+	}
+	protected loadNodes = (req: NodePageableRequest, page: number, size: number) => {
+		return this._requestService.getIntersectionNodeProperties({ ...req, page, size });
+	}
+	protected loadRides = (req: RegionMetricRequest, page: number, size: number) => {
+		return this._requestService.getIntersectionRideRegionMetricsProperties({ ...req, page, size });
 	}
 }

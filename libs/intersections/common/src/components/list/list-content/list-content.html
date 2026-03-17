@@ -1,4 +1,4 @@
-@for (col of columns(); track col.field) {
+@for (col of columns(); track col.header) {
     @let field = getFieldValue(col.field);
     @let isMarked = row().id === highlightedRowId();
     <td [class.bg-yellow-100]="isMarked" class="max-w-40">

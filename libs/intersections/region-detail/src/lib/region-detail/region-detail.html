@@ -55,7 +55,7 @@
             </div>
         </div>
 	</p-card>
-    <intersection-chart [header]="'Rides'" [config]="rideConfig" [data]="rideProperties()" [loading]="rideLoading()" [hasStartTime]="false"/>
-    <intersection-chart [header]="'Intersections'" [config]="baseConfig"  [data]="nodeProperties()" [loading]="nodeLoading()"/>
-    <intersection-chart [header]="'Edges'" [config]="baseConfig" [data]="edgeProperties()" [loading]="edgeLoading()"/>
+    <intersection-chart [header]="'Rides'" [config]="rideConfig" [fetchFn]="loadRides" [request]="regionRequest()" [hasStartTime]="false"/>
+    <intersection-chart [header]="'Intersections'" [config]="baseConfig" [fetchFn]="loadNodes" [request]="regionRequest()"/>
+    <intersection-chart [header]="'Edges'" [config]="baseConfig" [fetchFn]="loadEdges" [request]="regionRequest()" />
 </div>

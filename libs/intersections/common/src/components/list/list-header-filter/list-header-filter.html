@@ -1,4 +1,4 @@
-@for(col of columns(); track col.field) {
+@for(col of columns(); track col.header) {
 <th class="max-w-64">
     @if(col.headerFilter && col.display === "autocomplete") {
         <m-autocomplete 
