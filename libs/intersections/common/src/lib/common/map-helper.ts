@@ -1,10 +1,12 @@
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
-import { along, length } from '@turf/turf';
+import { along, length, centroid } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import { MapUtils } from '@simra/common-components';
 import { Router } from '@angular/router';
 import {
-  MetricRequest
+    MetricRequest,
+    RegionMetricRow, 
+    mapRegionMetricToRows
 } from '@simra/intersections-common';
 import {
     setPopUpPropertiesTrafficSignal,
@@ -646,10 +648,29 @@ export function displayRegions(
     return data;
 }
 
-export function zoomOnLineMidPoint(map: maplibregl.Map, data: FeatureCollection<LineString, GeoJsonProperties>) {
+export function getZoomLineFeature(data: LineString) {
+    const midPoint = calculateMidPoint(data);
+    return { lng: midPoint[0], lat: midPoint[1], zoom: 16};
+}
+
+export function getZoomLine(data: FeatureCollection<LineString, GeoJsonProperties>) {
     if (data.features.length === 0) return;
-    const midPoint = calculateMidPoint(data.features[0].geometry);
-    map.flyTo({ center: [midPoint[0], midPoint[1]], zoom: 16 });
+    return getZoomLineFeature(data.features[0].geometry);
+}
+
+export function zoomOnLineMidPoint(map: maplibregl.Map, data: FeatureCollection<LineString, GeoJsonProperties>) {
+    const zoomProps = getZoomLine(data);
+    if (!zoomProps) return;
+    map.flyTo({ center: [zoomProps.lng, zoomProps.lat], zoom: zoomProps.zoom });
+}
+
+export function getZoomRegion(data: FeatureCollection<Polygon, GeoJsonProperties>) {
+    if (data.features.length === 0) return;
+    const polygonCentroid = centroid(data);
+    const region: RegionMetricRow = mapRegionMetricToRows(data)[0];
+    const adminLevel = region.adminLevel;
+    const zoom = adminLevel === 4 ? 7 : 9;
+    return { lng: polygonCentroid.geometry.coordinates[0], lat: polygonCentroid.geometry.coordinates[1], zoom: zoom }
 }
 
 

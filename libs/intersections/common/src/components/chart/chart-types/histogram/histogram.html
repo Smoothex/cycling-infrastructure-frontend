@@ -1,0 +1,52 @@
+<chart-wrapper>
+    <p-chart chart
+        type="bar" 
+        [data]="chartData().chart" 
+        [options]="chartData().options" 
+        height="21rem" />
+
+    <div settings class="flex flex-col gap-4">
+        <div class="flex-1 flex flex-col">
+            <label for="metric" class="font-bold text-sm">Select Metric</label>
+            <p-select 
+                id="metric"
+                [options]="config().selectableProperties"
+                [(ngModel)]="selectedMetric"
+                optionLabel="label" 
+                optionValue="value"
+                size="small" />
+        </div>
+        
+        <div class="flex-1 flex flex-col">
+            <label for="buckets" class="font-bold text-sm">Bucket Size</label>
+            <p-inputNumber 
+                id="buckets"
+                [(ngModel)]="bucketSize" 
+                [showButtons]="true" 
+                buttonLayout="horizontal"
+                incrementButtonIcon="pi pi-plus" 
+                decrementButtonIcon="pi pi-minus" 
+                mode="decimal"
+                [minFractionDigits]="0" 
+                [maxFractionDigits]="2"
+                [step]="5"
+                [min]="0" 
+                [max]="100"
+                size="small" />
+        </div>
+        <div class="flex-1 flex flex-col">
+            <label for="buckets" class="font-bold text-sm">Offset</label>
+            <p-inputNumber 
+                id="buckets"
+                [(ngModel)]="offset" 
+                [showButtons]="true" 
+                buttonLayout="horizontal"
+                incrementButtonIcon="pi pi-plus" 
+                decrementButtonIcon="pi pi-minus" 
+                [step]="5"
+                [min]="0" 
+                [max]="100"
+                size="small" />
+        </div>
+    </div>
+</chart-wrapper>

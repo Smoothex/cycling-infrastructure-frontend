@@ -6,7 +6,6 @@ import { FeatureCollection, Point, LineString, Polygon } from 'geojson';
 import {
   PagedIds,
   PagedProperties,
-  PageableMetricRequest,
   IdListRequest,
   NodePageableMetricRequest, 
   EdgePageableMetricRequest,
@@ -17,6 +16,8 @@ import {
   Base,
   BaseRequest,
   cleanBase,
+  EdgeMetric,
+  NodeMetric,
   RawRideRegionMetric,
   RideRegionMetric,
   cleanRideRegionMetric,
@@ -74,7 +75,6 @@ export class IntersectionsRequestService {
     params["properties"] = false;
 		return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes', { params }));
   }
-
   public async getIntersectionNodeProperties(request: NodePageableRequest): Promise<PagedProperties<Base>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
     params["properties"] = true;
@@ -88,9 +88,15 @@ export class IntersectionsRequestService {
  
   public async getIntersectionNodeMetricsPageable(request: NodePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
-		const data = await firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params }));
+		 params["properties"] = false;
+    const data = await firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_nodes/aggregate', { params }));
     processIntersectionMetrics(data.geoData);
     return data;
+  }
+  public async getIntersectionNodeMetricsPageableProperties(request: NodePageableMetricRequest): Promise<PagedProperties<NodeMetric>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+		params["properties"] = true;
+    return await firstValueFrom(this._http.get<PagedProperties<NodeMetric>>('/api/intersections/intersection_nodes/aggregate', { params }));
   }
 
   public getIntersectionNodeStreetNames(request: NodePageableMetricRequest): Observable<string[]> {
@@ -103,7 +109,6 @@ export class IntersectionsRequestService {
     params["properties"] = false;
 		return firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges', { params }));
   }
-
   public async getIntersectionEdgeProperties(request: EdgePageableRequest): Promise<PagedProperties<Base>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
 		params["properties"] = true;
@@ -117,9 +122,15 @@ export class IntersectionsRequestService {
 
   public async getIntersectionEdgeMetricsPageable(request: EdgePageableMetricRequest): Promise<PagedGeoResponse<LineString>> {
     const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+     params["properties"] = false;
     const data = await firstValueFrom(this._http.get<PagedGeoResponse<LineString>>('/api/intersections/intersection_edges/aggregate', { params }));
     processIntersectionMetrics(data.geoData);
     return data;
+  }
+  public async getIntersectionEdgeMetricsPageableProperties(request: EdgePageableMetricRequest): Promise<PagedProperties<EdgeMetric>> {
+    const params = defaults(pickBy(request, isNumber), omitBy(request, isEmpty));
+    params["properties"] = true;
+    return await firstValueFrom(this._http.get<PagedProperties<EdgeMetric>>('/api/intersections/intersection_edges/aggregate', { params }));
   }
 
   public getIntersectionEdgeStreetNames(request: EdgePageableMetricRequest): Observable<string[]> {
@@ -127,10 +138,8 @@ export class IntersectionsRequestService {
 		return this._http.get<string[]>('/api/intersections/intersection_edges/streetNames', { params });
   }
 
-  public async getIntersectionBasePropertiesSingular(id: number): Promise<Base | null> {
-    const data = await firstValueFrom(this._http.get<RawBase | null>(`/api/intersections/${id}/intersection_base/properties`));
-    if (data) return cleanBase([data])[0];
-    return null;
+  public async getIntersectionBasePropertiesSingular(id: number): Promise<FeatureCollection<LineString> | null> {
+    return firstValueFrom(this._http.get<FeatureCollection<LineString> | null>(`/api/intersections/${id}/intersection_base`));
   }
 
   public async getMatchedPointsIntersectionBase(request: BaseRequest): Promise<FeatureCollection<Point>> {

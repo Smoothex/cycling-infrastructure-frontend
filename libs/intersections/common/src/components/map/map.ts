@@ -29,7 +29,8 @@ import {
 	removeLineHighlight,
 	removeQueryParamsForLineHighlight,
 	zoomOnLineMidPoint,
-	ZOOM_LEVELS
+	ZOOM_LEVELS,
+	getZoomRegion
 } from '@simra/intersections-common';
 
 
@@ -171,8 +172,10 @@ export class IntersectionMap {
 				this.intersectionDataAdded = displayIntersectionAggregate(this._router, metricData, map, "intersectionLineData");
 			}
 			if (regionData) {
-				const polygonCentroid = centroid(regionData);
-				map.jumpTo({ center: [polygonCentroid.geometry.coordinates[0], polygonCentroid.geometry.coordinates[1]], zoom: 9 });
+				const regionZoom = getZoomRegion(regionData);
+				if (regionZoom) {
+					map.jumpTo(regionZoom);
+				}
 				this.intersectionDataAdded = displayRegions(regionData, map, "region");
 			}
 			this.mapDataLoaded.set(true);

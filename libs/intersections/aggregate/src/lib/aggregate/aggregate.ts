@@ -1,11 +1,14 @@
-import { Component, effect, input, inject, signal, computed, WritableSignal } from '@angular/core';
+import { Component, effect, input, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
+import { RouterLink, Router } from '@angular/router';
+import { ButtonModule } from 'primeng/button';
 import { Card } from 'primeng/card';
-import { TableModule, TableFilterEvent, TableLazyLoadEvent } from 'primeng/table';
-import { FeatureCollection, LineString } from 'geojson';
+import { Divider } from 'primeng/divider';
+import { TableModule, TableLazyLoadEvent, TableFilterEvent } from 'primeng/table';
+import { LineString } from 'geojson';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
-import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
+import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
 	BaseMetric,
 	DateFilterPrecomputed, 
@@ -19,9 +22,7 @@ import {
 	mapNodeMetricToRows, 
 	ListColumn, 
 	applyQueryParamsForLineHighlight, 
-	Base, 
-	NodePageableMetricRequest, 
-	EdgePageableMetricRequest,
+	Base,
 	IntersectionListContent,
 	IntersectionListHeader,
 	onLazyHelper,
@@ -30,20 +31,32 @@ import {
 	PagedGeoResponse,
 	BASE_CHART_CONFIG,
 	NodePageableRequest,
-	EdgePageableRequest
+	EdgePageableRequest,
+	getZoomLine,
+	NodePageableMetricRequest,
+	EdgePageableMetricRequest,
+	IntersectionChartMatricArray,
+	ChartConfig,
+	BASE_METRIC_CHART_CONFIG
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
+import { StreetsRequestService } from '@simra/streets-domain';
+import { firstValueFrom } from 'rxjs';
+import { IResponseStreet } from '@simra/streets-common';
+import { HIGHWAY_TYPES_TO_TRANSLATION } from '@simra/streets-explorer';
 
 
 @Component({
 	selector: 'lib-aggregate',
-	imports: [CommonModule, TableModule, Card, DateFilterPrecomputed,
-		IntersectionMap, IntersectionChart, IntersectionListContent, IntersectionListHeader],
+	imports: [CommonModule, TableModule, ButtonModule, Card, Divider, RouterLink, TranslatePipe,
+    DateFilterPrecomputed, IntersectionMap, IntersectionChart, IntersectionListContent, IntersectionListHeader, IntersectionChartMatricArray],
 	templateUrl: './aggregate.html',
 })
 export class IntersectionsAggregatePage {
 	private readonly _router = inject(Router);
-	private readonly _RequestService = inject(IntersectionsRequestService);
+	private readonly _requestService = inject(IntersectionsRequestService);
+	private readonly _streetRequestService = inject(StreetsRequestService);
+
 
 	protected nodeRequest = signal<NodePageableRequest | null>(null);
 	protected edgeRequest = signal<EdgePageableRequest | null>(null);
@@ -53,6 +66,8 @@ export class IntersectionsAggregatePage {
 		size: 20,
 		sort: "medianWaitingTime,DESC"
 	});
+	protected nodeMetricRequest = signal<NodePageableMetricRequest | null>(null);
+	protected edgeMetricRequest = signal<EdgePageableMetricRequest | null>(null);
 	
 	protected readonly propertiesFiltered = signal<Base[]>([]);
 	protected readonly pagedGeoResponse = signal<PagedGeoResponse<LineString> | null>(null);
@@ -60,17 +75,26 @@ export class IntersectionsAggregatePage {
         const response = this.pagedGeoResponse();
         return response?.metadata?.totalElements ? response.metadata.totalElements : 0;
     });
+	protected readonly zoom = computed(() => {
+		const featureCollection = this.pagedGeoResponse();
+		if (!featureCollection) return;
+		return getZoomLine(featureCollection.geoData);
+	});
+
 	
 	protected readonly nodeId = input<string>();
-	protected trafficSignalClusterId = signal<number | undefined>(undefined);
+	protected readonly trafficSignalClusterId = signal<number | undefined>(undefined);
+	protected readonly firstNode = (() => {
+		const nodeRows = this.nodeRows();
+		if (nodeRows.length === 0) return;
+		return nodeRows[0];
+	})
 
 	protected readonly edgeId = input<string>();
-	protected osmId = signal<number | undefined>(undefined);
-
-	
+	protected readonly osmId = signal<number | undefined>(undefined);
+	protected readonly osmProperties = signal<IResponseStreet | null>(null);
 
 	protected readonly isNode = signal<Boolean>(false);
-	protected readonly header = computed(() => this.isNode() ? `Intersection ${this.trafficSignalClusterId()}` : `Way ${this.osmId()}`)
 
     protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
     protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
@@ -101,7 +125,6 @@ export class IntersectionsAggregatePage {
 	protected readonly edgeColumns: ListColumn<EdgeMetricRow>[] = [
 		{ field: 'id', header: '', sortable: false, display: "zoomOnLine" },
 		{ field: 'segmentLink', header:'INTERSECTIONS.HEADERS.SEGMENTID', sortable: false, display: "link" },
-		{ field: 'name', header: 'Name', sortable: true, display: "text" },
 		...this.metricColumns
 	];
 
@@ -134,17 +157,22 @@ export class IntersectionsAggregatePage {
 			const pagedRequest = this.pagedRequest();
 			const nodeRequest = this.nodeRequest();
 			if (!nodeRequest) return;
-			this.tableDataIsLoading.set(true);
-			const data = await this._RequestService.getIntersectionNodeMetricsPageable({
+			this.nodeMetricRequest.set({
 				...pagedRequest,
 				...nodeRequest
 			});
+		});
+		effect(async () => {
+			const request = this.nodeMetricRequest();
+			if (!request) return;
+			this.tableDataIsLoading.set(true);
+			const data = await this._requestService.getIntersectionNodeMetricsPageable(request);
 			this.pagedGeoResponse.set(data);
 			this.nodeRows.set(mapNodeMetricToRows(data.geoData));
 			this.tableDataIsLoading.set(false);
 		});
 
-		effect(() => {
+		effect(async () => {
 			const id = this.osmId();
 			if (!id) return;
 
@@ -159,15 +187,26 @@ export class IntersectionsAggregatePage {
 			const pagedRequest = this.pagedRequest();
 			const edgeRequest = this.edgeRequest();
 			if (!edgeRequest) return;
-			this.tableDataIsLoading.set(true);
-			const data = await this._RequestService.getIntersectionEdgeMetricsPageable({
+			this.edgeMetricRequest.set({
 				...pagedRequest,
 				...edgeRequest
 			});
+		});
+		effect(async () => {
+			const request = this.edgeMetricRequest();
+			if (!request) return;
+			this.tableDataIsLoading.set(true);
+			const data = await this._requestService.getIntersectionEdgeMetricsPageable(request);
 			this.pagedGeoResponse.set(data);
 			this.edgeRows.set(mapEdgeMetricToRows(data.geoData));
 			this.tableDataIsLoading.set(false);
 		});
+
+		effect(async() => {
+			const id = this.osmId();
+			if (!id) return;
+			this.osmProperties.set(await firstValueFrom(this._streetRequestService.getStreet(id)));
+		})
 	}
 
 	onFilterChange (event: TableFilterEvent) {
@@ -183,11 +222,20 @@ export class IntersectionsAggregatePage {
 		scrollToElementId('intersection-map');
 	}
 
-	protected readonly config = BASE_CHART_CONFIG;
+
+	protected readonly BASE_METRIC_CHART_CONFIG = BASE_METRIC_CHART_CONFIG;
+	protected readonly BASE_CHART_CONFIG = BASE_CHART_CONFIG;
+	protected readonly HIGHWAY_TYPES_TO_TRANSLATION = HIGHWAY_TYPES_TO_TRANSLATION;
 	protected loadEdges = (req: EdgePageableRequest, page: number, size: number) => {
-		return this._RequestService.getIntersectionEdgeProperties({ ...req, page, size });
-	}
+		return this._requestService.getIntersectionEdgeProperties({ ...req, page, size });
+	};
 	protected loadNodes = (req: NodePageableRequest, page: number, size: number) => {
-		return this._RequestService.getIntersectionNodeProperties({ ...req, page, size });
-	}
+		return this._requestService.getIntersectionNodeProperties({ ...req, page, size });
+	};
+	protected loadEdgeMetric = (req: EdgePageableMetricRequest, page: number, size: number) => {
+		return this._requestService.getIntersectionEdgeMetricsPageableProperties({ ...req, page, size });
+	};
+	protected loadNodeMetric = (req: NodePageableMetricRequest, page: number, size: number) => {
+		return this._requestService.getIntersectionNodeMetricsPageableProperties({ ...req, page, size });
+	};
 }

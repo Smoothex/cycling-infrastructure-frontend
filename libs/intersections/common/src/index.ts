@@ -6,7 +6,10 @@ export { IntersectionListContent } from './components/list/list-content/list-con
 export { IntersectionListHeader } from './components/list/list-header/list-header';
 export { IntersectionListHeaderFilter } from './components/list/list-header-filter/list-header-filter';
 export { IntersectionMap } from './components/map/map';
+export { ChartWrapper } from './components/chart-wrapper/chart-wrapper';
 export { IntersectionChart } from './components/chart/chart';
+export { IntersectionChartMetric } from './components/chart-metric/chart';
+export { IntersectionChartMatricArray } from './components/chart-metric-array/chart';
 
 export * from './lib/common/map-helper';
 export * from './lib/common/chart-helper';

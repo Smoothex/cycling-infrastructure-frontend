@@ -27,7 +27,7 @@ import { EAdminLevel, AdminLevelTranslationMap  } from '@simra/regions-browse';
 
 const defaults: RegionMetricRequest = {
 	numberOfRides: 10,
-	adminLevel: EAdminLevel.DISTRICT,
+	adminLevel: EAdminLevel.FEDERAL_COUNTY,
 	weekDay: EWeekDays.ALL_WEEK,
 	trafficTime: ETrafficTimes.ALL_DAY,
 	year: EYear.ALL,

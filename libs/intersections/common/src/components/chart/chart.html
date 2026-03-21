@@ -1,125 +1,50 @@
 <p-card [header]="header()">
     <div class="flex flex-col gap-20">
         <div class="flex flex-row flex-wrap gap-5">
-                <div class="flex-1 flex flex-col">
-                    <label for="metric" class="font-bold text-sm">Select Metric</label>
-                    <p-select 
-                        id="metric"
-                        [options]="propertyOptions()"
-                        [(ngModel)]="propertyChart"
-                        optionLabel="label" 
-                        optionValue="value"
-                        size="small" />
-                </div>
-
-                <div class="flex-1 flex flex-col">
-                    <label for="buckets" class="font-bold text-sm">Bucket Size</label>
-                    <p-inputNumber 
-                        id="buckets"
-                        [(ngModel)]="bucketSize" 
-                        [showButtons]="true" 
-                        buttonLayout="horizontal"
-                        incrementButtonIcon="pi pi-plus" 
-                        decrementButtonIcon="pi pi-minus" 
-                        mode="decimal"
-                        [minFractionDigits]="0" 
-                        [maxFractionDigits]="2"
-                        [step]="5"
-                        [min]="0" 
-                        [max]="100"
-                        size="small" />
-                </div>
-                <div class="flex-1 flex flex-col">
-                    <label for="buckets" class="font-bold text-sm">Offset</label>
-                    <p-inputNumber 
-                        id="buckets"
-                        [(ngModel)]="offset" 
-                        [showButtons]="true" 
-                        buttonLayout="horizontal"
-                        incrementButtonIcon="pi pi-plus" 
-                        decrementButtonIcon="pi pi-minus" 
-                        [step]="5"
-                        [min]="0" 
-                        [max]="100"
-                        size="small" />
-                </div>
-                <div class="flex-1 flex flex-col">
-                    <label for="window" class="font-bold text-sm">Median Window</label>
-                    <p-inputNumber 
-                        id="window"
-                        [(ngModel)]="windowSize" 
-                        [showButtons]="true" 
-                        buttonLayout="horizontal"
-                        incrementButtonIcon="pi pi-plus" 
-                        decrementButtonIcon="pi pi-minus" 
-                        [step]="10"
-                        [min]="1" 
-                        [max]="100"
-                        size="small" />
-                </div>
-
-                <div class="flex-1 flex flex-col">
-                    <label for="metric" class="font-bold text-sm">Select Category</label>
-                    <p-select 
-                        id="metric"
-                        [options]="groupByOptions"
-                        [(ngModel)]="groupBy"
-                        optionLabel="label" 
-                        optionValue="value"
-                        size="small" />
-                </div>
-
-                <div class="flex-1 flex flex-col">
-                    <label for="metric" class="font-bold text-sm">Select Compare Metric</label>
-                    <p-select 
-                        id="metric"
-                        [options]="propertyOptions()"
-                        [(ngModel)]="propertyChart2"
-                        optionLabel="label" 
-                        optionValue="value"
-                        size="small" />
-                </div>
-                
-        </div>
-        <div>
             <p-button label="Load Next Batch" [badge]="'(' + accumulatedData().length  + '/' + totalElements() + ')'" [disabled]="loading()" (onClick)="loadMore()" />
+            <p-button label="Load All" [disabled]="loading()" (onClick)="loadAll()" />
         </div>
-        <div class="flex flex-row flex-wrap gap-10">
-            @if (loading()) {
-                @for (i of [1,2,3,4]; track i) {
-                    <div class="flex-1 min-w-[200px]">
-                        <p-skeleton width="100%" height="21rem" />
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-10">
+            @for (chart of charts(); track $index) {  
+                @if (loading() ) {
+                    <p-skeleton height="21rem" />
+                } @else if (chart === 'histogram') {
+                    <histogram-chart 
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart" 
+                        [label]="label()" 
+                        [config]="config()"/>
+                } @else if (chart === 'boxplot') {
+                    <boxplot-chart 
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()" 
+                        [config]="config()"/>
+                } @else if (chart === 'scatter-start-time') {
+                    <scatter-plot-start-time
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()" 
+                        [config]="config()"/>
+                } @else if (chart === 'heatmap-start-time') {
+                    <heatmap-start-time-chart
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()" 
+                        [config]="config()"/>
+                } @else if (chart === 'heatmap') {
+                    <heatmap-chart
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()"
+                        [config]="config()"/>
+                } @else if (chart === 'scatter') {
+                    <scatter-plot
+                        [data]="accumulatedData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()"
+                        [config]="config()"/>
                 }
-            }
-            @else {
-                <p-chart class="flex-1"
-                    type="bar"
-                    [data]="histogram().chart"
-                    [options]="histogram().options"
-                    height="21rem"
-                ></p-chart>
-                @let scatter = scatterChart();
-                @if (scatter) {
-                    <p-chart  class="flex-1"
-                        type="scatter" 
-                        [data]="scatter.chart" 
-                        [options]="scatter.options"
-                        height="21rem"
-                    ></p-chart>
-                }
-                <p-chart class="flex-1"
-                    [type]="$any('boxplot')"
-                    [data]="boxPlot().chart" 
-                    [options]="boxPlot().options" 
-                    height="21rem">
-                </p-chart>
-                <p-chart  class="flex-1"
-                    type="scatter" 
-                    [data]="scatterChartProperties().chart" 
-                    [options]="scatterChartProperties().options"
-                    height="21rem"
-                ></p-chart>
             }
         </div>
     </div>

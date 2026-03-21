@@ -1,8 +1,9 @@
 import { FeatureCollection, LineString, Polygon, Position, Geometry } from 'geojson';
-import { calculateMidPoint } from '@simra/intersections-common';
+import { calculateMidPoint, getZoomLine, getZoomLineFeature } from '@simra/intersections-common';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
 import { centroid } from '@turf/turf';
+import { ChartOptions, ChartData, ChartType } from 'chart.js';
 
 type PagedResponse<K extends string, V> = {
     metadata: {
@@ -25,6 +26,7 @@ export interface IdListRequest {
 export interface linkLabelValue {
     label: string; 
     value: string;
+    params?: object;
 }
 
 export interface IntersectionRow {
@@ -87,11 +89,12 @@ export function cleanBase (data: RawBase[]) : Base[] {
     }));
 }
 
-
-export interface BaseMetric {
+export interface AggregatedResult {
     weekDay: EWeekDays;
     trafficTime: ETrafficTimes;
     year: EYear;
+}
+export interface BaseMetric extends AggregatedResult {
 	numberOfRides: number;
 	medianLength: number;
 	medianDuration: number;
@@ -102,16 +105,20 @@ export interface BaseMetric {
 
 export interface NodePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
     trafficSignalClusterId?: number;
-    startValhallaEdgeId?: number | undefined;
-    endValhallaEdgeId?: number | undefined;
+    startValhallaEdgeId?: number;
+    endValhallaEdgeId?: number;
     regionId?: number;
 }
 export interface NodePageableMetricRequest extends PageableMetricRequest {
-    trafficSignalClusterId?: number; 
-    region?: string; 
+    trafficSignalClusterId?: number;
+    startValhallaEdgeId?: number;
+    endValhallaEdgeId?: number;
+    region?: string;
+    regionId?: number;
     streetNames?: string;
 }
 
+export interface NodeMetric extends BaseMetric, NodeSpecifics {}
 export interface NodeMetricRow extends IntersectionRow, BaseMetric, NodeSpecifics {
     trafficSignalClusterLink: linkLabelValue;
     segmentLink: linkLabelValue;
@@ -130,22 +137,29 @@ interface NodeSpecifics {
 
 export interface Node extends Base, NodeSpecifics {}
 
-export interface NodeRow extends IntersectionRow, Node {}
+export interface NodeRow extends IntersectionRow, Node {
+    nodeLink: linkLabelValue
+}
 
 
 export interface EdgePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
     osmId?: number;
-    valhallaEdgeId?: number | undefined;
-	prevValhallaEdgeId?: number | undefined;
-    nextValhallaEdgeId?: number | undefined;
+    valhallaEdgeId?: number;
+	prevValhallaEdgeId?: number;
+    nextValhallaEdgeId?: number;
     regionId?: number;
 }
 export interface EdgePageableMetricRequest extends PageableMetricRequest {
-    region?: string; 
-    name?: string;
     osmId?: number;
+    valhallaEdgeId?: number;
+	prevValhallaEdgeId?: number;
+    nextValhallaEdgeId?: number;
+    region?: string;
+    regionId?: number;
+    name?: string;
 }
 
+export interface EdgeMetric extends BaseMetric, EdgeSpecifics {}
 export interface EdgeMetricRow extends IntersectionRow, BaseMetric, EdgeSpecifics {
     segmentLink: linkLabelValue;
     osmLink: linkLabelValue;
@@ -163,34 +177,47 @@ interface EdgeSpecifics {
 
 export interface Edge extends Base, EdgeSpecifics {}
 
-export interface EdgeRow extends IntersectionRow, Edge {}
+export interface EdgeRow extends IntersectionRow, Edge {
+    edgeLink: linkLabelValue
+}
 
 export interface RegionMetricRequest extends PageableMetricRequest {
     regionId?: number;
     adminLevel?: number;
 }
 
-export interface RegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
-    id: number;
+
+export interface RegionMetricData<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
     name: string;
     adminLevel: number;
-    numberOfEdges: number;
-    numberOfNodes: number;
-    numberOfRides: number; 
-    nodeMedianWaitingTime: number;
+
     length: number;
-    nodeWaitingSPerKm: number;
-    edgeWaitingSPerKm: number;
+    duration: number;
+
+    numberOfNodes: number;
+    nodeWaitingTime: number;
+    nodeMedianWaitingTime: number;
     nodesPerKm : number;
+    nodeWaitingRate: number;
+    nodeWaitingSPerKm: number;
+
+    numberOfEdges: number;
+    edgeWaitingTime: number;
+    edgeMedianWaitingTime: number;
+    edgeWaitingSPerKm: number;
+
     weekDay: TEnumW;
     trafficTime: TEnumT;
     year: TEnumY; 
+}
+export interface RegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear> extends RegionMetricData<TEnumT, TEnumW, TEnumY> {
+    id: number;
+    numberOfRides: number;
 }
 export type RawRegionMetric = RegionMetric<string, string, number>
 export function cleanRegionMetric(data: RawRegionMetric[]) : RegionMetric[] {
     return data.map((el) => ({
         ...el,
-        nodesPerKm: el.numberOfNodes / el.length,
         trafficTime: el.trafficTime as ETrafficTimes,
         weekDay: el.weekDay as EWeekDays,
         year: el.year.toString() as EYear
@@ -201,27 +228,16 @@ export interface RegionMetricRow extends IntersectionRow, RegionMetric {
     regionIdLink: linkLabelValue;
 }
 
-export interface RideRegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
+export interface RideRegionMetric<TDate = Date, TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear> extends RegionMetricData<TEnumT, TEnumW, TEnumY>  {
     rideId: number;
     regionId: number;
-    name: string;
-    adminLevel: number; 
-    numberOfEdges: number;
-    numberOfNodes: number;
-    nodeMedianWaitingTime: number;
-    length: number;
-    nodeWaitingSPerKm: number;
-    edgeWaitingSPerKm: number;
-    nodesPerKm : number;
-    weekDay: TEnumW;
-    trafficTime: TEnumT;
-    year: TEnumY; 
+    startTime: TDate;
 }
-export type RawRideRegionMetric = RideRegionMetric<string, string, number> 
+export type RawRideRegionMetric = RideRegionMetric<string, string, string, number> 
 export function cleanRideRegionMetric(data: RawRideRegionMetric[]) : RideRegionMetric[] {
     return data.map((el) => ({
         ...el,
-        nodesPerKm: el.numberOfNodes / el.length,
+        startTime: new Date(el.startTime),
         trafficTime: el.trafficTime as ETrafficTimes,
         weekDay: el.weekDay as EWeekDays,
         year: el.year.toString() as EYear
@@ -290,6 +306,16 @@ export function mapNodeMetricToRows(fc: FeatureCollection<LineString>): NodeMetr
 export function mapNodeToRows(fc: FeatureCollection<LineString>): NodeRow[] {
     return fc.features.map(f => {
         const node = <NodeRow> f.properties;
+        const params = {
+            ...getZoomLineFeature(f.geometry),
+            id: node.id,
+            sourceId: `intersectionNodes-${node.rideId}`
+        }
+        node.nodeLink = {
+            label: `${node.rideId}`, 
+            value: '/intersections/map',
+            params: params
+        }
         node.midPoint = calculateMidPoint(f.geometry);
         return node;
     })
@@ -314,6 +340,16 @@ export function mapEdgeMetricToRows(fc: FeatureCollection<LineString>): EdgeMetr
 export function mapEdgeToRows(fc: FeatureCollection<LineString>): EdgeRow[] {
     return fc.features.map(f => {
         const edge = <EdgeRow> f.properties;
+        const params = {
+            ...getZoomLineFeature(f.geometry),
+            id: edge.id,
+            sourceId: `intersectionEdges-${edge.rideId}`
+        }
+        edge.edgeLink = {
+            label: `${edge.rideId}`, 
+            value: '/intersections/map',
+            params: params
+        }
         edge.midPoint = calculateMidPoint(f.geometry);
         return edge;
     })
@@ -348,9 +384,13 @@ export const DATE_FILTER_DEFAULTS = {
 };
 
 export interface ChartConfig<T> {
-    labels: Record<keyof T, string>;
-    selectableProperties: (keyof T)[];
+    selectableProperties: ({value: keyof T; label: string})[];
     defaultProperty: keyof T;
     defaultProperty2: keyof T;
 }
 
+export interface ChartSpecification {
+    type: ChartType;
+    data: ChartData;
+    options: ChartOptions;
+}

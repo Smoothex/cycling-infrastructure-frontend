@@ -4,19 +4,82 @@
     [(selectedWeekDays)]="_selectedWeekDays"
     [(selectedTrafficTime)]="_selectedTrafficTime"
     />
-    <intersection-chart [header]="header()" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()"/>
+    
 
-    <p-card >
-        <section>
-            <h4 class="p-card-title">trafficSignalClusterId {{trafficSignalClusterId()}}</h4>
-        </section>
-        <section id="intersection-map">
-            <intersection-map
+    <p-card [header]="(isNode() ? 'Intersection' : 'Way')">
+        <div class="flex flex-row gap-4">
+            <div class="w-1/3 flex flex-col gap-4">
+                <div class="flex-1 rounded-lg border p-4">
+                    <table class="simple-table">
+                        @if (isNode()) {
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.INTERSECTIONID' | translate }}</td>
+                                <td>{{ trafficSignalClusterId() }}</td>
+                            </tr>
+                        }
+                        @if (osmProperties(); as props) {
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.OSMID' | translate }}</td>
+                                <td>{{ props.id }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Name</td>
+                                <td>{{ props.name }}</td>
+                            </tr>
+                            @if(props.highway) {
+                                <p-divider/>
+                                <tr>
+                                    <td>{{"STREETS.EXPLORER.GENERAL.TABLE.HEADER.COLUMNS.HIGHWAY_TYPE" | translate}}</td>
+                                    <td><a class="link-button" [href]="'https://wiki.openstreetmap.org/wiki/Tag:highway%3D'+[props.highway]" target="_blank">{{HIGHWAY_TYPES_TO_TRANSLATION[props.highway].label | translate}}</a></td>
+                                </tr>
+                                @if(props.tags; as tags) {
+                                    @if(tags.maxSpeed) {
+                                        <p-divider/>
+                                        <tr>
+                                            <td>{{"STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.SPEED_LIMIT" | translate}}</td>
+                                            <td>{{tags.maxSpeed}}</td>
+                                        </tr>
+                                    }
+                                    <p-divider/>
+                                    <tr>
+                                        <td>{{"STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.LIT" | translate}}</td>
+                                        <td><i class="text-xs ph-light ph-{{(tags.lit) ? 'check': 'x'}}-circle"></i></td>
+                                    </tr>
+                                    @if(tags.lanes) {
+                                        <p-divider/>
+                                        <tr>
+                                            <td>{{"STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.LANES" | translate}}</td>
+                                            <td>{{ tags.lanes }}</td>
+                                        </tr>
+                                    }
+                                }
+                            }
+                        }
+                    </table>
+                </div>
+                <div>
+                    @if (zoom(); as z) {
+                        <a pButton
+                            routerLink="/intersections/map"
+                            queryParamsHandling="merge"
+                            target="_blank"
+                            [queryParams]="z"
+                            icon="ph-bold ph-map-pin-area"
+                            size="small">
+                            {{ 'STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.BUTTONS.SIMRA_MAP' | translate }}
+                        </a>
+                    }
+                </div>
+            </div>
+            <div class="w-2/3">
+                <intersection-map
                 [metricData]="pagedGeoResponse()?.geoData"
                 [trafficSignalClusterId]="trafficSignalClusterId()"
                 [loading]="tableDataIsLoading()"
             />
-        </section>
+            </div>
+        </div>
     </p-card>
 
     <p-card>
@@ -50,5 +113,8 @@
             </ng-template>
         </p-table>
     </p-card>
+
+    <intersection-chart-metric-array header="Charts" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()"/>
+    <intersection-chart header="Charts" [config]="BASE_CHART_CONFIG" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()"/>
 </div>
 

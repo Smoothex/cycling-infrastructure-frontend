@@ -8,7 +8,7 @@
         }
         @case ("link") {
             @if (field?.value) {
-                <a [routerLink]="[field.value]" class="link-button">{{ field.label }}</a>
+                <a [routerLink]="[field.value]" [queryParams]="field.params" class="link-button">{{ field.label }}</a>
             }
         }
         @case ("date") {

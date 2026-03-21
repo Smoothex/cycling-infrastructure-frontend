@@ -1,0 +1,21 @@
+<div class="relative group h-full w-full border-round overflow-hidden">
+    <div class="absolute top-0 right-0 p-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <p-button 
+            icon="pi pi-cog" 
+            [rounded]="true" 
+            [text]="true" 
+            severity="secondary"
+            (click)="op.toggle($event)" />
+    </div>
+
+    <ng-content select="[label]"></ng-content>
+    <ng-content select="[chart]"></ng-content>
+
+    <p-popover #op>
+        <div class="flex flex-col gap-4 w-80 p-2">
+            <span class="font-bold text-sm mb-2 block">Settings</span>
+            
+            <ng-content select="[settings]"></ng-content>
+        </div>
+    </p-popover>
+</div>

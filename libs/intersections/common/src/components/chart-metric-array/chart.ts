@@ -8,25 +8,20 @@ import { Skeleton } from 'primeng/skeleton';
 import {
 	PagedProperties,
 	PageableRequest,
-	ChartConfig
+	ChartConfig,
+	AggregatedResult
 } from '@simra/intersections-common';
-import { BoxplotChart } from './chart-types/boxplot/boxplot';
-import { HistogramChart } from './chart-types/histogram/histogram';
-import { HeatmapChart } from './chart-types/heatmap/heatmap';
-import { HeatmapStartTimeChart } from './chart-types/heatmap-startTime/heatmap';
-import { ScatterPlot } from './chart-types/scatterplot/scatterplot';
-import { ScatterPlotStartTime } from './chart-types/scatterplot-startTime/scatterplot';
-
-
-type availablePlots = 'boxplot' | 'histogram' | 'heatmap' | 'heatmap-start-time' | 'scatter' | 'scatter-start-time';
+import { HeatmapChart } from '../chart/chart-types/heatmap/heatmap';
+import { ScatterPlot } from '../chart/chart-types/scatterplot/scatterplot';
 
 @Component({
-	selector: 'intersection-chart',
-	imports: [CommonModule, FormsModule, Card, ChartModule, Skeleton, Button,
-    	HistogramChart, BoxplotChart, HeatmapChart, HeatmapStartTimeChart, ScatterPlot, ScatterPlotStartTime],
-	templateUrl: './chart.html'
+	selector: 'intersection-chart-metric-array',
+	imports: [CommonModule, FormsModule, Card, ChartModule, Button, Skeleton, HeatmapChart, ScatterPlot
+    	],
+	templateUrl: './chart.html',
+	styleUrl: './heatmap.scss'
 })
-export class IntersectionChart<T, R extends PageableRequest> {
+export class IntersectionChartMatricArray<T extends AggregatedResult, R extends PageableRequest> {
 	public readonly header = input.required<string>();
     public readonly config = input.required<ChartConfig<T>>();
 
@@ -42,21 +37,6 @@ export class IntersectionChart<T, R extends PageableRequest> {
 	});
     protected readonly loading = signal(false);
 	protected readonly accumulatedData = signal<T[]>([]);
-
-	
-	readonly charts = computed(() => {
-		const list: availablePlots[] = [];
-		const showScatter = this.accumulatedData().length < 300;
-		list.push('histogram');
-		if (showScatter) list.push('scatter-start-time');
-		if (!showScatter)  list.push('heatmap-start-time');
-		list.push('boxplot');
-		if (showScatter) list.push('scatter');
-		if (!showScatter) list.push('heatmap');
-
-		return list;
-	});
-
 	
 	protected readonly label = computed(() => {
 		for (const el of this.config().selectableProperties) {
@@ -65,6 +45,7 @@ export class IntersectionChart<T, R extends PageableRequest> {
 		return "";
 	});
 	protected propertyChart = signal<keyof T>(null!);
+
 
 	constructor() {
         effect(() => {
