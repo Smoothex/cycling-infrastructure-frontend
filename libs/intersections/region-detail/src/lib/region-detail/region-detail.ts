@@ -9,56 +9,60 @@ import { ChartModule } from 'primeng/chart';
 import { TableModule } from 'primeng/table';
 import { Divider } from 'primeng/divider';
 import { FeatureCollection, GeoJsonProperties,  Polygon } from 'geojson';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { IntersectionsRequestService, mapFeaturesToRegionMetricRows } from '@simra/intersections-domain';
 import {
 	Base,
 	DateFilterPrecomputed,
 	DATE_FILTER_DEFAULTS,
-	RegionMetric,
-	RegionMetricData,
 	RegionMetricRow,
-	RegionMetricRequest,
-	mapRegionMetricToRows,
+	RegionPageableRequest,
 	IntersectionMap,
 	IntersectionChart,
 	IntersectionChartMetric,
-	IntersectionChartMatricArray,
 	RideRegionMetric,
-	ChartConfig,
 	BASE_CHART_CONFIG,
-	EdgePageableRequest,
-	NodePageableRequest,
-	getZoomRegion,
+	EdgePageableRequestPrecomputed,
+	NodePageableRequestPrecomputed,
 	BASE_METRIC_CHART_CONFIG,
+	NODE_METRIC_CHART_CONFIG,
 	EdgePageableMetricRequest,
-	NodePageableMetricRequest
+	NodePageableMetricRequest,
+	RIDE_CHART_CONFIG,
+	RegionMetric,
+	REGION_CHART_CONFIG
 } from '@simra/intersections-common';
 import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
+import { area } from '@turf/turf';
 
 
 @Component({
 	selector: 'region-detail',
 	imports: [CommonModule, FormsModule, ButtonModule, Card, ChartModule, TableModule, Divider, TranslatePipe, RouterLink,
-		IntersectionMap, IntersectionChart, IntersectionChartMetric, IntersectionChartMatricArray, DateFilterPrecomputed],
+		IntersectionMap, IntersectionChart, IntersectionChartMetric, DateFilterPrecomputed],
 	templateUrl: './region-detail.html'
 })
 export class IntersectionsRegionDetail {
 	private readonly _requestService = inject(IntersectionsRequestService);
 
-	protected readonly regionRequest = signal<RegionMetricRequest | null>(null);
+	protected readonly regionRequest = signal<RegionPageableRequest | null>(null);
 	protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
     protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);
     protected _selectedTrafficTime = signal<ETrafficTimes>(DATE_FILTER_DEFAULTS.trafficTime);
 
 	protected readonly trafficSignalClusterId = NaN;
 	protected readonly regionId = input<string>();
-	protected readonly region = signal<RegionMetric | undefined>(undefined);
+	protected readonly region = signal<RegionMetricRow | undefined>(undefined);
 	protected readonly regionFeature = signal<FeatureCollection<Polygon, GeoJsonProperties> | undefined>(undefined);
 	protected readonly regionZoom = computed(() => {
-		const regionFeature = this.regionFeature();
-		if (!regionFeature) return;
-		return getZoomRegion(regionFeature);
+		const region = this.region();
+		if (!region) return;
+		return region.mapLink.params;
 	});
+	protected readonly regionArea = computed(() => {
+		const feature = this.regionFeature();
+		if (!feature) return 0;
+		return area(feature) / 1000000;
+	})
 	protected readonly mapLoading = signal<boolean>(true);
 
 	protected readonly nodeProperties = signal<Base[]>([]);
@@ -79,7 +83,9 @@ export class IntersectionsRegionDetail {
 				numberOfRides: 0,
 				weekDay: this._selectedWeekDays(),
 				trafficTime: this._selectedTrafficTime(),
-				year: this._selectedYear()
+				year: this._selectedYear(),
+				page: 0,
+				size: 10,
 			});
 		});
 
@@ -89,7 +95,7 @@ export class IntersectionsRegionDetail {
 			this.mapLoading.set(true);
 			const data = await this._requestService.getIntersectionRegionMetricsPageable(request);
 			this.regionFeature.set(data.geoData);
-			const regions: RegionMetricRow[] = mapRegionMetricToRows(data.geoData);
+			const regions: RegionMetricRow[] = mapFeaturesToRegionMetricRows(data.geoData);
 			if (regions.length === 1) {
 				this.region.set(regions[0]);
 			}
@@ -137,54 +143,11 @@ export class IntersectionsRegionDetail {
 	}
 
 
-	protected readonly RIDE_CHART_CONFIG: ChartConfig<RegionMetricData> = {
-		selectableProperties: [
-			{
-				value: 'nodesPerKm',
-				label: "Intersections On Distance (#/km)"
-			},
-			{
-				value: 'nodeMedianWaitingTime',
-				label: "Median Intersection Waiting Time (s)"
-			},
-			{
-				value: 'nodeWaitingSPerKm',
-				label: "Intersection Waiting Time (s/km)"
-			},
-			{
-				value: 'nodeWaitingRate',
-				label: "Intersection Waiting Rate (%)"
-			},
-			{
-				value: 'nodeWaitingTime',
-				label: "Total Intersection Waiting Time (s)"
-			},
-			{
-				value: 'length',
-				label: "Length (km)"
-			},
-			{
-				value: 'duration',
-				label: "Duration (s)"
-			}
-		],
-		defaultProperty: 'nodeWaitingRate',
-		defaultProperty2: 'length'
-	};
-	protected readonly REGION_CHART_CONFIG: ChartConfig<RegionMetric> = {
-		selectableProperties: [
-			{
-				value: 'numberOfRides',
-				label: "Number of Rides (#)"
-			},
-			...this.RIDE_CHART_CONFIG.selectableProperties
-		],
-		defaultProperty: 'numberOfRides',
-		defaultProperty2: 'length'
-	};
-	protected loadRegionMetric = async (req: RegionMetricRequest) => {
-		const data = await this._requestService.getIntersectionRegionMetricsPageable(req);
-		if (data.geoData.features.length === 1) return mapRegionMetricToRows(data.geoData)[0];
+	protected readonly RIDE_CHART_CONFIG = RIDE_CHART_CONFIG;
+	protected readonly REGION_CHART_CONFIG = REGION_CHART_CONFIG;
+	protected loadRegionMetric = async (req: RegionPageableRequest): Promise<RegionMetric | null> => {
+		const data = await this._requestService.getIntersectionRegionMetricsPageableProperties(req);
+		if (data.properties.length === 1) return data.properties[0];
 		return null;
 	};
 	protected loadEdgeMetric = (req: EdgePageableMetricRequest, page: number, size: number) => {
@@ -193,15 +156,16 @@ export class IntersectionsRegionDetail {
 	protected loadNodeMetric = (req: NodePageableMetricRequest, page: number, size: number) => {
 		return this._requestService.getIntersectionNodeMetricsPageableProperties({ ...req, page, size });
 	};
-	protected loadEdges = (req: EdgePageableRequest, page: number, size: number) => {
+	protected loadEdges = (req: EdgePageableRequestPrecomputed, page: number, size: number) => {
 		return this._requestService.getIntersectionEdgeProperties({ ...req, page, size });
 	};
-	protected loadNodes = (req: NodePageableRequest, page: number, size: number) => {
+	protected loadNodes = (req: NodePageableRequestPrecomputed, page: number, size: number) => {
 		return this._requestService.getIntersectionNodeProperties({ ...req, page, size });
 	};
-	protected loadRides = (req: RegionMetricRequest, page: number, size: number) => {
+	protected loadRides = (req: RegionPageableRequest, page: number, size: number) => {
 		return this._requestService.getIntersectionRideRegionMetricsProperties({ ...req, page, size });
 	};
 	protected readonly baseConfig = BASE_CHART_CONFIG;
 	protected readonly BASE_METRIC_CHART_CONFIG = BASE_METRIC_CHART_CONFIG;
+	protected readonly NODE_METRIC_CHART_CONFIG = NODE_METRIC_CHART_CONFIG;
 }

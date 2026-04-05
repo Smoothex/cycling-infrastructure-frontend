@@ -1,0 +1,55 @@
+@if (isSettingsVisible()) {
+    <p-accordion [multiple]="true" [value]="[]">
+        @for (groupSetting of settings(); track groupSetting.group) {
+            <p-accordion-panel [value]="groupSetting.group">
+            <p-accordion-header>{{ groupSetting.group }}</p-accordion-header>
+            <p-accordion-content>
+                <div class="flex flex-col gap-4">
+                @for (setting of groupSetting.items; track setting.label) {
+                    
+                    
+                    @switch (setting.props.type) {
+                        @case ('boolean') {
+                            <div class="flex items-center">
+                                <p-checkbox [(ngModel)]="setting.props.value" [binary]="true" size="small"/>
+                                <label class="ml-2 font-bold text-xs">{{ setting.label }}</label>
+                            </div>
+                        }
+                        @case ('number') {
+                            <div class="flex flex-col">
+                                <label class="font-bold text-xs">{{ setting.label }}</label>
+                                <p-inputNumber 
+                                    [(ngModel)]="setting.props.value"
+                                    [showButtons]="true"
+                                
+                                    [max]="setting.props.max"
+                                    [step]="setting.props.step ?? 1"
+                                    size="small"
+                                    mode="decimal"
+                                    [minFractionDigits]="0" 
+                                    [maxFractionDigits]="2"
+                                />
+                            </div>
+                        }
+                        @case ('select') {
+                            <div class="flex flex-col">
+                                <label class="font-bold text-xs">{{ setting.label }}</label>
+                                <p-select 
+                                    [(ngModel)]="setting.props.value"
+                                    [options]="setting.props.options"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    size="small"
+                                    appendTo="body"
+                                />
+                            </div>
+                        }
+                    }
+                }
+                </div>
+            </p-accordion-content>
+            </p-accordion-panel>
+        }
+    </p-accordion>
+}
+       

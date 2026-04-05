@@ -1,42 +1,80 @@
 import { Component, input, computed, signal, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { PopoverModule } from 'primeng/popover';
-import { ButtonModule } from 'primeng/button';
-import { Select } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 
-import { createHistogram, ChartConfig, ChartWrapper } from '@simra/intersections-common';
+import { createHistogram, ChartConfig, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
 
 @Component({
     selector: 'histogram-chart',
     standalone: true,
-    imports: [CommonModule, ChartModule, InputNumberModule, PopoverModule, ButtonModule, Select, FormsModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
     templateUrl: './histogram.html',
 })
 export class HistogramChart<T> {
-    // Inputs
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();
     label = input.required<string>();
+    chartFilter = input.required<ChartFilter<T>>();
 
-    // Internal State (Settings)
+    
     protected bucketSize = signal<number>(10);
     protected offset = signal<number>(5);
+    protected minView = signal<number | null>(null);
+    protected maxView = signal<number | null>(null);
 
-    // Computed Chart Data
+    chartSettings = computed<SettingGroup[]>(() => [
+        {
+            group: 'Metric', items: [
+                { label: 'Select Metric', props: { type: "select", value: this.selectedMetric, options: this.config().selectableProperties }}
+            ]
+        },
+        {
+            group: 'Buckets', items: [
+                { label: 'Bucket Size', props: { type: "number", value: this.bucketSize, min: 0.01, max: 100 }},
+                { label: 'Offset', props: { type: "number", value: this.offset, min: 0, max: 100 }},
+            ]
+        },
+        {
+            group: 'View', items: [
+                { label: 'Minimum Value', props: { type: "number", value: this.minView }},
+                { label: 'Maximum Value', props: { type: "number", value: this.maxView }},
+            ]
+        }
+    ]);
+
+    protected chart = computed<ChartComplete>(() => {
+        const d = this.chartData();
+        return {
+            chartType: "bar",
+            data: d.chart,
+            options: d.options
+        }
+    });
+    protected isExporting = signal<boolean>(false); 
+
+
     protected chartData = computed(() => {
-        const rawValues = this.data().map(r => r[this.selectedMetric()] as number);
-        
-        // Assuming your createHistogram helper is imported/available
         return createHistogram(
-            rawValues,
+            this.data(),
+            this.selectedMetric(),
             this.bucketSize(),
             this.offset(),
             this.label(),
-            'Number of Rides'
+            this.config().aggregationLabel,
+            this.minView() ?? undefined,
+            this.maxView() ?? undefined
         );
+    });
+
+    protected downloadFileName = computed<string>(() => {
+        const baseName = `bar-${String(this.selectedMetric())}-numberOfRides`;
+
+        const viewMin = this.minView() ? `-min-${this.minView()}` : "";
+        const viewMax = this.maxView() ? `-max-${this.maxView()}` : "";
+        const viewName = (viewMin || viewMax) ? `-view${viewMin}${viewMax}` : "";
+
+        return `${baseName}${viewName}`;
     });
 }

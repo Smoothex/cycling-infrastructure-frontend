@@ -1,50 +1,38 @@
-<p-popover #popoverSettings >
+<p-popover #popoverSettings (onShow)="setSettingVisibility(true)" (onHide)="setSettingVisibility(false)">
+	<div class="flex flex-col gap-4 w-80 p-2">
+		<div class="flex flex-row">
+			<span class="flex-1 font-bold text-m mb-2 block">Settings</span>
+			<p-button icon="ph ph-camera" (onClick)="screenshotMode.set(!screenshotMode())" size="small"/>
+		</div>
+
+		<settings [isSettingsVisible]="isSettingsVisible()" [settings]="settings()" />
+	</div>
 	<div class="popover-container flex flex-col gap-2">
-		<p-panel header="Display">
-			<div class="flex flex-col gap-2">
-				<div>
-				<p-checkbox inputId="TrafficSignals" [(ngModel)]="showTrafficSignals" binary="true"/>
-				<label for="TrafficSignals" class="ml-2">Display traffic signals</label>
-				</div>
-				<div>
-					<p-checkbox inputId="IntersectionMetrics" [(ngModel)]="showIntersectionMetrics" binary="true"/>
-					<label for="IntersectionMetrics" class="ml-2">Display metrics </label>
-				</div>
-			</div>
-			
-		</p-panel>
-		<p-panel header="Filter">
-			<div class="flex flex-col gap-2">
+		@if (extendedSettings()) {
+			<div class="flex flex-col">
+				<label class="font-bold text-xs">Select Ride ID</label>
 				<p-select 
-					[options]="selectableRideIds()"
-					[(ngModel)]="selectedRideId"
-					optionLabel="label"
-					optionValue="id"
-					
-					[filter]="true"
-					filterBy="id"
-					(onFilter)="filterRides($event)"
-					[showClear]="true"
-					placeholder="Select Ride ID"
-					
-					[virtualScroll]="true" 
-					[virtualScrollItemSize]="38"
-					scrollHeight="250px"
-	
-					[lazy]="true"
-					(onLazyLoad)="loadRides($event)"
-					[loading]="loadingRideIds()"
-					size="small"
-				>
-				</p-select>
-				<date-filter-precomputed
-				[(selectedYear)]="selectedYear"
-				[(selectedWeekDays)]="selectedWeekDays"
-				[(selectedTrafficTime)]="selectedTrafficTime">
-				</date-filter-precomputed>
+				[options]="selectableRideIds()"
+				[(ngModel)]="selectedRideId"
+				optionLabel="label"
+				optionValue="id"
+				
+				[filter]="true"
+				filterBy="id"
+				(onFilter)="filterRides($event)"
+				[showClear]="true"
+				
+				[virtualScroll]="true" 
+				[virtualScrollItemSize]="38"
+				scrollHeight="250px"
+
+				[lazy]="true"
+				(onLazyLoad)="loadRides($event)"
+				[loading]="loadingRideIds()"
+				size="small"
+			/>
 			</div>
-			
-		</p-panel>
+		}
 	</div>
 </p-popover>
 <p-popover #popoverInfo >
@@ -55,7 +43,7 @@
 		Text about inaccuracy of GPS mapping.
 	</p>
 </p-popover>
-<div class="map-settings">
+<div class="map-settings" [hidden]="screenshotMode()">
 	<p-card>
 		<div class="flex flex-row gap-2">
 			<p-button 

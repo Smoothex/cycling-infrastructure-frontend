@@ -1,38 +1,65 @@
 import { Component, input, computed, signal, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { PopoverModule } from 'primeng/popover';
-import { ButtonModule } from 'primeng/button';
-import { Select } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 
-import { createScatterPlotDate, ChartConfig, ChartWrapper } from '@simra/intersections-common';
+import { createScatterPlotDate, ChartConfig, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
 
 @Component({
     selector: 'scatter-plot-start-time',
     standalone: true,
-    imports: [CommonModule, ChartModule, InputNumberModule, PopoverModule, ButtonModule, Select, FormsModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
     templateUrl: './scatterplot.html',
 })
 export class ScatterPlotStartTime<T> {
-    // Inputs
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();
     label = input.required<string>();
+    chartFilter = input.required<ChartFilter<T>>();
 
-    // Internal State (Settings)
+    protected readonly showAvgLine = signal<boolean>(true);
+    protected readonly showMedianLine = signal<boolean>(false);
     protected readonly windowSize = signal(12);
 
-    // Computed Chart Data
+
+    chartSettings = computed<SettingGroup[]>(() => [
+        {
+            group: 'Metric', items: [
+                { label: 'Select Metric', props: { type: "select", value: this.selectedMetric, options: this.config().selectableProperties }}
+            ]
+        },
+        {
+            group: 'Lines', items: [
+                { label: 'Display Average Line', props: { type: "boolean", value: this.showAvgLine}},
+                { label: 'Display Median Line', props: { type: "boolean", value: this.showMedianLine}},
+                { label: 'Half Window', props: { type: "number", value: this.windowSize, min: 0, max: 100 }},
+            ]
+        }
+    ]);
+
+    protected chart = computed<ChartComplete>(() => {
+        const d = this.chartData();
+        return {
+            chartType: "scatter",
+            data: d.chart,
+            options: d.options
+        }
+    });
+    protected isExporting = signal<boolean>(false); 
+
     protected chartData = computed(() => {
         return createScatterPlotDate(
             this.data(), 
 			'startTime',
 			this.selectedMetric() as string,
             this.windowSize(),
-            this.label()
+            this.label(),
+            this.showAvgLine(),
+            this.showMedianLine()
         );
     });
+
+    protected downloadFileName = computed<string>(() => 
+        `scatterplot-${String(this.selectedMetric())}-time`);
 }

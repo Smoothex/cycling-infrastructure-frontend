@@ -1,3 +1,26 @@
 .intersection-map .leaflet-map {
     @apply h-96;
 }
+
+.screenshot-mode {
+    .legend-wrapper {
+        top: 0.5rem !important;
+        left: 0.5rem !important;
+    }
+
+    .map-legend {
+        .p-card-body {
+            padding: 0.5rem !important; 
+        }
+        
+        .flex.items-center {
+            gap: 0.5rem !important;
+            margin-bottom: 0.25rem !important;
+        }
+
+        .text-sm {
+            font-size: 0.75rem !important;
+            line-height: 1rem !important;
+        }
+    }
+}

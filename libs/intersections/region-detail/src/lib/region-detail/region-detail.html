@@ -16,6 +16,11 @@
                             </tr>
                             <p-divider/>
                             <tr>
+                                <td>Area (km&#178;)</td>
+                                <td>{{ regionArea() | number: '1.0-2' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
                                 <td>{{ 'INTERSECTIONS.HEADERS.RIDES' | translate }}</td>
                                 <td>{{ r.numberOfRides| number }}</td>
                             </tr>
@@ -26,8 +31,8 @@
                             </tr>
                             <p-divider/>
                             <tr>
-                                <td>Median Intersection Waiting Time (s)</td>
-                                <td>{{ r.nodeMedianWaitingTime| number: '1.0-2' }}</td>
+                                <td>Mean Intersection Waiting Time (s)</td>
+                                <td>{{ r.nodeAvgWaitingTime| number: '1.0-2' }}</td>
                             </tr>
                             <p-divider/>
                             <tr>
@@ -63,6 +68,7 @@
             </div>
             <div class="w-2/3">
                 <intersection-map id="intersection-map"
+                    [zoomTarget]="regionZoom()"
                     [regionData]="regionFeature()"
                     [trafficSignalClusterId]="trafficSignalClusterId"
                     [loading]="mapLoading()"
@@ -72,8 +78,8 @@
 	</p-card>
     <intersection-chart-metric header="Region Metric" [config]="REGION_CHART_CONFIG" [fetchFn]="loadRegionMetric" [request]="regionRequest()"  />
     <intersection-chart [header]="'Rides'" [config]="RIDE_CHART_CONFIG" [fetchFn]="loadRides" [request]="regionRequest()"/>
-    <intersection-chart-metric-array header="Intersection Metric" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="loadNodeMetric" [request]="regionRequest()"/>
-    <intersection-chart-metric-array header="Edge Metric" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="loadEdgeMetric" [request]="regionRequest()"/>
+    <intersection-chart header="Intersection Metric" [config]="NODE_METRIC_CHART_CONFIG" [fetchFn]="loadNodeMetric" [request]="regionRequest()"/>
+    <intersection-chart header="Edge Metric" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="loadEdgeMetric" [request]="regionRequest()"/>
     <intersection-chart [header]="'Intersections'" [config]="baseConfig" [fetchFn]="loadNodes" [request]="regionRequest()"/>
     <intersection-chart [header]="'Edges'" [config]="baseConfig" [fetchFn]="loadEdges" [request]="regionRequest()" />
 </div>

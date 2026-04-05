@@ -1,9 +1,8 @@
-import { FeatureCollection, LineString, Polygon, Position, Geometry } from 'geojson';
-import { calculateMidPoint, getZoomLine, getZoomLineFeature } from '@simra/intersections-common';
+import { FeatureCollection, Position, Geometry } from 'geojson';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
-import { centroid } from '@turf/turf';
-import { ChartOptions, ChartData, ChartType } from 'chart.js';
+import { Signal, WritableSignal } from '@angular/core';
+import { ChartData, ChartOptions, ChartType } from 'chart.js';
 
 type PagedResponse<K extends string, V> = {
     metadata: {
@@ -22,7 +21,16 @@ export interface IdListRequest {
     size: number;
 }
 
-
+export interface zoomTarget {
+    lng: number;
+    lat: number;
+    zoom: number;
+    sourceId?: string;
+    id?: number;
+}
+export interface linkLabelValueMap extends linkLabelValue {
+    params: zoomTarget;
+}
 export interface linkLabelValue {
     label: string; 
     value: string;
@@ -34,20 +42,19 @@ export interface IntersectionRow {
     midPoint: Position;
 }
 
-export interface BaseRequest extends StartEndDateRequest, PrecomputedRequest {
+export interface BaseRequest {
     id: number;
-    regionId?: number;
 }
 
 export interface StartEndDateRequest {
-    startDate?: number;
-    endDate?: number;
+    startDate: number;
+    endDate: number;
 }
 
 export interface PrecomputedRequest {
-    weekDay?: EWeekDays;
-    trafficTime?: ETrafficTimes;
-    year?: EYear;
+    weekDay: EWeekDays;
+    trafficTime: ETrafficTimes;
+    year: EYear;
 }
 
 export interface MetricRequest extends PrecomputedRequest {
@@ -56,14 +63,14 @@ export interface MetricRequest extends PrecomputedRequest {
 
 export interface PageableRequest {
     sort?: string;
-    page?: number;
-    size?: number;
+    page: number;
+    size: number;
 }
 export interface PrecomputedPageableRequest extends PageableRequest, PrecomputedRequest {} 
 
 export interface PageableMetricRequest extends MetricRequest, PageableRequest {}
 
-export interface Base<TDate = Date, TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
+export interface Base<TDate = Date>  {
     id: number;
 	rideId: number;
 	length: number;
@@ -73,19 +80,16 @@ export interface Base<TDate = Date, TEnumT = ETrafficTimes, TEnumW = EWeekDays, 
     waitingTime: number;
 	startTime: TDate;
 	endTime: TDate;
-    trafficTime: TEnumT;
-    weekDay: TEnumW;
-    year: TEnumY;
+    trafficTime: ETrafficTimes;
+    weekDay: EWeekDays;
+    year: EYear;
 }
-export type RawBase = Base<string, string, string, number> 
+export type RawBase = Base<string> 
 export function cleanBase (data: RawBase[]) : Base[] {
     return data.map((el) => ({
         ...el,
         startTime: new Date(el.startTime),
-        endTime: new Date(el.endTime),
-        trafficTime: el.trafficTime as ETrafficTimes,
-        weekDay: el.weekDay as EWeekDays,
-        year: el.year.toString() as EYear
+        endTime: new Date(el.endTime)
     }));
 }
 
@@ -95,26 +99,27 @@ export interface AggregatedResult {
     year: EYear;
 }
 export interface BaseMetric extends AggregatedResult {
+    id: number;
 	numberOfRides: number;
-	medianLength: number;
-	medianDuration: number;
-	medianSpeed: number;
+	avgLength: number;
+	avgDuration: number;
+	avgSpeed: number;
 	maxWaitingTime: number;
-	medianWaitingTime: number;
+	avgWaitingTime: number;
+    stopRate: number;
+    avgWaitingTimeWhenStopped: number;
 }
 
-export interface NodePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
+interface NodeRequest {
     trafficSignalClusterId?: number;
     startValhallaEdgeId?: number;
     endValhallaEdgeId?: number;
     regionId?: number;
 }
-export interface NodePageableMetricRequest extends PageableMetricRequest {
-    trafficSignalClusterId?: number;
-    startValhallaEdgeId?: number;
-    endValhallaEdgeId?: number;
+export interface NodePageableRequestPrecomputed extends PrecomputedPageableRequest, NodeRequest {}
+export interface NodePageableRequestStartEndDate  extends PageableRequest, StartEndDateRequest, NodeRequest {}
+export interface NodePageableMetricRequest extends PageableMetricRequest, NodePageableRequestPrecomputed {
     region?: string;
-    regionId?: number;
     streetNames?: string;
 }
 
@@ -122,6 +127,8 @@ export interface NodeMetric extends BaseMetric, NodeSpecifics {}
 export interface NodeMetricRow extends IntersectionRow, BaseMetric, NodeSpecifics {
     trafficSignalClusterLink: linkLabelValue;
     segmentLink: linkLabelValue;
+    mapLinktrafficSignalCluster: linkLabelValueMap;
+    mapLinkSegment: linkLabelValueMap;
 }
 
 interface NodeSpecifics {
@@ -142,20 +149,17 @@ export interface NodeRow extends IntersectionRow, Node {
 }
 
 
-export interface EdgePageableRequest extends PrecomputedPageableRequest, StartEndDateRequest {
+interface EdgeRequest {
     osmId?: number;
     valhallaEdgeId?: number;
 	prevValhallaEdgeId?: number;
     nextValhallaEdgeId?: number;
     regionId?: number;
 }
-export interface EdgePageableMetricRequest extends PageableMetricRequest {
-    osmId?: number;
-    valhallaEdgeId?: number;
-	prevValhallaEdgeId?: number;
-    nextValhallaEdgeId?: number;
+export interface EdgePageableRequestPrecomputed extends PrecomputedPageableRequest, EdgeRequest {}
+export interface EdgePageableRequestStartEndDate extends PageableRequest, StartEndDateRequest, EdgeRequest {}
+export interface EdgePageableMetricRequest extends PageableMetricRequest, EdgePageableRequestPrecomputed {
     region?: string;
-    regionId?: number;
     name?: string;
 }
 
@@ -163,6 +167,8 @@ export interface EdgeMetric extends BaseMetric, EdgeSpecifics {}
 export interface EdgeMetricRow extends IntersectionRow, BaseMetric, EdgeSpecifics {
     segmentLink: linkLabelValue;
     osmLink: linkLabelValue;
+    mapLinkOsm: linkLabelValueMap;
+    mapLinkSegment: linkLabelValueMap;
 }
 
 interface EdgeSpecifics {
@@ -181,66 +187,65 @@ export interface EdgeRow extends IntersectionRow, Edge {
     edgeLink: linkLabelValue
 }
 
-export interface RegionMetricRequest extends PageableMetricRequest {
+export interface RegionCompleteRequest extends MetricRequest {
+    adminLevel: number;
+}
+export interface RegionPageableRequest extends PageableMetricRequest {
     regionId?: number;
     adminLevel?: number;
 }
 
 
-export interface RegionMetricData<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear>  {
+export interface RegionMetricData  {
     name: string;
     adminLevel: number;
 
     length: number;
     duration: number;
 
+    nodesPerKm : number;
+
     numberOfNodes: number;
     nodeWaitingTime: number;
-    nodeMedianWaitingTime: number;
-    nodesPerKm : number;
-    nodeWaitingRate: number;
+    nodeAvgWaitingTime: number;
+    nodeAvgWaitingTimeWhenStopped: number;
+    nodeStopRate: number;
     nodeWaitingSPerKm: number;
+    nodeWaitingRate: number;
 
     numberOfEdges: number;
     edgeWaitingTime: number;
-    edgeMedianWaitingTime: number;
+    edgeAvgWaitingTime: number;
+    edgeAvgWaitingTimeWhenStopped: number;
+    edgeStopRate: number;
     edgeWaitingSPerKm: number;
+    edgeWaitingRate: number;
 
-    weekDay: TEnumW;
-    trafficTime: TEnumT;
-    year: TEnumY; 
+    weekDay: EWeekDays;
+    trafficTime: ETrafficTimes;
+    year: EYear; 
 }
-export interface RegionMetric<TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear> extends RegionMetricData<TEnumT, TEnumW, TEnumY> {
+
+export interface RegionMetric extends RegionMetricData {
     id: number;
     numberOfRides: number;
 }
-export type RawRegionMetric = RegionMetric<string, string, number>
-export function cleanRegionMetric(data: RawRegionMetric[]) : RegionMetric[] {
-    return data.map((el) => ({
-        ...el,
-        trafficTime: el.trafficTime as ETrafficTimes,
-        weekDay: el.weekDay as EWeekDays,
-        year: el.year.toString() as EYear
-    }));
-}
-
 export interface RegionMetricRow extends IntersectionRow, RegionMetric {
     regionIdLink: linkLabelValue;
+    mapLink: linkLabelValueMap;
 }
 
-export interface RideRegionMetric<TDate = Date, TEnumT = ETrafficTimes, TEnumW = EWeekDays, TEnumY = EYear> extends RegionMetricData<TEnumT, TEnumW, TEnumY>  {
+export interface RideRegionMetric<TDate = Date> extends RegionMetricData  {
     rideId: number;
     regionId: number;
     startTime: TDate;
+    medianRideSpeed: number;
 }
-export type RawRideRegionMetric = RideRegionMetric<string, string, string, number> 
+export type RawRideRegionMetric = RideRegionMetric<string> 
 export function cleanRideRegionMetric(data: RawRideRegionMetric[]) : RideRegionMetric[] {
     return data.map((el) => ({
         ...el,
-        startTime: new Date(el.startTime),
-        trafficTime: el.trafficTime as ETrafficTimes,
-        weekDay: el.weekDay as EWeekDays,
-        year: el.year.toString() as EYear
+        startTime: new Date(el.startTime)
     }));
 }
 
@@ -260,7 +265,6 @@ export interface EnumFilterConfig<E = any> {
   default?: E[keyof E] | E[keyof E][];
 }
 
-// 2. Map 'display' types to their respective filter configurations
 export interface FilterMapping<E = any> {
   autocomplete: AutocompleteFilterConfig;
   enum: EnumFilterConfig<E>;
@@ -279,7 +283,6 @@ interface ListColumnBase<T> {
   sortable: boolean;
   translationMap?: any;
 }
-
 export type ListColumn<T> = {
   [K in keyof FilterMapping]: ListColumnBase<T> & {
     display: K;
@@ -287,85 +290,6 @@ export type ListColumn<T> = {
   }
 }[keyof FilterMapping];
 
-export function mapNodeMetricToRows(fc: FeatureCollection<LineString>): NodeMetricRow[] {
-    return fc.features.map(f => {
-        const nodeMetricRow = <NodeMetricRow> f.properties;
-        nodeMetricRow.trafficSignalClusterLink = { 
-            label: `${nodeMetricRow.trafficSignalClusterId}`, 
-            value: `/intersections/node/${nodeMetricRow.trafficSignalClusterId}`
-        };
-        nodeMetricRow.segmentLink = {
-            label: `${nodeMetricRow.id}`,
-            value: `/intersections/segment/${nodeMetricRow.id}`
-        };
-        nodeMetricRow.midPoint = calculateMidPoint(f.geometry);
-        return nodeMetricRow;
-    });
-}
-
-export function mapNodeToRows(fc: FeatureCollection<LineString>): NodeRow[] {
-    return fc.features.map(f => {
-        const node = <NodeRow> f.properties;
-        const params = {
-            ...getZoomLineFeature(f.geometry),
-            id: node.id,
-            sourceId: `intersectionNodes-${node.rideId}`
-        }
-        node.nodeLink = {
-            label: `${node.rideId}`, 
-            value: '/intersections/map',
-            params: params
-        }
-        node.midPoint = calculateMidPoint(f.geometry);
-        return node;
-    })
-}
-
-export function mapEdgeMetricToRows(fc: FeatureCollection<LineString>): EdgeMetricRow[] {
-    return fc.features.map(f => {
-        const edgeMetricRow = <EdgeMetricRow> f.properties;
-        edgeMetricRow.osmLink = {
-            label: edgeMetricRow.osmId ? `${edgeMetricRow.osmId}` : '',
-            value: `/intersections/edge/${edgeMetricRow.osmId}`
-        };
-        edgeMetricRow.segmentLink = {
-            label: `${edgeMetricRow.id}`,
-            value: `/intersections/segment/${edgeMetricRow.id}`
-        };
-        edgeMetricRow.midPoint = calculateMidPoint(f.geometry);
-        return edgeMetricRow;
-    });
-}
-
-export function mapEdgeToRows(fc: FeatureCollection<LineString>): EdgeRow[] {
-    return fc.features.map(f => {
-        const edge = <EdgeRow> f.properties;
-        const params = {
-            ...getZoomLineFeature(f.geometry),
-            id: edge.id,
-            sourceId: `intersectionEdges-${edge.rideId}`
-        }
-        edge.edgeLink = {
-            label: `${edge.rideId}`, 
-            value: '/intersections/map',
-            params: params
-        }
-        edge.midPoint = calculateMidPoint(f.geometry);
-        return edge;
-    })
-}
-
-export function mapRegionMetricToRows(fc: FeatureCollection<Polygon>): RegionMetricRow[] {
-    return fc.features.map(f => {
-        const regionMetricRow = <RegionMetricRow> f.properties;
-        regionMetricRow.regionIdLink = {
-            label: `${regionMetricRow.id}`,
-            value: `/intersections/regions/${regionMetricRow.id}`
-        };
-        regionMetricRow.midPoint = centroid(f).geometry.coordinates;
-        return regionMetricRow;
-    });
-}
 
 
 export enum ECardMode {
@@ -383,14 +307,74 @@ export const DATE_FILTER_DEFAULTS = {
     getDatetime: () => [new Date('2019-01-01T00:00'), new Date()]
 };
 
+
+export interface SelectableProperty<T> {
+    value: keyof T; 
+    label: string
+}
 export interface ChartConfig<T> {
-    selectableProperties: ({value: keyof T; label: string})[];
+    selectableProperties: SelectableProperty<T>[];
     defaultProperty: keyof T;
     defaultProperty2: keyof T;
+    aggregationLabel : string;
+    isAggregated?: boolean;
+    canCompare?: boolean;
+    idKey: keyof T & string;
 }
 
-export interface ChartSpecification {
-    type: ChartType;
+interface NumberSetting {
+    type: "number";
+    value: WritableSignal<number | null>;
+    min?: number;
+    max?: number;
+    step?: number;
+}
+interface SelectSetting {
+    type: "select";
+    value: WritableSignal<any>;
+    options: ({value: any; label: any})[];
+}
+interface BooleanSetting {
+    type: "boolean";
+    value: WritableSignal<boolean>;
+}
+interface Setting {
+    label: string;
+    props: NumberSetting | SelectSetting | BooleanSetting;
+}
+export interface SettingGroup {
+    group: string;
+    items: Setting[];
+}
+
+export type TimeCategory = "trafficTime" | "weekDay" | "year";
+export const TimeCategoryLabels: Record<TimeCategory, string> = {
+    trafficTime: "Traffic Time",
+    weekDay: "Week Day",
+    year: "Year",
+}
+export function recordToOptions <T extends string | number | symbol> (record: Record<T, string>) {
+    return Object.entries(record).map(([value, label]) => ({
+		label: label,
+		value: value
+	}));
+}
+
+export interface ChartFilter<T> {
+    min: WritableSignal<number | null>;
+    max: WritableSignal<number | null>;
+    onProperty: WritableSignal<keyof T>;
+    onPropertyLabel: Signal<string>;
+    selectableProperties: ({value: keyof T; label: string})[];
+    totalElements: Signal<number>;
+    excludedElements: Signal<number>;
+    timeCategory?: WritableSignal<TimeCategory>;
+    timeCategoryValue?: WritableSignal<EYear | EWeekDays | ETrafficTimes>;
+    timeCategoryCompare?: WritableSignal<EYear | EWeekDays | ETrafficTimes>;
+}
+
+export interface ChartComplete {
+    chartType: ChartType;
     data: ChartData;
     options: ChartOptions;
 }

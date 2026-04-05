@@ -3,89 +3,38 @@ import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix';
 import { interpolateInferno } from 'd3-scale-chromatic';
 import 'chartjs-adapter-date-fns';
-import {
-    Base,
-    BaseMetric,
-	ChartConfig
-} from '@simra/intersections-common';
 
 Chart.register(...registerables, BoxPlotController, BoxAndWiskers, MatrixController, MatrixElement);
 
-
-export const BASE_CHART_CONFIG: ChartConfig<Base> = {
-    selectableProperties: [
-        {
-            value: 'waitingTime',
-            label: "Waiting Time (s)"
-        }, 
-        {
-            value: 'duration',
-            label: "Duration (s)"
-        }, 
-        {
-            value: 'speed',
-            label: "Speed (km/h)"
-        }, 
-        {
-            value: 'medianRideSpeed',
-            label: "Median Ride Speed (km/h)"
-        }
-    ],
-    defaultProperty: 'waitingTime',
-    defaultProperty2: 'medianRideSpeed'
-};
-export const BASE_METRIC_CHART_CONFIG: ChartConfig<BaseMetric> = {
-    selectableProperties: [
-        {
-            value: 'numberOfRides',
-            label: "Number of Rides (#)"
-        },
-        {
-            value: 'medianLength',
-            label: "Median Length (m)"
-        },
-        {
-            value: 'medianDuration',
-            label: "Median Duration (s)"
-        },
-        {
-            value: 'medianSpeed',
-            label: "Median Speed (km/h)"
-        },
-        {
-            value: 'medianWaitingTime',
-            label: "Median Waiting Time (s)"
-        },
-        {
-            value: 'maxWaitingTime',
-            label: "Max Waiting Time (s)"
-        },
-    ],
-    defaultProperty: 'medianWaitingTime',
-    defaultProperty2: 'numberOfRides'
-};
-
-
-export function createHistogram(
-    data: number[], 
+export function createHistogram<T>(
+    data: T[],
+    key: keyof T,
     bucketSize: number, 
     offset: number,
     xLabel: string, 
-    yLabel: string
-) : { chart: ChartData<'bar'>; options: ChartOptions<'bar'>} {
-    if (!data || data.length === 0) return { chart: { datasets: [] }, options: {} };
+    yLabel: string,
+    minView?: number,
+    maxView?: number
+) : { chart: ChartData<'bar'>; options: ChartOptions<'bar'>; outliers: number;} {
+    if (!data || data.length === 0) return { chart: { datasets: [] }, options: {}, outliers: 0 };
 
-    const min = Math.floor((Math.min(...data) - offset) / bucketSize) * bucketSize + offset;
-    const max = Math.ceil((Math.max(...data) - offset) / bucketSize) * bucketSize + offset;
+    const values = data.map(d => d[key]) as number[];
+
+    const min = Math.floor(((minView ?? Math.min(...values)) - offset) / bucketSize) * bucketSize + offset;
+    const max = Math.ceil(((maxView ??  Math.max(...values)) - offset) / bucketSize) * bucketSize + offset;
 
     const bucketCount = Math.max(1, Math.ceil((max - min) / bucketSize));
     const buckets = new Array(bucketCount).fill(0);
 
+    let numberOfOutliers = 0;
+
     data.forEach(d => {
-        let index = Math.floor((d - min) / bucketSize);
-        if (index < 0) index = 0;
-        if (index >= bucketCount) index = bucketCount - 1;
-        buckets[index]++;
+        const value = d[key] as number;
+        const index = Math.floor((value - min) / bucketSize);
+        const safeIndex = Math.min(Math.max(0, index), bucketCount - 1);
+        
+        if (value < min || value > max) numberOfOutliers += 1;
+        buckets[safeIndex]++;
     });
 
     const labels = buckets.map((_, i) => {
@@ -94,7 +43,7 @@ export function createHistogram(
         return `${start}–${end}`;
     });
 
-    const result = {
+    return {
         chart: {
             labels,
             datasets: [{ data: buckets }]
@@ -106,9 +55,9 @@ export function createHistogram(
                 x: { title: { display: true, text: xLabel } },
                 y: { title: { display: true, text: yLabel }, ticks: { precision: 0 } }
             }
-        }
+        },
+        outliers: numberOfOutliers
     }
-    return result;
 }
 
 
@@ -138,7 +87,9 @@ export function createScatterPlotDate(
     xKey: string, 
     yKey: string, 
     windowSize: number, 
-    yLabel: string
+    yLabel: string,
+    displayAvgLine: boolean,
+    displayMedianLine: boolean
 ) : { chart: ChartData<'line' | 'scatter'>; options: ChartOptions<'line' | 'scatter'>}{
     if (!data || data.length === 0) return { chart: { datasets: [] }, options: {} };
 
@@ -153,34 +104,38 @@ export function createScatterPlotDate(
     const medianLine = lines.map((l) => l.median);
     const avgLine = lines.map((l) => l.average);
 
+    const chartData: ChartData<'line' | 'scatter'> = {
+        datasets: [
+        {
+            label: yLabel,
+            type: 'scatter',
+            data: scatterPoints,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            pointRadius: 5
+        }
+    ]}
+    if (displayAvgLine) {
+        chartData.datasets.push({
+            label: `Moving Average (Window: ${windowSize*2+1})`,
+            type: 'line',
+            data: avgLine,
+            borderColor: '#338f33',
+            borderWidth: 3,
+            pointRadius: 0,
+        })
+    }
+    if (displayMedianLine) {
+        chartData.datasets.push({
+            label: `Moving Median (Window: ${windowSize*2+1})`,
+            type: 'line',
+            data: medianLine,
+            borderColor: '#42A5F5',
+            borderWidth: 3,
+            pointRadius: 0,
+        })
+    }
     return {
-        chart: {
-            datasets: [
-                {
-                    label: `Moving Median (Window: ${windowSize*2+1})`,
-                    type: 'line',
-                    data: medianLine,
-                    borderColor: '#42A5F5',
-                    borderWidth: 3,
-                    pointRadius: 0, // Hide points on the median line
-                },
-                {
-                    label: `Moving Average (Window: ${windowSize*2+1})`,
-                    type: 'line',
-                    data: avgLine,
-                    borderColor: '#338f33',
-                    borderWidth: 3,
-                    pointRadius: 0,
-                },
-                {
-                    label: yLabel,
-                    type: 'scatter',
-                    data: scatterPoints,
-                    backgroundColor: 'rgba(150, 150, 150, 0.3)',
-                    pointRadius: 4
-                }
-            ]
-        },
+        chart: chartData,
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -195,6 +150,7 @@ export function createScatterPlotDate(
                 }
             },
             plugins: {
+                ...((!displayAvgLine && !displayMedianLine) && {legend: { display: false }})
             }
         }
     };
@@ -206,7 +162,9 @@ export function createScatterPlot(
     yKey: string, 
     xLabel: string, 
     yLabel: string,
-    windowSize: number
+    windowSize: number,
+    displayAvgLine: boolean,
+    displayMedianLine: boolean
 ) : { chart: ChartData<'line' | 'scatter'>; options: ChartOptions<'line' | 'scatter'>} {
     if (!data || data.length === 0) return { chart: { datasets: [] }, options: {} };
 
@@ -221,35 +179,38 @@ export function createScatterPlot(
     const medianLine = lines.map((l) => l.median);
     const avgLine = lines.map((l) => l.average);
 
-    
+    const chartData: ChartData<'line' | 'scatter'> = {
+        datasets: [
+        {
+            label: yLabel,
+            type: 'scatter',
+            data: scatterPoints,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            pointRadius: 5
+        }
+    ]}
+    if (displayAvgLine) {
+        chartData.datasets.push({
+            label: `Moving Average (Window: ${windowSize*2+1})`,
+            type: 'line',
+            data: avgLine,
+            borderColor: '#338f33',
+            borderWidth: 3,
+            pointRadius: 0,
+        })
+    }
+    if (displayMedianLine) {
+        chartData.datasets.push({
+            label: `Moving Median (Window: ${windowSize*2+1})`,
+            type: 'line',
+            data: medianLine,
+            borderColor: '#42A5F5',
+            borderWidth: 3,
+            pointRadius: 0,
+        })
+    }
     return {
-        chart: {
-            datasets: [
-                {
-                    label: `Moving Median (Window: ${windowSize*2+1})`,
-                    type: 'line',
-                    data: medianLine,
-                    borderColor: '#42A5F5',
-                    borderWidth: 3,
-                    pointRadius: 0, // Hide points on the median line
-                },
-                {
-                    label: `Moving Average (Window: ${windowSize*2+1})`,
-                    type: 'line',
-                    data: avgLine,
-                    borderColor: '#338f33',
-                    borderWidth: 3,
-                    pointRadius: 0,
-                },
-                {
-                    label: yLabel,
-                    type: 'scatter',
-                    data: scatterPoints,
-                    backgroundColor: 'rgba(150, 150, 150, 0.3)',
-                    pointRadius: 4
-                }
-            ]
-        },
+        chart: chartData,
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -262,6 +223,7 @@ export function createScatterPlot(
                 }
             },
             plugins: {
+                ...((!displayAvgLine && !displayMedianLine) && {legend: { display: false }})
             }
         }
     };
@@ -273,7 +235,7 @@ export function createBarChartForMetric<T>(
     categoryKey: keyof T, 
     valueKey: keyof T,
     xLabel: string, 
-    xLabelTranslation: Record<string, string>,
+    categoryLabels: Record<string, string>,
     yLabel: string
 ) : { chart: ChartData<'bar'>; options: ChartOptions<'bar'>} {
     if (!data || data.length === 0) return { chart: { datasets: [] }, options: {} };
@@ -286,9 +248,14 @@ export function createBarChartForMetric<T>(
         groups[cat] = val;
     });
 
-    const categories = Object.keys(groups);
-    const labels = categories.map(c => xLabelTranslation[c]);
-    const datasetData = categories.map(c => groups[c]);
+    const labels: string[] = [];
+    const datasetData: number[] = [];
+    for (const key of Object.keys(categoryLabels)) {
+        if (groups[key]) {
+            labels.push(categoryLabels[key]);
+            datasetData.push(groups[key]);
+        }
+    }
 
     return {
         chart: {
@@ -312,10 +279,15 @@ export function createBoxPlot<T>(
     categoryKey: keyof T, 
     valueKey: keyof T,
     xLabel: string, 
-    xLabelTranslation: Record<string, string>,
-    yLabel: string
-): { chart: ChartData<'boxplot'>; options: ChartOptions<'boxplot'>} {
-    if (!data || data.length === 0) return { chart: { datasets: [] }, options: {} };
+    categoryLabels: Record<string, string>,
+    yLabel: string,
+    minView?: number,
+    maxView?: number
+): { chart: ChartData<'boxplot'>; options: ChartOptions<'boxplot'>; minValue: number; maxValue: number; } {
+    if (!data || data.length === 0) return { chart: { datasets: [] }, options: {}, minValue: 0, maxValue: 0 };
+
+    const actualMin = Math.min(...data.map((item) => Number(item[valueKey])));
+    const actualMax = Math.max(...data.map((item) => Number(item[valueKey])));
 
     const groups: Record<string, number[]> = {};
     data.forEach(item => {
@@ -325,9 +297,14 @@ export function createBoxPlot<T>(
         groups[cat].push(val);
     });
 
-    const categories = Object.keys(groups);
-    const labels = categories.map(c => xLabelTranslation[c]);
-    const datasetData = categories.map(c => groups[c]);
+    const labels: string[] = [];
+    const datasetData: number[][] = [];
+    for (const key of Object.keys(categoryLabels)) {
+        if (groups[key]) {
+            labels.push(categoryLabels[key]);
+            datasetData.push(groups[key]);
+        }
+    }
 
     return {
         chart: {
@@ -337,7 +314,11 @@ export function createBoxPlot<T>(
                 data: datasetData,
                 backgroundColor: 'rgba(54, 162, 235, 0.5)',
                 borderColor: 'rgb(54, 162, 235)',
-                borderWidth: 1
+                borderWidth: 1,
+                outlierRadius: 5,
+                outlierBackgroundColor: 'rgba(0, 0, 0, 0.5)',
+                meanRadius: 5,
+                meanBackgroundColor: 'rgb(0, 0, 0)'
             }]
         },
         options: {
@@ -347,9 +328,11 @@ export function createBoxPlot<T>(
             },
             scales: {
                 x: { title: { display: true, text: xLabel } },
-                y: { title: { display: true, text: yLabel }, beginAtZero: true }
+                y: { title: { display: true, text: yLabel }, min: minView, max: maxView }
             }
-        }
+        },
+        minValue: actualMin,
+        maxValue: actualMax
     };
 }
 
@@ -358,55 +341,76 @@ export function createHeatmapBinning(
     data: any[],
     xKey: string,
     yKey: string,
+    idKey: string,
     xLabel: string,
     yLabel: string,
     bucketSizeX: number,
     bucketSizeY: number,
     offsetX: number = 0,
-    offsetY: number = 0
-): { chart: ChartData<'matrix'>; options: ChartOptions<'matrix'>; minCount: number; maxCount: number } {
-    if (!data || data.length === 0) return { chart: { datasets: [] }, options: {}, minCount: 0, maxCount: 0 };
-    // 1. Find Min/Max to define the grid boundaries
+    offsetY: number = 0,
+    minViewX?: number,
+    maxViewX?: number,
+    minViewY?: number,
+    maxViewY?: number,
+    maxViewCount?: number
+): { chart: ChartData<'matrix'>; options: ChartOptions<'matrix'>; minCount: number; maxCount: number; outliers: number;
+} {
+    if (!data || data.length === 0) return { 
+        chart: { datasets: [] }, options: {}, minCount: 0, maxCount: 0, outliers: 0
+    };
+    
     const xValues = data.map(d => (d[xKey] instanceof Date ? d[xKey].getTime() : d[xKey]));
     const yValues = data.map(d => d[yKey]);
 
-    const minX = Math.floor((Math.min(...xValues) - offsetX) / bucketSizeX) * bucketSizeX + offsetX;
-    const maxX = Math.ceil((Math.max(...xValues) - offsetX) / bucketSizeX) * bucketSizeX + offsetX;
+
+    const actualMinX = Math.min(...xValues);
+    const actualMaxX = Math.max(...xValues);
+    const actualMinY = Math.min(...yValues);
+    const actualMaxY = Math.max(...yValues);
+
+    const minX = Math.floor(((minViewX ?? actualMinX)- offsetX) / bucketSizeX) * bucketSizeX + offsetX;
+    const maxX = Math.ceil(((maxViewX ?? actualMaxX) - offsetX) / bucketSizeX) * bucketSizeX + offsetX;
     
-    const minY = Math.floor((Math.min(...yValues) - offsetY) / bucketSizeY) * bucketSizeY + offsetY;
-    const maxY = Math.ceil((Math.max(...yValues) - offsetY) / bucketSizeY) * bucketSizeY + offsetY;
+    const minY = Math.floor(((minViewY ?? actualMinY) - offsetY) / bucketSizeY) * bucketSizeY + offsetY;
+    const maxY = Math.ceil(((maxViewY ?? actualMaxY) - offsetY) / bucketSizeY) * bucketSizeY + offsetY;
 
     const binsX = Math.max(1, Math.round((maxX - minX) / bucketSizeX));
     const binsY = Math.max(1, Math.round((maxY - minY) / bucketSizeY));
 
-    // 2. Initialize the grid
-    const grid: Record<string, { x: number, y: number, v: number }> = {};
+    let numberOfOutliers = 0;
+    const grid: Record<string, { x: number, y: number, v: number, ids: number[] }> = {};
 
     data.forEach(d => {
         const valX = d[xKey] instanceof Date ? d[xKey].getTime() : d[xKey];
         const valY = d[yKey];
 
-        let binX = Math.floor((valX - minX) / bucketSizeX);
-        let binY = Math.floor((valY - minY) / bucketSizeY);
+        const unsafeBinX = Math.floor((valX - minX) / bucketSizeX);
+        const unsafeBinY = Math.floor((valY - minY) / bucketSizeY);
         
-        binX = Math.min(Math.max(binX, 0), binsX - 1);
-        binY = Math.min(Math.max(binY, 0), binsY - 1);
+        const safeBinX = Math.min(Math.max(unsafeBinX, 0), binsX - 1);
+        const safeBinY = Math.min(Math.max(unsafeBinY, 0), binsY - 1);
         
-        const key = `${binX}-${binY}`;
+        if (valX < minX || valX > maxX || valY < minY || valY > maxY) {
+            numberOfOutliers += 1;
+        }
+        const key = `${safeBinX}-${safeBinY}`;
 
         if (!grid[key]) {
             // Store the exact CENTER of the bin so the matrix plugin centers the square
             grid[key] = { 
-                x: minX + (binX * bucketSizeX) + (bucketSizeX / 2), 
-                y: minY + (binY * bucketSizeY) + (bucketSizeY / 2),
+                x: minX + (safeBinX * bucketSizeX) + (bucketSizeX / 2), 
+                y: minY + (safeBinY * bucketSizeY) + (bucketSizeY / 2),
                 v: 0,
+                ids: []
             };
         }
         grid[key].v++;
+        if (grid[key].ids.length < 10) grid[key].ids.push(d[idKey]);
     });
 
     const matrixData = Object.values(grid);
-    const maxCount = Math.max(...matrixData.map(d => d.v));
+    const actualMaxCount = Math.max(...matrixData.map(d => d.v));
+    const maxCount = maxViewCount ?? actualMaxCount;
     const minCount = Math.min(...matrixData.map(d => d.v));
 
     return {
@@ -429,6 +433,8 @@ export function createHeatmapBinning(
                 backgroundColor: (ctx: any) => {
                     const value = ctx.dataset.data[ctx.dataIndex]?.v || 0;
 
+                    if (value > maxCount) return interpolateInferno(0);
+
                     const range = maxCount - minCount || 1;
                     const normalized = (maxCount - value) / range;
 
@@ -437,6 +443,19 @@ export function createHeatmapBinning(
             }]
         },
         options: {
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const datasetIndex = elements[0].datasetIndex;
+                    const dataPoint = chart.data.datasets[datasetIndex].data[index] as any;
+                    
+                    if (dataPoint.ids && dataPoint.ids.length > 0) {
+                        const idString = dataPoint.ids.join(', ');
+                        navigator.clipboard.writeText(idString);
+                        alert(`IDs copied to clipboard: ${idString}`);
+                    }
+                }
+            },
             responsive: true,
             maintainAspectRatio: false,
             scales: {
@@ -493,12 +512,24 @@ export function createHeatmapBinning(
                             const y1 = Number((d.y + bucketSizeY/2).toFixed(2));
                             return `X: ${x0}–${x1} | Y: ${y0}–${y1}`;
                         },
-                        label: (context: any) => `Count: ${context.raw.v}`
+                        label: (context: any) => {
+                            const raw = context.raw;
+                            const lines = [`Count: ${raw.v}`];
+
+                            if (raw.ids && raw.ids.length > 0) {
+                                raw.ids.forEach((id: any) => {
+                                    lines.push(`${idKey}: ${id}`);
+                                });
+                            }
+
+                            return lines;
+                        }
                     }
                 }
             }
         },
         minCount: minCount,
-        maxCount: maxCount
+        maxCount: actualMaxCount,
+        outliers: numberOfOutliers
     };
 }

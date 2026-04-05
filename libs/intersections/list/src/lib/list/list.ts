@@ -1,25 +1,22 @@
 import { Component, inject, signal, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LineString } from 'geojson';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 import { RegionRequestService } from '@simra/streets-domain';
 import {
 	NodePageableMetricRequest, 
 	NodeMetricRow,
-	mapNodeMetricToRows,
 	EdgePageableMetricRequest,
 	EdgeMetricRow,
-	mapEdgeMetricToRows,
 	ListColumn,
-	PagedGeoResponse,
 	IntersectionRow,
 	IntersectionListContent,
 	IntersectionListHeader,
 	IntersectionListHeaderFilter,
 	BaseMetric,
 	onLazyHelper,
-	onFilterChangeHelper
+	onFilterChangeHelper,
+	PagedProperties
 } from '@simra/intersections-common';
 import { TranslatePipe } from '@ngx-translate/core';
 import {
@@ -31,7 +28,7 @@ import { Observable } from 'rxjs';
 import { Card } from 'primeng/card';
 import { TableLazyLoadEvent, TableModule, TableFilterEvent } from 'primeng/table';
 import { ToggleButtonModule } from 'primeng/togglebutton';
-import { ESortOrder, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
+import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 
 @Component({
 	selector: 'lib-list',
@@ -48,7 +45,7 @@ export class IntersectionsList {
 
 	private readonly defaults = {
 		trafficSignalClusterId: undefined,
-		numberOfRides: 5,
+		numberOfRides: 50,
 		region: undefined,
 		streetNames: undefined,
 		name: undefined,
@@ -57,12 +54,12 @@ export class IntersectionsList {
 		year: EYear.ALL,
 		page: 0,
 		size: 20,
-		sort: "medianWaitingTime,DESC"
+		sort: "avgWaitingTime,DESC"
 	}
 
-	protected readonly pagedGeoResponse = signal<PagedGeoResponse<LineString> | null>(null);
+	protected readonly pagedProperties = signal<PagedProperties<BaseMetric> | null>(null);
 	protected readonly totalElements = computed(() => {
-        const response = this.pagedGeoResponse();
+        const response = this.pagedProperties();
         return response?.metadata?.totalElements ? response.metadata.totalElements : 0;
     });
 
@@ -76,28 +73,28 @@ export class IntersectionsList {
 			tooltip: 'INTERSECTIONS.TIP.RIDES'
 		},
 		{ 
-			field: 'medianSpeed', 
+			field: 'avgSpeed', 
 			header: 'INTERSECTIONS.HEADERS.SPEED',
 			sortable: true, 
 			display: "number",
 			tooltip: 'INTERSECTIONS.TIP.SPEED'
 		},
 		{ 
-			field: 'medianLength', 
+			field: 'avgLength', 
 			header: 'INTERSECTIONS.HEADERS.LENGTH',
 			sortable: true,
 			display: "number",
 			tooltip: 'INTERSECTIONS.TIP.LENGTH'
 		},
 		{ 
-			field: 'medianDuration',
+			field: 'avgDuration',
 			header: 'INTERSECTIONS.HEADERS.DURATION',
 			sortable: true, 
 			display: "number",
 			tooltip: 'INTERSECTIONS.TIP.DURATION'
 		},
 		{ 
-			field: 'medianWaitingTime',
+			field: 'avgWaitingTime',
 			header: 'INTERSECTIONS.HEADERS.MEDIANWAITINGTIME',
 			sortable: true, 
 			display: "number",
@@ -240,10 +237,10 @@ export class IntersectionsList {
 			const isNode = this.isNode();
 			const request = isNode ? this.nodeFilter() : this.edgeFilter();
 			this.loading.set(true);
-			const data = isNode ? await this._requestService.getIntersectionNodeMetricsPageable(request) 
-				: await this._requestService.getIntersectionEdgeMetricsPageable(request);
-			this.pagedGeoResponse.set(data);
-			this.rows.set(isNode ? mapNodeMetricToRows(data.geoData): mapEdgeMetricToRows(data.geoData));
+			const data = isNode ? await this._requestService.getIntersectionNodeMetricsPageableProperties(request) 
+				: await this._requestService.getIntersectionEdgeMetricsPageableProperties(request);
+			this.pagedProperties.set(data);
+			this.rows.set(data.properties);
 			this.loading.set(false);
 		});
 	}

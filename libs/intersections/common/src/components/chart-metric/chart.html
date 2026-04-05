@@ -4,35 +4,7 @@
             @if (loading() ) {
                 <p-skeleton height="21rem" />
             } @else {
-                <chart-wrapper>
-                    <p-chart chart
-                        chart
-                        type="bar"
-                        [data]="chartData().chart" 
-                        [options]="chartData().options" 
-                        height="21rem" />
-
-                    <div settings class="flex flex-col gap-4">
-                        <div class="flex-1 flex flex-col">
-                            <label class="font-bold text-sm">Select Metric</label>
-                            <p-select 
-                                [options]="config().selectableProperties"
-                                [(ngModel)]="propertyChart"
-                                optionLabel="label" 
-                                optionValue="value"
-                                size="small" />
-                        </div>
-
-                        <div class="flex-1 flex flex-col">
-                            <label class="font-bold text-sm">Select Category</label>
-                            <p-select 
-                                [options]="groupByOptions"
-                                [(ngModel)]="groupBy"
-                                optionLabel="label" 
-                                optionValue="value"
-                                size="small" />
-                        </div>
-                    </div>
+                <chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
                 </chart-wrapper>
             }
         </div>

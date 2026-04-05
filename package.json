@@ -57,6 +57,7 @@
 		"eslint-plugin-simple-import-sort": "^12.1.1",
 		"flag-icons": "^7.3.2",
 		"hex-rgb": "^5.0.0",
+		"html2canvas": "^1.4.1",
 		"katex": "^0.16.22",
 		"leaflet-geosearch": "^4.1.0",
 		"leaflet.markercluster": "^1.5.3",

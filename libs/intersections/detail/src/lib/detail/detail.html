@@ -97,8 +97,9 @@
             </div>
             <div class="w-2/3">
                 <intersection-map id="intersection-map"
+                    [zoomTarget]="baseIdZoom()"
                     [baseData]="pagedGeoResponse()?.geoData"
-                    [trafficSignalClusterId]="firstNode()?.trafficSignalClusterId"
+                    [trafficSignalClusterId]="trafficSignalClusterId()"
                     [loading]="tableDataIsLoading()"
                 ></intersection-map>
             </div>
@@ -134,6 +135,6 @@
             </ng-template>
         </p-table>
     </p-card>
-    <intersection-chart-metric header="Metric" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()" [config]="BASE_METRIC_CHART_CONFIG" />
+    <intersection-chart-metric header="Metric" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()" [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG" />
     <intersection-chart header="Detail" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()" />
 </div>

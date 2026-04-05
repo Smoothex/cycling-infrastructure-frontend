@@ -1,28 +1,24 @@
-import { Component, input, computed, signal, effect, model } from '@angular/core';
+import { Component, input, computed, signal, effect, model, linkedSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { PopoverModule } from 'primeng/popover';
-import { ButtonModule } from 'primeng/button';
-import { Select } from 'primeng/select';
 import { FormsModule } from '@angular/forms';
 
-import { ChartConfig, createScatterPlot, ChartWrapper } from '@simra/intersections-common';
+import { ChartConfig, createScatterPlot, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
 
 @Component({
     selector: 'scatter-plot',
     standalone: true,
-    imports: [CommonModule, ChartModule, InputNumberModule, PopoverModule, ButtonModule, Select, FormsModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
     templateUrl: './scatterplot.html',
 })
 export class ScatterPlot<T> {
-    // Inputs
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();
     label = input.required<string>();
+    chartFilter = input.required<ChartFilter<T>>();
 
-	protected propertyChart = signal<keyof T>(null!);
+	protected propertyChart = linkedSignal(() => this.config().defaultProperty2);
     protected readonly labelPropertyChart = computed(() => {
 		for (const el of this.config().selectableProperties) {
 			if (el.value === this.propertyChart()) return el.label;
@@ -30,10 +26,38 @@ export class ScatterPlot<T> {
 		return "";
 	});
 
-    // Internal State (Settings)
+    protected readonly showAvgLine = signal<boolean>(true);
+    protected readonly showMedianLine = signal<boolean>(false);
     protected readonly windowSize = signal(12);
 
-    // Computed Chart Data
+
+    chartSettings = computed<SettingGroup[]>(() => [
+        {
+            group: 'Metric', items: [
+                { label: 'Select Metric', props: { type: "select", value: this.selectedMetric, options: this.config().selectableProperties }},
+                { label: 'Select Compare Metric', props: { type: "select", value: this.propertyChart, options: this.config().selectableProperties }},
+            ]
+        },
+        {
+            group: 'Lines', items: [
+                { label: 'Display Average Line', props: { type: "boolean", value: this.showAvgLine}},
+                { label: 'Display Median Line', props: { type: "boolean", value: this.showMedianLine}},
+                { label: 'Half Window', props: { type: "number", value: this.windowSize, min: 0, max: 100 }},
+            ]
+        }
+    ]);
+
+
+    protected chart = computed<ChartComplete>(() => {
+        const d = this.chartData();
+        return {
+            chartType: "scatter",
+            data: d.chart,
+            options: d.options
+        }
+    });
+    protected isExporting = signal<boolean>(false); 
+
     protected chartData = computed(() => {
         return createScatterPlot(
             this.data(), 
@@ -41,13 +65,12 @@ export class ScatterPlot<T> {
 			this.selectedMetric() as string,
             this.labelPropertyChart(),
             this.label(),
-            this.windowSize()
+            this.windowSize(),
+            this.showAvgLine(),
+            this.showMedianLine()
         );
     });
 
-    constructor() {
-        effect(() => {
-            this.propertyChart.set(this.config().defaultProperty2);
-        });
-    }
+    protected downloadFileName = computed<string>(() => 
+        `scatterplot-${String(this.selectedMetric())}-${String(this.propertyChart())}`);
 }

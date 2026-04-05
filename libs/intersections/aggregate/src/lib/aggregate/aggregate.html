@@ -74,6 +74,7 @@
             </div>
             <div class="w-2/3">
                 <intersection-map
+                [zoomTarget]="zoom()"
                 [metricData]="pagedGeoResponse()?.geoData"
                 [trafficSignalClusterId]="trafficSignalClusterId()"
                 [loading]="tableDataIsLoading()"
@@ -95,7 +96,7 @@
         (onFilter)="onFilterChange($event)"
         (onLazyLoad)="onLazy($event)"
         [resetPageOnSort]="true"
-        [sortField]="'medianWaitingTime'"
+        [sortField]="'numberOfRides'"
 		[sortOrder]="-1"
         >
             <ng-template pTemplate="header">
@@ -114,7 +115,7 @@
         </p-table>
     </p-card>
 
-    <intersection-chart-metric-array header="Charts" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()"/>
+    <intersection-chart header="Charts" [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()"/>
     <intersection-chart header="Charts" [config]="BASE_CHART_CONFIG" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()"/>
 </div>
 

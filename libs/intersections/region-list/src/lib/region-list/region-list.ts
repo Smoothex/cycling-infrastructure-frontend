@@ -13,19 +13,19 @@ import {
 import { 
 	ListColumn,
 	RegionMetricRow,
-	mapRegionMetricToRows,
 	IntersectionListContent, 
 	IntersectionListHeader,
 	IntersectionListHeaderFilter,
-	RegionMetricRequest,
+	RegionPageableRequest,
 	PagedGeoResponse,
 	onFilterChangeHelper,
-	onLazyHelper
+	onLazyHelper,
+	PagedProperties
 } from '@simra/intersections-common';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 import { EAdminLevel, AdminLevelTranslationMap  } from '@simra/regions-browse';
 
-const defaults: RegionMetricRequest = {
+const defaults: RegionPageableRequest = {
 	numberOfRides: 10,
 	adminLevel: EAdminLevel.FEDERAL_COUNTY,
 	weekDay: EWeekDays.ALL_WEEK,
@@ -79,7 +79,7 @@ export class IntersectionsRegionList {
 			display: "number" 
 		},
 		{ 
-			field: 'nodeMedianWaitingTime', 
+			field: 'nodeAvgWaitingTime', 
 			header: 'INTERSECTIONS.HEADERS.NODEMEDIANWAITINGTIME',
 			sortable: true, 
 			display: "number" 
@@ -118,15 +118,15 @@ export class IntersectionsRegionList {
 
 	protected readonly loading = signal(false);
 	protected readonly rows = computed<RegionMetricRow[]>(() => {
-		const response = this.pagedGeoResponse();
+		const response = this.pagedResponse();
 		if (!response) return [];
-        return mapRegionMetricToRows(response.geoData);
+        return response.properties;
 	});
-	protected readonly requestFilter = signal<RegionMetricRequest>({ ...defaults });
+	protected readonly requestFilter = signal<RegionPageableRequest>({ ...defaults });
 
-	protected readonly pagedGeoResponse = signal<PagedGeoResponse<Polygon> | null>(null);
+	protected readonly pagedResponse = signal<PagedProperties<RegionMetricRow> | null>(null);
 	protected readonly totalElements = computed(() => {
-        const response = this.pagedGeoResponse();
+        const response = this.pagedResponse();
         return response?.metadata?.totalElements ? response.metadata.totalElements : 0;
     });
 
@@ -134,7 +134,7 @@ export class IntersectionsRegionList {
 		effect(async () => {
 			const request = this.requestFilter();
 			this.loading.set(true);
-			this.pagedGeoResponse.set(await this._requestService.getIntersectionRegionMetricsPageable(request));
+			this.pagedResponse.set(await this._requestService.getIntersectionRegionMetricsPageableProperties(request));
 			this.loading.set(false);
 		});
 	}

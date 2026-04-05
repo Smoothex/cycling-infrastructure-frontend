@@ -6,17 +6,17 @@ import { MapPage } from '@simra/common-components';
 import { TableModule } from 'primeng/table';
 import { ProgressSpinner} from 'primeng/progressspinner'
 import { FeatureCollection, LineString, Polygon } from 'geojson';
-import { centroid } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 import {
 	addedOnMap,
 	colorToStops,
 	COLORS,
+	getWaitingTimeColors,
 	displayTrafficSignalClusters,
 	displayTrafficSignals,
-	displayIntersection,
-	displayIntersectionAggregate,
+	displayRideSegment,
+	displayAggregateSegment,
 	displayRidePoints,
 	displayMatchedPoints,
 	displayRegions,
@@ -25,19 +25,32 @@ import {
 	highlightLine,
 	LegendItem,
 	MapLegend,
-	mergeAdded,
+	MapSettings,
 	removeLineHighlight,
 	removeQueryParamsForLineHighlight,
-	zoomOnLineMidPoint,
 	ZOOM_LEVELS,
-	getZoomRegion
+	zoomTarget,
+	BaseMetric,
+	Base,
+	REGION_SELECTABLE_PROPERTIES,
+	getLabelFromOptions,
+	BASE_METRIC_SELECTABLE_PROPERTIES,
+	BASE_SELECTABLE_PROPERTIES,
+	RegionMetric,
+	SettingGroup,
+	styleAggregateSegment,
+	styleRideSegment,
+	styleRegions,
+	getAggrageteSegmentDefaults,
+	getRideSegmentDefaults,
+	getRegionDefaults
 } from '@simra/intersections-common';
 
 
 
 @Component({
 	selector: 'intersection-map',
-	imports: [CommonModule, MapPage, TableModule, MapLegend, ProgressSpinner],
+	imports: [CommonModule, MapPage, TableModule, MapLegend, MapSettings, ProgressSpinner],
 	templateUrl: './map.html',
 	styleUrl: './map.scss',
 	encapsulation: ViewEncapsulation.None,
@@ -52,16 +65,29 @@ export class IntersectionMap {
 	public baseData = input<FeatureCollection<LineString>>();
 	public metricData = input<FeatureCollection<LineString>>();
 	public regionData = input<FeatureCollection<Polygon>>();
+	public zoomTarget = input<zoomTarget>();
 
 	public loading = input.required<boolean>();
 
 
-	private intersectionDataAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
-	private ridePointsMatchedPointsAdded: addedOnMap = { sourceIds: [], layerIds: [], highlightLayerIds: [] };
+	private intersectionDataAdded: addedOnMap | null = null;
+	private ridePointsMatchedPointsAdded: addedOnMap[] = [];
 
 	private readonly mapReady = signal<maplibregl.Map | null>(null);
 	protected readonly mapDataLoaded = signal(false);
 	private readonly trafficSignalsLoaded = signal(false);
+
+	protected screenshotMode = signal<boolean>(false);
+
+
+	protected aggregatedSegmentColorMax = signal<number>(getAggrageteSegmentDefaults().colorMax);
+	protected aggregatedSegmentWidthMax = signal<number>(getAggrageteSegmentDefaults().widthMax); 
+	protected aggregatedSegmentProperty = signal<keyof BaseMetric>(getAggrageteSegmentDefaults().colorProperty);
+	protected rideSegmentColorMax = signal<number>(getRideSegmentDefaults().colorMax);
+	protected rideSegmentProperty = signal<keyof Base>(getRideSegmentDefaults().colorProperty);
+	protected regionColorMax = signal<number>(getRegionDefaults().colorMax);
+	protected regionWidthMax = signal<number>(getRegionDefaults().widthMax); 
+	protected regionProperty = signal<keyof RegionMetric>(getRegionDefaults().colorProperty);
 	
 	protected selectedSegmentId = signal<number | null>(null);
 	protected currentZoom = signal<number>(0);
@@ -72,6 +98,12 @@ export class IntersectionMap {
 		const isBaseData: boolean = this.baseData() ? true : false;
 		const isRegionData: boolean = this.regionData() ? true : false;
 		const selectedSegmentId: number | null = this.selectedSegmentId();
+		const aggColors = getWaitingTimeColors(this.aggregatedSegmentColorMax());
+		const rideColors = getWaitingTimeColors(this.rideSegmentColorMax());
+		const regionColors = getWaitingTimeColors(this.regionColorMax());
+		const aggLabel = getLabelFromOptions(BASE_METRIC_SELECTABLE_PROPERTIES, this.aggregatedSegmentProperty());
+		const rideLabel = getLabelFromOptions(BASE_SELECTABLE_PROPERTIES, this.rideSegmentProperty());
+		const regionLabel = getLabelFromOptions(REGION_SELECTABLE_PROPERTIES, this.regionProperty());
 
 		return getVisibleLegendItems([
 			{
@@ -87,44 +119,44 @@ export class IntersectionMap {
 				showIf: trafficSignalVisible && zoom >= ZOOM_LEVELS.polygons.minzoom
 			},
 			{
-				label: 'Segment Median Wait Time [s] ∈ [0, 120]',
+				label: `Segment ${aggLabel} ∈ [${Object.keys(aggColors)[0]}, ${Object.keys(aggColors).at(-1)}]`,
 				geometry: 'line',
-				colorStops: colorToStops(COLORS.waitingTime),
+				colorStops: colorToStops(aggColors),
 				showIf: isMetricData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: 'Segment Number of Rides [#] ∈ [1, 50]',
+				label: `Segment Number of Rides [#] ∈ [1, ${this.aggregatedSegmentWidthMax()}]`,
 				geometry: 'line',
 				widthStops: [{ value: 0, width: 1 }, { value: 25, width: 4 }, { value: 50, width: 8 }],
 				color: '#000000',
 				showIf: isMetricData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: `Segment Wait Time [s] ∈ [0, 120]`,
+				label: `Ride Segment ${rideLabel} ∈ [${Object.keys(rideColors)[0]}, ${Object.keys(rideColors).at(-1)}]`,
 				geometry: 'line',
-				colorStops: colorToStops(COLORS.waitingTime),
+				colorStops: colorToStops(rideColors),
 				showIf: isBaseData && zoom >= ZOOM_LEVELS.lines.minzoom
 			},
 			{
-				label: `Segment ${selectedSegmentId}, GPS`,
+				label: `Ride Segment ${selectedSegmentId}, GPS`,
 				geometry: 'point',
 				color: COLORS.ridePoints,
 				showIf: isBaseData && selectedSegmentId !== null && zoom >= ZOOM_LEVELS.points.minzoom
 			},
 			{
-				label: `Segment ${selectedSegmentId}, Matched Points`,
+				label: `Ride Segment ${selectedSegmentId}, Matched Points`,
 				geometry: 'point',
 				color: COLORS.matchedPoints,
 				showIf: isBaseData && selectedSegmentId !== null && zoom >= ZOOM_LEVELS.points.minzoom
 			},
 			{
-				label: 'Region Intersection Wait Time [s/km] ∈ [0, 30]',
+				label: `Region ${regionLabel} ∈ [${Object.keys(regionColors)[0]}, ${Object.keys(regionColors).at(-1)}]`,
 				geometry: 'polygon',
-				colorStops: colorToStops(COLORS.regions),
+				colorStops: colorToStops(regionColors),
 				showIf: isRegionData
 			},
 			{
-				label: 'Region Number of Rides [#] ∈ [1, 500]',
+				label: `Region Number of Rides [#] ∈ [1, ${this.regionWidthMax()}]`,
 				geometry: 'line',
 				widthStops: [{ value: 10, width: 1 }, { value: 50, width: 4 }, { value: 500, width: 8 }],
 				color: '#000000',
@@ -132,8 +164,50 @@ export class IntersectionMap {
 			}
 		]);
   	});
+
+	mapSettings = computed<SettingGroup[]>(() => {
+		const settings: SettingGroup[] = [];
+		if (this.metricData()) (
+			settings.push({
+				group: 'Metric Segments', items: [
+					{ label: 'Maximum Color', props: { type: "number", value: this.aggregatedSegmentColorMax }},
+					{ label: 'Maximum Width', props: { type: "number", value: this.aggregatedSegmentWidthMax }},
+					{ label: 'Property', props: { type: "select", value: this.aggregatedSegmentProperty, options: BASE_METRIC_SELECTABLE_PROPERTIES }},
+				]
+			})
+		)
+		if (this.baseData()) (
+			settings.push({
+				group: 'Segments', items: [
+					{ label: 'Maximum Color', props: { type: "number", value: this.rideSegmentColorMax }},
+					{ label: 'Property', props: { type: "select", value: this.rideSegmentProperty, options: BASE_SELECTABLE_PROPERTIES }},
+				]
+			})
+		)
+		if (this.regionData()) (
+			settings.push({
+				group: 'Regions', items: [
+					{ label: 'Maximum Color', props: { type: "number", value: this.regionColorMax }},
+					{ label: 'Maximum Width', props: { type: "number", value: this.regionWidthMax }},
+					{ label: 'Property', props: { type: "select", value: this.regionProperty, options: REGION_SELECTABLE_PROPERTIES }},
+				]
+			})
+		)
+		return settings;
+	});
   
 	constructor() {
+		effect(async () => {
+			const zoomProps = this.zoomTarget();
+			const map = this.mapReady();
+
+			if (!map || !zoomProps) return;
+
+			const target = { center: [zoomProps.lng, zoomProps.lat] as maplibregl.LngLatLike, zoom: zoomProps.zoom };
+			map.setCenter(target.center);
+			map.jumpTo(target);
+		});
+
 		effect(async () => {
 			const trafficSignalClusterId = this.trafficSignalClusterId();
 			const alreadyLoaded = this.trafficSignalsLoaded();
@@ -152,34 +226,58 @@ export class IntersectionMap {
 			this.trafficSignalsLoaded.set(true);
 		});
 
+
+		
 		effect(async () => {
+			removeQueryParamsForLineHighlight(this._router);
 			const metricData = this.metricData();
 			const baseData = this.baseData();
 			const regionData = this.regionData();
 			const trafficSignalsLoaded = this.trafficSignalsLoaded();
 			const map = this.mapReady();
-
 			if (!map || !trafficSignalsLoaded || !(metricData || baseData || regionData)) return;
-			
-			deleteDisplay(map, this.intersectionDataAdded);
+			if (this.intersectionDataAdded) deleteDisplay(map, this.intersectionDataAdded);
 			if (baseData) {
-				deleteDisplay(map, this.ridePointsMatchedPointsAdded);
-				zoomOnLineMidPoint(map, baseData);
-				this.intersectionDataAdded = displayIntersection(this._router, baseData, map, "intersectionLineData");
+				this.ridePointsMatchedPointsAdded.forEach(el => deleteDisplay(map, el));
+				this.intersectionDataAdded = displayRideSegment(this._router, baseData, map, "rideSegments", true);
 			}
-			if (metricData) {
-				zoomOnLineMidPoint(map, metricData);
-				this.intersectionDataAdded = displayIntersectionAggregate(this._router, metricData, map, "intersectionLineData");
+			else if (metricData) {
+				this.intersectionDataAdded = displayAggregateSegment(this._router, metricData, map, "aggregatedSegments", true);
 			}
-			if (regionData) {
-				const regionZoom = getZoomRegion(regionData);
-				if (regionZoom) {
-					map.jumpTo(regionZoom);
-				}
+			else if (regionData) {
 				this.intersectionDataAdded = displayRegions(regionData, map, "region");
 			}
 			this.mapDataLoaded.set(true);
 		});
+
+		effect(() => {
+			const map = this.mapReady();
+			const metric = this.metricData();
+			const c = this.aggregatedSegmentColorMax();
+			const p = this.aggregatedSegmentProperty();
+			const w = this.aggregatedSegmentWidthMax();
+			if (!map || !metric || !this.intersectionDataAdded) return;
+			styleAggregateSegment(map, this.intersectionDataAdded, this._router, p, c, w, true);
+		})
+
+		effect(() => {
+			const map = this.mapReady();
+			const base = this.baseData();
+			const c = this.rideSegmentColorMax();
+			const p = this.rideSegmentProperty();
+			if (!map || !base || !this.intersectionDataAdded) return;
+			styleRideSegment(map, this.intersectionDataAdded, this._router, p, c, true);
+		})
+
+		effect(() => {
+			const map = this.mapReady();
+			const region = this.regionData();
+			const c = this.regionColorMax();
+			const p = this.regionProperty();
+			const w = this.regionWidthMax();
+			if (!map || !region || !this.intersectionDataAdded) return;
+			styleRegions(map, this.intersectionDataAdded, p, c, w);
+		})
 
 		effect(() => {
 			const map = this.mapReady();
@@ -198,7 +296,7 @@ export class IntersectionMap {
 				return;
 			}
 			
-			highlightLine(map, this.intersectionDataAdded, sourceId, selectedId);
+			if (this.intersectionDataAdded) highlightLine(map, this.intersectionDataAdded, sourceId, selectedId);
 			if (baseData) {
 				this.selectedSegmentId.set(selectedId);
 				this.displayRidePointsAndMatchedPoints(map, selectedId);
@@ -211,8 +309,8 @@ export class IntersectionMap {
 			if (!map || !dataLoaded) return;
 			map.on('dblclick', () => {
 				removeQueryParamsForLineHighlight(this._router);
-				removeLineHighlight(map, this.intersectionDataAdded);
-				deleteDisplay(map, this.ridePointsMatchedPointsAdded);
+				if (this.intersectionDataAdded) removeLineHighlight(map, this.intersectionDataAdded);
+				this.ridePointsMatchedPointsAdded.forEach(el => deleteDisplay(map, el));
 			});
 
 			this.currentZoom.set(map.getZoom());
@@ -227,10 +325,11 @@ export class IntersectionMap {
 	}
 
 	async displayRidePointsAndMatchedPoints(map: maplibregl.Map, intersectionId: number) {
-   		deleteDisplay(map, this.ridePointsMatchedPointsAdded);
-		mergeAdded(this.ridePointsMatchedPointsAdded, displayRidePoints(
-			map, await this._requestService.getRidePointsIntersectionBase({id: intersectionId}), `ridePoints-${intersectionId}`));
-		mergeAdded(this.ridePointsMatchedPointsAdded, displayMatchedPoints(
-			map, await this._requestService.getMatchedPointsIntersectionBase({id: intersectionId}), `matchedPoints-${intersectionId}`));
+   		this.ridePointsMatchedPointsAdded.forEach(el => deleteDisplay(map, el));
+		const ridePoints = displayRidePoints(
+			map, await this._requestService.getRidePointsIntersectionBase({id: intersectionId}), `ridePoints-${intersectionId}`);
+		const matchedPoints = displayMatchedPoints(
+			map, await this._requestService.getMatchedPointsIntersectionBase({id: intersectionId}), `matchedPoints-${intersectionId}`);
+		this.ridePointsMatchedPointsAdded = [ridePoints, matchedPoints];
 	}
 }

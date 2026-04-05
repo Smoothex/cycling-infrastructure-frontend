@@ -1,74 +1,22 @@
-<chart-wrapper>
-    <div label class="flex items-center justify-center w-full px-4 pb-2 mt-1 text-xs text-gray-500 font-medium">
-        <span class="mr-2">Low ({{ chartData().minCount || 0 }})</span>
-        <div class="w-32 h-3 rounded-sm inferno-gradient shadow-sm"></div>
-        <span class="ml-2">High ({{ chartData().maxCount || 0 }})</span>
-    </div>
-
-    <p-chart chart
-        [type]="$any('matrix')" 
-        [data]="chartData().chart" 
-        [options]="chartData().options" 
-        height="21rem" />
-
-    <div settings class="flex flex-col gap-4">
-        <div class="flex-1 flex flex-col">
-            <label for="metric" class="font-bold text-sm">Select Metric</label>
-            <p-select 
-                id="metric"
-                [options]="config().selectableProperties"
-                [(ngModel)]="selectedMetric"
-                optionLabel="label" 
-                optionValue="value"
-                size="small" />
-        </div>
-        <div class="flex-1 flex flex-col">
-            <label for="buckets" class="font-bold text-sm">Y Bucket Size</label>
-            <p-inputNumber 
-                id="buckets"
-                [(ngModel)]="yBucketSize" 
-                [showButtons]="true" 
-                buttonLayout="horizontal"
-                incrementButtonIcon="pi pi-plus" 
-                decrementButtonIcon="pi pi-minus" 
-                mode="decimal"
-                [minFractionDigits]="0" 
-                [maxFractionDigits]="2"
-                [step]="5"
-                [min]="0" 
-                [max]="100"
-                size="small" />
-        </div>
-        <div class="flex-1 flex flex-col">
-            <label for="buckets" class="font-bold text-sm">Y Offset</label>
-            <p-inputNumber 
-                id="buckets"
-                [(ngModel)]="yOffset" 
-                [showButtons]="true" 
-                buttonLayout="horizontal"
-                incrementButtonIcon="pi pi-plus" 
-                decrementButtonIcon="pi pi-minus" 
-                [step]="1"
-                [min]="0" 
-                [max]="100"
-                size="small" />
-        </div>
-        <div class="flex-1 flex flex-col">
-            <label for="buckets" class="font-bold text-sm">Week Bucket</label>
-            <p-inputNumber 
-                id="buckets"
-                [(ngModel)]="weeks" 
-                [showButtons]="true" 
-                buttonLayout="horizontal"
-                incrementButtonIcon="pi pi-plus" 
-                decrementButtonIcon="pi pi-minus" 
-                mode="decimal"
-                [minFractionDigits]="0" 
-                [maxFractionDigits]="2"
-                [step]="1"
-                [min]="0" 
-                [max]="100"
-                size="small" />
+<chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+    <div label [style.font-size]="isExporting() ? '48px' : '12px'" [style.line-height]="'1.2'">
+        @if (chartData().outliers > 0) {
+            <div class="flex flex-row items-center justify-center">
+                <i class="ph ph-arrows-in-line-horizontal mr-1" style="font-size: 1em"></i>
+                <span class="mr-2">Scale: Y [{{ minViewY() ?? 'Start' }}, {{ maxViewY() ?? 'End' }}], Outliers: {{chartData().outliers}}/{{data().length}}</span>
+            </div>
+        }
+        <div class="flex flex-row items-center justify-center">
+            <span class="mr-2">Low ({{ chartData().minCount || 0 }})</span>
+            <div class="absolut">
+                <div class="relative top-1/2 inferno-gradient" [style.width]="'8em'" [style.height]="'1em'"></div>
+            </div>
+            @if (maxViewCount()) {
+                <span class="ml-2">High ({{ maxViewCount() || 0 }}), </span>
+                <span class="ml-2">Max: {{ chartData().maxCount || 0 }}</span>
+            } @else {
+                <span class="ml-2">High ({{ chartData().maxCount || 0 }})</span>
+            }
         </div>
     </div>
 </chart-wrapper>

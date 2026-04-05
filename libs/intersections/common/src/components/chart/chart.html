@@ -1,49 +1,77 @@
 <p-card [header]="header()">
     <div class="flex flex-col gap-20">
         <div class="flex flex-row flex-wrap gap-5">
-            <p-button label="Load Next Batch" [badge]="'(' + accumulatedData().length  + '/' + totalElements() + ')'" [disabled]="loading()" (onClick)="loadMore()" />
+            <p-button label="Load Next Batch" [badge]="'(' + accumulatedData().length  + '/' + totalElements() + ')'" [disabled]="loading()" (onClick)="loadMore(pagedProperties, accumulatedData, requestValue())" />
+            @if (compare()) {
+                <p-button label="Load Next Compare Batch" [badge]="'(' + compareAccumulatedData().length  + '/' + compareTotalElements() + ')'" [disabled]="loading()" (onClick)="loadMore(comparePagedProperties, compareAccumulatedData, requestCompare())" />
+            }
             <p-button label="Load All" [disabled]="loading()" (onClick)="loadAll()" />
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-10">
-            @for (chart of charts(); track $index) {  
-                @if (loading() ) {
-                    <p-skeleton height="21rem" />
-                } @else if (chart === 'histogram') {
-                    <histogram-chart 
-                        [data]="accumulatedData()" 
-                        [(selectedMetric)]="propertyChart" 
-                        [label]="label()" 
-                        [config]="config()"/>
-                } @else if (chart === 'boxplot') {
+            @if (loading()) {
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+            } @else {
+                <histogram-chart 
+                    [data]="filteredData()" 
+                    [(selectedMetric)]="propertyChart" 
+                    [label]="label()" 
+                    [config]="config()"
+                    [chartFilter]="chartFilter()"/>
+                @if (!compare()) {
                     <boxplot-chart 
-                        [data]="accumulatedData()" 
+                        [data]="filteredData()" 
                         [(selectedMetric)]="propertyChart"  
                         [label]="label()" 
-                        [config]="config()"/>
-                } @else if (chart === 'scatter-start-time') {
-                    <scatter-plot-start-time
-                        [data]="accumulatedData()" 
-                        [(selectedMetric)]="propertyChart"  
-                        [label]="label()" 
-                        [config]="config()"/>
-                } @else if (chart === 'heatmap-start-time') {
-                    <heatmap-start-time-chart
-                        [data]="accumulatedData()" 
-                        [(selectedMetric)]="propertyChart"  
-                        [label]="label()" 
-                        [config]="config()"/>
-                } @else if (chart === 'heatmap') {
-                    <heatmap-chart
-                        [data]="accumulatedData()" 
-                        [(selectedMetric)]="propertyChart"  
-                        [label]="label()"
-                        [config]="config()"/>
-                } @else if (chart === 'scatter') {
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                    @if (showScatter()) {
+                        <scatter-plot-start-time
+                            [data]="filteredData()" 
+                            [(selectedMetric)]="propertyChart"  
+                            [label]="label()" 
+                            [config]="config()"
+                            [chartFilter]="chartFilter()"/>
+                    } @else {
+                        <heatmap-start-time-chart
+                            [data]="filteredData()" 
+                            [(selectedMetric)]="propertyChart"  
+                            [label]="label()" 
+                            [config]="config()"
+                            [chartFilter]="chartFilter()"/>
+                    }
+                }
+                @if (showScatter()) {
                     <scatter-plot
-                        [data]="accumulatedData()" 
+                        [data]="filteredData()" 
                         [(selectedMetric)]="propertyChart"  
                         [label]="label()"
-                        [config]="config()"/>
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                } @else {
+                    <heatmap-chart
+                        [data]="filteredData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()"
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                }
+                @let cConfig = compareConfig();
+                @if (cConfig) {
+                    <histogram-chart 
+                        [data]="mergedCompareData()" 
+                        [(selectedMetric)]="compareProperty" 
+                        [label]="compareLabel()" 
+                        [config]="cConfig"
+                        [chartFilter]="$any(chartFilter())"/>
+                    <heatmap-chart
+                        [data]="mergedCompareData()" 
+                        [(selectedMetric)]="compareProperty" 
+                        [label]="compareLabel()" 
+                        [config]="cConfig"
+                        [chartFilter]="$any(chartFilter())"/>
                 }
             }
         </div>
