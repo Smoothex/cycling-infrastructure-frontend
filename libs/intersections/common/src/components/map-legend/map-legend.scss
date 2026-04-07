@@ -1,0 +1,34 @@
+.map-legend {
+    font-size: 16px;
+
+    .legend-row {
+        gap: 0.75em;
+        margin-bottom: 0.25em;
+    }
+    .legend-row:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .visual-container {
+        width: 3em;
+    }
+
+    .stop-item {
+        width: 1em;
+    }
+
+    .legend-shape-point {
+        width: 0.8em;
+        height: 0.8em;
+    }
+
+    .legend-shape-polygon {
+        width: 1.5em;
+        height: 0.8em;
+    }
+
+    .legend-shape-line {
+        width: 2.5em;
+        height: 0.25em;
+    }
+}

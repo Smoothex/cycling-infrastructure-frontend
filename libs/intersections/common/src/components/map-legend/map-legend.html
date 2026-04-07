@@ -1,27 +1,27 @@
 <div class="map-legend">
 	<p-card>
   	@for (item of items(); track item.label) {
-    <div class="flex items-center gap-3 mb-2 last:mb-0">
+    <div class="legend-row flex items-center">
       @if (item.widthStops) {
-        <div class="w-12 flex items-centre gap-1">
+        <div class="visual-container flex items-center gap-1">
           @for (stop of item.widthStops; track stop.value) {
             <div
-              class="w-4"
-              [style.height.px]="stop.width"
+              class="stop-item"
+              [style.height.em]="stop.width / 14"
               [style.background]="item.color">
             </div>
           }
         </div>
       } @else {
-        <div class="w-12 flex items-centre">
+        <div class="visual-container flex items-center">
           <div
-              [class]="getClassForGeometry(item)"
-              [style.background]="getColorForGeometry(item)">
-            </div>
+            [class]="getClassForGeometry(item)"
+            [style.background]="getColorForGeometry(item)">
+          </div>
         </div>
       }
 
-      <div class="text-sm text-gray-700 leading-tight">
+      <div class="text-gray-700 leading-tight">
         {{ item.label }}
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
 		Card
 	],
 	templateUrl: './map-legend.html',
+	styleUrl: './map-legend.scss',
 	encapsulation: ViewEncapsulation.None
 })
 export class MapLegend {
@@ -33,13 +34,13 @@ export class MapLegend {
 
 	getClassForGeometry(item: LegendItem): string {
 		if (item.geometry === 'point') {
-			return 'w-3 h-3 rounded-full';
+			return 'legend-shape-point rounded-full';
 		}
 		if (item.geometry === 'polygon') {
-			return 'w-6 h-3 rounded';
+			return 'legend-shape-polygon rounded';
 		}
 		if (item.geometry === 'line') {
-			return 'w-10 h-1 rounded';
+			return 'legend-shape-line rounded';
 		}
 		return '';
 	}

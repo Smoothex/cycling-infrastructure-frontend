@@ -5,7 +5,8 @@ import {
 	inject,
   Inject,
 	signal,
-  untracked
+  untracked,
+  ViewEncapsulation
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -74,6 +75,8 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 	selector: 'lib-map',
 	imports: [CommonModule, MapPage, FormsModule, CheckboxModule, SelectModule, MapSettings, MapLegend],
 	templateUrl: './map.html',
+  styleUrl: './map.scss',
+  encapsulation: ViewEncapsulation.None,
 })
 export class IntersectionsMap {
   private readonly _requestService = inject(IntersectionsRequestService);
@@ -166,7 +169,7 @@ export class IntersectionsMap {
         showIf: metricsVisible && zoom >= ZOOM_LEVELS.lines.minzoom
       },
       {
-        label: `Region ${regionLabel} [s/km] ∈ [${Object.keys(regionColors)[0]}, ${Object.keys(regionColors).at(-1)}]`,
+        label: `Region ${regionLabel} ∈ [${Object.keys(regionColors)[0]}, ${Object.keys(regionColors).at(-1)}]`,
         geometry: 'polygon',
         colorStops: colorToStops(regionColors),
         showIf: zoom < ZOOM_LEVELS.regions.maxzoom
@@ -191,7 +194,7 @@ export class IntersectionsMap {
         showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.points.minzoom
       },
       {
-        label: `Ride ${selectedRideId}, Segment ${rideLabel} [s] ∈ [${Object.keys(rideColors)[0]}, ${Object.keys(rideColors).at(-1)}]`,
+        label: `Ride ${selectedRideId}, Segment ${rideLabel} ∈ [${Object.keys(rideColors)[0]}, ${Object.keys(rideColors).at(-1)}]`,
         geometry: 'line',
         colorStops: colorToStops(rideColors),
         showIf: selectedRideId != null && zoom >= ZOOM_LEVELS.lines.minzoom
