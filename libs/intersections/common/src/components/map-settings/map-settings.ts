@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal, model, ViewEncapsulation, effect, input } from '@angular/core';
+import { Component, signal, model, ViewEncapsulation, effect, input, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
@@ -23,6 +23,13 @@ import { IntersectionsRequestService } from '@simra/intersections-domain';
 })
 export class MapSettings {
 	screenshotMode = model.required<boolean>();
+
+	@HostListener('window:keydown.escape')
+    handleKeyDown() {
+        if (this.screenshotMode()) {
+            this.screenshotMode.set(false);
+        }
+    }
 
 	settings = input.required<SettingGroup[]>();
 	isSettingsVisible = signal(false);
