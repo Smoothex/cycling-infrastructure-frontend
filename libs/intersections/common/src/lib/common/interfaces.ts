@@ -105,6 +105,7 @@ export interface BaseMetric extends AggregatedResult {
 	avgDuration: number;
 	avgSpeed: number;
 	maxWaitingTime: number;
+    sumWaitingTime: number;
 	avgWaitingTime: number;
     stopRate: number;
     avgWaitingTimeWhenStopped: number;
@@ -212,6 +213,8 @@ export interface RegionMetricData  {
     nodeStopRate: number;
     nodeWaitingSPerKm: number;
     nodeWaitingRate: number;
+    nodeLength: number;
+    nodeDuration: number;
 
     numberOfEdges: number;
     edgeWaitingTime: number;
@@ -326,7 +329,6 @@ interface NumberSetting {
     type: "number";
     value: WritableSignal<number | null>;
     min?: number;
-    max?: number;
     step?: number;
 }
 interface SelectSetting {

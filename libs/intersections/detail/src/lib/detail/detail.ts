@@ -49,7 +49,8 @@ import {
 	NodePageableMetricRequest,
 	EdgePageableMetricRequest,
 	BASE_METRIC_CHART_CONFIG,
-	NODE_METRIC_CHART_CONFIG
+	NODE_METRIC_CHART_CONFIG,
+	BaseMetric
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
 
@@ -287,6 +288,13 @@ export class IntersectionsDetailPage {
 
 	protected readonly firstEdge = signal<Edge | null>(null);
 	protected readonly metricEdge = signal<EdgeMetricRow | null>(null);
+
+	protected readonly metricBase = computed<BaseMetric | null>(() => {
+		if (this.metricNode()) {
+			return this.metricNode();
+		}
+		return this.metricEdge();
+	});
 	
 
 	protected readonly tableDataIsLoading = signal(false);

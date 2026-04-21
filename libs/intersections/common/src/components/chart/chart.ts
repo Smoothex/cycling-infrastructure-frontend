@@ -308,6 +308,17 @@ export class IntersectionChart<T, R extends PageableRequest | PrecomputedPageabl
 			data.update(current => [...current, ...result.properties]);
 			props.set(result);
 		}
+
+		const completeData = data();
+		if (completeData.length > 0) {
+			// TODO: improve duplicate logic, by macking it obsolete in the backend by using proper functions
+			const existingIds = new Set(completeData.map(item => (item as any)[this.config().idKey]));
+			if (completeData.length !== existingIds.size) {
+				console.error("DUPLICATES DETECTED: ", completeData.length-existingIds.size);
+			}
+		}
+
+		
 		
 		this.loading.set(false);
     }

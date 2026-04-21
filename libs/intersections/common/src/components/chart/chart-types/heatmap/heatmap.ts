@@ -51,10 +51,10 @@ export class HeatmapChart<T> {
         },
         {
             group: 'Buckets', items: [
-                { label: 'Y Bucket Size', props: { type: "number", value: this.yBucketSize, min: 0.01, max: 100 }},
-                { label: 'Y Offset', props: { type: "number", value: this.yOffset, min: 0, max: 100 }},
-                { label: 'X Bucket Size', props: { type: "number", value: this.xBucketSize, min: 0.01, max: 100 }},
-                { label: 'X Offset', props: { type: "number", value: this.xOffset, min: 0, max: 100 }},
+                { label: 'Y Bucket Size', props: { type: "number", value: this.yBucketSize, min: 0.01 }},
+                { label: 'Y Offset', props: { type: "number", value: this.yOffset, min: 0 }},
+                { label: 'X Bucket Size', props: { type: "number", value: this.xBucketSize, min: 0.01}},
+                { label: 'X Offset', props: { type: "number", value: this.xOffset, min: 0 }},
             ]
         },
         {

@@ -101,11 +101,10 @@ export class IntersectionsList {
 			tooltip: 'INTERSECTIONS.TIP.MEDIANWAITINGTIME'
 		},
 		{
-			field: 'maxWaitingTime',
-			header: 'INTERSECTIONS.HEADERS.MAXWAITINGTIME',
+			field: 'sumWaitingTime',
+			header: 'INTERSECTIONS.HEADERS.SUMWAITINGTIME',
 			sortable: true,
 			display: "number",
-			tooltip: 'INTERSECTIONS.TIP.SPEED'
 		},
 		{
 			field: 'weekDay', 

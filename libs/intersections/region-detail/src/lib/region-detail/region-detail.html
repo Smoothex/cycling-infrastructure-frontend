@@ -27,27 +27,47 @@
                             <p-divider/>
                             <tr>
                                 <td>Traveled Distance (km)</td>
-                                <td>{{ r.length| number: '1.0-2' }}</td>
+                                <td>{{ r.length| number: '1.0-1' }}</td>
                             </tr>
                             <p-divider/>
                             <tr>
-                                <td>Mean Intersection Waiting Time (s)</td>
-                                <td>{{ r.nodeAvgWaitingTime| number: '1.0-2' }}</td>
+                                <td>Total Duration (s)</td>
+                                <td>{{ r.duration | number: '1.0-2' }}</td>
                             </tr>
                             <p-divider/>
                             <tr>
-                                <td>Intersections on Ride (#/km)</td>
-                                <td>{{ r.nodesPerKm| number: '1.0-2' }}</td>
+                                <td>Total Wait Time (s)</td>
+                                <td>{{ r.nodeWaitingTime | number: '1.0-2' }}</td>
                             </tr>
                             <p-divider/>
                             <tr>
-                                <td>Intersection Waiting Time (s/km)</td>
-                                <td>{{ r.nodeWaitingSPerKm| number: '1.0-2' }}</td>
+                                <td>Intersection Waiting Rate (%)</td>
+                                <td>{{ r.nodeWaitingRate| number: '1.0-1' }}</td>
                             </tr>
                             <p-divider/>
                             <tr>
-                                <td>Way Waiting Time (s/km)</td>
-                                <td>{{ r.edgeWaitingSPerKm| number: '1.0-2' }}</td>
+                                <td>Intersection Density (#/km)</td>
+                                <td>{{ r.nodesPerKm| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Avg. Waiting (s)</td>
+                                <td>{{ r.nodeAvgWaitingTime| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Avg. Waiting When Stopped (s)</td>
+                                <td>{{ r.nodeAvgWaitingTimeWhenStopped| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Stop Rate (%)</td>
+                                <td>{{ r.nodeStopRate| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Street Waiting Rate (%)</td>
+                                <td>{{ r.edgeWaitingRate| number: '1.0-1' }}</td>
                             </tr>
                         }
                     </table>

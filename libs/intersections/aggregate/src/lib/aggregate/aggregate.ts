@@ -35,7 +35,8 @@ import {
 	EdgePageableMetricRequest,
 	BASE_METRIC_CHART_CONFIG,
 	NODE_METRIC_CHART_CONFIG,
-	PageableRequest
+	PageableRequest,
+	PagedProperties
 } from '@simra/intersections-common';
 import { scrollToElementId } from '@simra/helpers';
 import { StreetsRequestService } from '@simra/streets-domain';
@@ -83,6 +84,7 @@ export class IntersectionsAggregatePage {
 		metricRequest.sort = pagedRequest.sort;
 		return metricRequest;
 	});
+	protected readonly firstBase = signal<PagedProperties<Base> | null>(null);
 	
 	protected readonly propertiesFiltered = signal<Base[]>([]);
 	protected readonly pagedGeoResponse = signal<PagedGeoResponse<LineString> | null>(null);
@@ -160,17 +162,19 @@ export class IntersectionsAggregatePage {
 		});
 
 
-		effect(() => {
+		effect(async () => {
 			const id = this.trafficSignalClusterId();
 			if (!id) return;
-			this.nodeRequest.set({
+			const nodeRequest = {
 				page: 0,
 				size: 20,
 				trafficSignalClusterId: id,
 				weekDay: this._selectedWeekDays(),
 				trafficTime: this._selectedTrafficTime(),
 				year: this._selectedYear()
-			});
+			}
+			this.nodeRequest.set(nodeRequest);
+			this.firstBase.set(await this._requestService.getIntersectionNodeProperties(nodeRequest));
 		});
 		effect(async () => {
 			const request = this.nodeMetricRequest();
@@ -185,14 +189,16 @@ export class IntersectionsAggregatePage {
 		effect(async () => {
 			const id = this.osmId();
 			if (!id) return;
-			this.edgeRequest.set({
+			const edgeRequest = {
 				page: 0,
 				size: 20,
 				osmId: id,
 				weekDay: this._selectedWeekDays(),
 				trafficTime: this._selectedTrafficTime(),
 				year: this._selectedYear()
-			});
+			};
+			this.edgeRequest.set(edgeRequest);
+			this.firstBase.set(await this._requestService.getIntersectionNodeProperties(edgeRequest));
 		});
 		effect(async () => {
 			const request = this.edgeMetricRequest();

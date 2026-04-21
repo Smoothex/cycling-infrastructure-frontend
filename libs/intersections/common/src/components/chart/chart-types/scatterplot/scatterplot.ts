@@ -42,7 +42,7 @@ export class ScatterPlot<T> {
             group: 'Lines', items: [
                 { label: 'Display Average Line', props: { type: "boolean", value: this.showAvgLine}},
                 { label: 'Display Median Line', props: { type: "boolean", value: this.showMedianLine}},
-                { label: 'Half Window', props: { type: "number", value: this.windowSize, min: 0, max: 100 }},
+                { label: 'Half Window', props: { type: "number", value: this.windowSize, min: 0 }},
             ]
         }
     ]);

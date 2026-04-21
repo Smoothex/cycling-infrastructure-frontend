@@ -56,6 +56,13 @@
                                 }
                             }
                         }
+                        @if (firstBase(); as b) {
+                            <p-divider/>
+                            <tr>
+                                <td>Number of Rides (#)</td>
+                                <td>{{ b.metadata.totalElements }}</td>
+                            </tr>
+                        }
                     </table>
                 </div>
                 <div>

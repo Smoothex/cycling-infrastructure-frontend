@@ -32,8 +32,8 @@ export class HistogramChart<T> {
         },
         {
             group: 'Buckets', items: [
-                { label: 'Bucket Size', props: { type: "number", value: this.bucketSize, min: 0.01, max: 100 }},
-                { label: 'Offset', props: { type: "number", value: this.offset, min: 0, max: 100 }},
+                { label: 'Bucket Size', props: { type: "number", value: this.bucketSize, min: 0.01 }},
+                { label: 'Offset', props: { type: "number", value: this.offset, min: 0 }},
             ]
         },
         {

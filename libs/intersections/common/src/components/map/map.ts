@@ -239,10 +239,10 @@ export class IntersectionMap {
 			if (this.intersectionDataAdded) deleteDisplay(map, this.intersectionDataAdded);
 			if (baseData) {
 				this.ridePointsMatchedPointsAdded.forEach(el => deleteDisplay(map, el));
-				this.intersectionDataAdded = displayRideSegment(this._router, baseData, map, "rideSegments", true);
+				this.intersectionDataAdded = displayRideSegment(this._router, baseData, map, "intersectionLineData", true);
 			}
 			else if (metricData) {
-				this.intersectionDataAdded = displayAggregateSegment(this._router, metricData, map, "aggregatedSegments", true);
+				this.intersectionDataAdded = displayAggregateSegment(this._router, metricData, map, "intersectionLineData", true);
 			}
 			else if (regionData) {
 				this.intersectionDataAdded = displayRegions(regionData, map, "region");

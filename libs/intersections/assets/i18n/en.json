@@ -11,6 +11,7 @@
         "DURATION": "Duration (s)",
         "MEDIANWAITINGTIME": "Waiting Time (s)",
         "MAXWAITINGTIME": "Max Waiting Time (s)",
+        "SUMWAITINGTIME": "Sum Waiting Time (s)",
         "WEEKDAY": "Weekday",
         "TRAFFICTIME": "Traffic Time",
         "YEAR": "Year",

@@ -30,7 +30,7 @@ export const BASE_CHART_CONFIG: ChartConfig<Base> = {
     selectableProperties: BASE_SELECTABLE_PROPERTIES,
     defaultProperty: 'waitingTime',
     defaultProperty2: 'medianRideSpeed',
-    idKey: 'rideId',
+    idKey: 'id',
     aggregationLabel: 'Number of Rides (#)'
 };
 
@@ -107,16 +107,24 @@ const REGION_METRIC_DATA_SELECTABLE_PROPERTIES: SelectableProperty<RegionMetricD
         label: "Intersection Waiting (%)"
     },
     {
-        value: 'nodeWaitingTime',
-        label: "Intersection Total Waiting (s)"
-    },
-    {
         value: 'edgeWaitingSPerKm',
         label: "Street Waiting (s/km)"
     },
     {
         value: 'edgeWaitingRate',
         label: "Street Waiting (%)"
+    },
+    {
+        value: 'nodeWaitingTime',
+        label: "Intersection Waiting (s)"
+    },
+    {
+        value: 'nodeLength',
+        label: "Intersection Length (km)"
+    },
+    {
+        value: 'nodeDuration',
+        label: "Intersection Duration (s)"
     },
     {
         value: 'numberOfNodes',

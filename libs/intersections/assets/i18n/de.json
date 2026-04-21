@@ -10,6 +10,7 @@
         "DURATION": "Dauer (s)",
         "MEDIANWAITINGTIME": "Wartezeit (s)",
         "MAXWAITINGTIME": "Max. Wartezeit (s)",
+        "SUMWAITINGTIME": "Summe Wartezeit (s)",
         "WEEKDAY": "Wochentag",
         "TRAFFICTIME": "Verkehrszeit",
         "YEAR": "Jahr",

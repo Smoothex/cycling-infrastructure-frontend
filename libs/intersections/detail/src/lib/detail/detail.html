@@ -79,19 +79,51 @@
                                 <td>{{ e.name }}</td>
                             </tr>
                         }
+                        @if (metricBase(); as b) {                       
+                            <p-divider/>
+                            <tr>
+                                <td>Avg. Wait Time (s)</td>
+                                <td>{{ b.avgWaitingTime | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Avg. Wait Time When Stopped (s)</td>
+                                <td>{{ b.avgWaitingTimeWhenStopped | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Stop Rate (%)</td>
+                                <td>{{ b.stopRate | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Number of Rides (#)</td>
+                                <td>{{b.numberOfRides}}</td>
+                            </tr>
+                        }
                     </table>
                 </div>
                 <div>
                     @if (baseIdZoom(); as b) {
-                        <a pButton
-                            routerLink="/intersections/map"
-                            queryParamsHandling="merge"
-                            target="_blank"
-                            [queryParams]="b"
-                            icon="ph-bold ph-map-pin-area"
-                            size="small">
-                            {{ 'STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.BUTTONS.SIMRA_MAP' | translate }}
-                        </a>
+                        <div class="flex flex-row gap-4">
+                            <a pButton
+                                routerLink="/intersections/map"
+                                queryParamsHandling="merge"
+                                target="_blank"
+                                [queryParams]="b"
+                                icon="ph-bold ph-map-pin-area"
+                                size="small">
+                                {{ 'STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.BUTTONS.SIMRA_MAP' | translate }}
+                            </a>
+                            <a pButton
+                                [href]="'https://www.openstreetmap.org/#map=17/' + b.lat.toFixed(6) + '/' + b.lng.toFixed(6)"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                icon="ph-bold ph-map-pin"
+                                size="small">
+                                OSM
+                            </a>
+                        </div>
                     }
                 </div>
             </div>
