@@ -15,6 +15,11 @@ services:
                 MAPILLARY_ACCESS_TOKEN: ${MAPILLARY_ACCESS_TOKEN}
                 MAP_TILER_TOKEN: ${MAP_TILER_TOKEN}
         ports:
-        - "4200:4200"
+        - "4200:80"
         env_file:
             -   .env
+        networks:
+            - simra_simra-network
+networks:
+    simra_simra-network:
+        external: true
