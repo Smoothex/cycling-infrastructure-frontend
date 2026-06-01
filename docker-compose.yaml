@@ -4,7 +4,6 @@ services:
     simra-frontend:
         container_name: simra-frontend
         image: codinggandalf/simra-frontend:latest
-        pull_policy: always
         build:
             context: .
             target: local_production
