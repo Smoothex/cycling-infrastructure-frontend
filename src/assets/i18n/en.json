@@ -99,6 +99,20 @@
                     "IMAGE_ALT": "Dented bicycle lying on the road",
                     "DESCRIPTION": "The incident map shows reported incidents grouped together on an interactive map so that dangerous areas can be quickly recognised."
                 }
+            },
+            "INTERSECTIONS": {
+                "LIST": {
+                    "IMAGE_ALT": "Biker in New York",
+                    "DESCRIPTION": "The Intersection and Road List provides an overview of the intersections and roads with the longest wait times in the region. This filterable and sortable list helps you identify which intersections have the longest wait times and require attention."
+                },
+                "MAP": {
+                    "IMAGE_ALT": "Dented bicycle lying on the road",
+                    "DESCRIPTION": "The traffic map visually represents wait times in road traffic by displaying wait times for intersections and roads on a map. Different colors indicate varying wait times and help you identify areas with long wait times. This interactive view provides a geographical perspective on wait times for cyclists, enabling better planning and raising awareness."
+                },
+                "ADMINISTRATIVE_REGIONS": {
+                    "IMAGE_ALT": "Brandenburg Gate",
+                    "DESCRIPTION": "Administrative regions are officially defined areas based on national borders. These include cities and neighbouring districts or city states such as Berlin. They provide a structured way of analysing cycling activity within fixed boundaries."
+                }
             }
         },
         "PROCESSING_DETAILS": {

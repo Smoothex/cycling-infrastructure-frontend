@@ -99,6 +99,20 @@
                     "IMAGE_ALT": "Eingedelltes Fahrrad auf der Straße liegend",
                     "DESCRIPTION": "Die Unfallkarte zeigt gemeldete Vorfälle gruppiert auf einer interaktiven Karte an, so dass gefährliche Bereiche schnell erkannt werden können."
                 }
+            },
+            "INTERSECTIONS": {
+                "LIST": {
+                    "IMAGE_ALT": "Fahrradfahrer in New York",
+                    "DESCRIPTION": "Die Kreuzungs- und Straßenliste bietet einen Überblick über die Kreuzungen und Straßen mit längster Wartezeit in der Region. Die filter- und sortierbare Liste hilft dabei, zu verstehen, welche Kreuzungen die meisten Wartezeit aufweisen und Aufmerksamkeit erfordern."
+                },
+                "MAP": {
+                    "IMAGE_ALT": "Landkarte des Straßennetztes von London",
+                    "DESCRIPTION": "Die Straßenkarte stellt die Wartezeit im Straßenverkehr visuell dar, indem sie die Wartezeiten für Kreuzungen und Straßen auf einer Karte abbildet. Verschiedene Farben zeigen unterschiedliche Wartezeiten an und helfen Ihnen, Bereiche mit langen Wartezeiten zu erkennen. Diese interaktive Ansicht bietet eine geografische Perspektive der Wartezeit für Fahrradfahrer und ermöglicht eine bessere Planung und Sensibilisierung."
+                },
+                "ADMINISTRATIVE_REGIONS": {
+                    "IMAGE_ALT": "Brandenburger Tor",
+                    "DESCRIPTION": "Verwaltungsregionen sind offiziell festgelegte Gebiete, die sich an den Landesgrenzen orientieren. Dazu gehören Städte und benachbarte Bezirke oder Stadtstaaten wie Berlin. Sie bieten eine strukturierte Möglichkeit zur Analyse der Radverkehrsaktivitäten innerhalb fester Grenzen."
+                }
             }
         },
         "PROCESSING_DETAILS": {
