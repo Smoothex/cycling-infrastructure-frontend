@@ -14,11 +14,11 @@ import {
     CARD_MODE_TO_TRANSLATION_MAP
 } from '@simra/common-components';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
-import { ECardMode } from '@simra/intersections-common';
+import { ECardMode } from '../../lib/common/interfaces';
 
 
 @Component({
-    selector: 't-date-filter',
+    selector: 'intersection-date-filter',
     standalone: true,
     templateUrl: './date-filter.html',
     styleUrl: './date-filter.scss',
@@ -34,7 +34,7 @@ import { ECardMode } from '@simra/intersections-common';
     ],
     encapsulation: ViewEncapsulation.None,
 })
-export class DateFilter {
+export class DateFilterComponent {
 
     changeableMode = input.required<boolean>();
     mode = model.required<ECardMode>();

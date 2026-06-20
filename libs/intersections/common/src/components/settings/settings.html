@@ -11,13 +11,13 @@
                     @switch (setting.props.type) {
                         @case ('boolean') {
                             <div class="flex items-center">
-                                <p-checkbox [(ngModel)]="setting.props.value" [binary]="true" size="small"/>
-                                <label class="ml-2 font-bold text-xs">{{ setting.label }}</label>
+                                <p-checkbox [(ngModel)]="setting.props.value" [binary]="true" size="small" inputId="checkbox"/>
+                                <label class="ml-2 font-bold text-xs" for="checkbox">{{ setting.label }}</label>
                             </div>
                         }
                         @case ('number') {
                             <div class="flex flex-col">
-                                <label class="font-bold text-xs">{{ setting.label }}</label>
+                                <label class="font-bold text-xs" for="number">{{ setting.label }}</label>
                                 <p-inputNumber 
                                     [(ngModel)]="setting.props.value"
                                     [showButtons]="true"
@@ -27,12 +27,13 @@
                                     mode="decimal"
                                     [minFractionDigits]="0" 
                                     [maxFractionDigits]="2"
+                                    inputId="number"
                                 />
                             </div>
                         }
                         @case ('select') {
                             <div class="flex flex-col">
-                                <label class="font-bold text-xs">{{ setting.label }}</label>
+                                <label class="font-bold text-xs" for="select">{{ setting.label }}</label>
                                 <p-select 
                                     [(ngModel)]="setting.props.value"
                                     [options]="setting.props.options"
@@ -40,6 +41,7 @@
                                     optionValue="value"
                                     size="small"
                                     appendTo="body"
+                                    inputId="select"
                                 />
                             </div>
                         }

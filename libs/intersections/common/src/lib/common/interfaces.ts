@@ -11,9 +11,9 @@ type PagedResponse<K extends string, V> = {
         currentPage: number;
     };
 } & Record<K, V>;
-export interface PagedGeoResponse<T extends Geometry> extends PagedResponse<"geoData", FeatureCollection<T>> {}
-export interface PagedIds extends PagedResponse<"ids", number[]> {}
-export interface PagedProperties<T> extends PagedResponse<"properties", T[]> {}
+export type PagedGeoResponse<T extends Geometry> = PagedResponse<"geoData", FeatureCollection<T>>;
+export type PagedIds = PagedResponse<"ids", number[]>;
+export type PagedProperties<T> = PagedResponse<"properties", T[]>;
 
 export interface IdListRequest {
     id?: number;

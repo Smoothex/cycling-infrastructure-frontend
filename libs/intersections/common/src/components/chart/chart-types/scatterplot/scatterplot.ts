@@ -1,17 +1,23 @@
-import { Component, input, computed, signal, effect, model, linkedSignal } from '@angular/core';
+import { Component, input, computed, signal, model, linkedSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
-
-import { ChartConfig, createScatterPlot, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
+import {
+    ChartConfig,
+    SettingGroup,
+    ChartFilter,
+    ChartComplete,
+} from '../../../../lib/common/interfaces';
+import { createScatterPlot } from '../../../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
 
 @Component({
-    selector: 'scatter-plot',
+    selector: 'intersection-scatter-plot',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './scatterplot.html',
 })
-export class ScatterPlot<T> {
+export class ScatterPlotComponent<T> {
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();

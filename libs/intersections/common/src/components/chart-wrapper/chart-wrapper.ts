@@ -6,7 +6,15 @@ import { ChartModule } from 'primeng/chart';
 import { PopoverModule } from 'primeng/popover';
 import { merge } from 'lodash';
 
-import { Settings, SettingGroup, ChartFilter, recordToOptions, TimeCategoryLabels, TimeCategory, ChartComplete } from '@simra/intersections-common';
+import {
+    SettingGroup,
+    ChartFilter,
+    recordToOptions,
+    TimeCategoryLabels,
+    TimeCategory,
+    ChartComplete
+} from '../../lib/common/interfaces';
+import { SettingsComponent } from '../settings/settings';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -25,12 +33,12 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 
 
 @Component({
-    selector: 'chart-wrapper',
+    selector: 'intersection-chart-wrapper',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, ChartModule, PopoverModule, Settings],
+    imports: [CommonModule, FormsModule, ButtonModule, ChartModule, PopoverModule, SettingsComponent],
     templateUrl: './chart-wrapper.html'
 })
-export class ChartWrapper<T> {
+export class ChartWrapperComponent<T> {
     chart = input.required<ChartComplete>();
     settings = input.required<SettingGroup[]>();
     chartFilter = input.required<ChartFilter<T>>();

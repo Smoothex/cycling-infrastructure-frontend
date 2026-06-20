@@ -4,8 +4,8 @@
             @if (loading() ) {
                 <p-skeleton height="21rem" />
             } @else {
-                <chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
-                </chart-wrapper>
+                <intersection-chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+                </intersection-chart-wrapper>
             }
         </div>
     </div>

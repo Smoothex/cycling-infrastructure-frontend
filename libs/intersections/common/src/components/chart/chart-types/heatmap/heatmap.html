@@ -1,4 +1,4 @@
-<chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+<intersection-chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
     <div label >        
         @if (chartData().outliers > 0) {
             <div class="flex items-center justify-center">
@@ -20,4 +20,4 @@
             }
         </div>
     </div>
-</chart-wrapper>
+</intersection-chart-wrapper>

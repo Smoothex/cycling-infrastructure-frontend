@@ -1,5 +1,5 @@
 import { Feature, FeatureCollection, GeoJsonProperties, LineString, Point, Polygon } from 'geojson';
-import { along, length, centroid } from '@turf/turf';
+import { along, length } from '@turf/turf';
 import * as maplibregl from 'maplibre-gl';
 import { MapUtils } from '@simra/common-components';
 import { Router } from '@angular/router';
@@ -8,7 +8,7 @@ import {
     BaseMetric,
     Base,
     RegionMetric
-} from '@simra/intersections-common';
+} from './interfaces';
 import {
     setPopUpIntersectionMetrics,
     setPopUpTrafficSignalCluster,
@@ -17,7 +17,7 @@ import {
     setPopUpRidePoints,
     setPopUpIntersectionBase,
     setPopUpRegion
-} from '@simra/intersections-domain';
+} from './request-helper';
 
 
 export function calculateMidPoint(lineString: LineString) {
@@ -48,7 +48,7 @@ export interface displayOptions {
     color: any;
     minzoom?: number;
     maxzoom?: number;
-    popupFunc?: Function;
+    popupFunc?: (mlMap: maplibregl.Map, lngLat: maplibregl.LngLat, properties: Record<string, string>) => void;
     vectorTileOptions?: vectorTileOptions;
 }
 
@@ -79,7 +79,7 @@ export interface displayOptionsPoint extends displayOptions {
     width: any;
 }
 
-export function setSourceGeoJson(data: FeatureCollection, map: maplibregl.Map, options: displayOptions, added: addedOnMap, extraLineStart: boolean = false) {
+export function setSourceGeoJson(data: FeatureCollection, map: maplibregl.Map, options: displayOptions, added: addedOnMap, extraLineStart = false) {
     addSourceOnMap(map, added, options.sourceId, {
         type: 'geojson',
         data: data,
@@ -441,7 +441,7 @@ export function removeLineHighlight(map: maplibregl.Map, added: addedOnMap) {
     }
 }
 
-export function getWaitingTimeColors(maxValue: number = 60) {
+export function getWaitingTimeColors(maxValue = 60) {
     return {
         0:  '#3cff00ff',
         [Math.floor(maxValue * 1/3)]: '#fffb00ff',
@@ -469,9 +469,7 @@ export interface LegendItemVisible extends LegendItem {
 }
 
 export function getVisibleLegendItems(definitions: LegendItemVisible[]): LegendItem[] {
-  return definitions
-    .filter(d => d.showIf)
-    .map(({ showIf, ...item }) => item);
+  return definitions.filter(d => d.showIf);
 }
 
 export function colorToStops(color: Record<number, string>) {
@@ -599,8 +597,8 @@ function AGGREGATE_SEGMENT_CONFIG(_router: Router, sourceId: string, startMarker
 }
 export function getAggrageteSegmentDefaults() {
     const colorProperty: keyof BaseMetric = "avgWaitingTime";
-    const colorMax: number = 60;
-    const widthMax: number = 50;
+    const colorMax = 60;
+    const widthMax = 50;
     return {
         colorProperty: colorProperty,
         colorMax: colorMax,
@@ -614,7 +612,7 @@ export function styleAggregateSegment(map: maplibregl.Map, data: addedOnMap, _ro
 }
 export function displayAggregateSegment (
     _router: Router, lines: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, sourceId: string, 
-    startMarker: boolean = true
+    startMarker = true
 ): addedOnMap {
     const data = addedOnMapDefault(sourceId);
     const defaults = getAggrageteSegmentDefaults();
@@ -625,7 +623,7 @@ export function displayAggregateSegment (
 }
 export function displayAggregateSegmentVectorTiles (
     _router: Router, map: maplibregl.Map, apiUrlVectorTile: string, sourceId: string, request: MetricRequest, 
-    startMarker: boolean = true
+    startMarker= true
 ): addedOnMap {
     const data = addedOnMapDefault(sourceId);
     const defaults = getAggrageteSegmentDefaults();
@@ -651,7 +649,7 @@ function RIDE_SEGMENT_CONFIG(_router: Router, sourceId: string, startMarker: boo
 }
 export function getRideSegmentDefaults() {
     const colorProperty: keyof Base = "waitingTime";
-    const colorMax: number = 60;
+    const colorMax = 60;
     return {
         colorProperty: colorProperty,
         colorMax: colorMax
@@ -664,7 +662,7 @@ export function styleRideSegment(map: maplibregl.Map, data: addedOnMap, _router:
 }
 export function displayRideSegment (
     _router: Router, lines: FeatureCollection<LineString, GeoJsonProperties>, map: maplibregl.Map, 
-    sourceId: string, startMarker: boolean = true
+    sourceId: string, startMarker = true
 ): addedOnMap {
     const data = addedOnMapDefault(sourceId);
     const defaults = getRideSegmentDefaults();
@@ -702,8 +700,8 @@ function REGION_CONFIG(sourceId: string,
 }
 export function getRegionDefaults() {
     const colorProperty: keyof RegionMetric = "nodeWaitingRate";
-    const colorMax: number = 15;
-    const widthMax: number = 1000;
+    const colorMax = 15;
+    const widthMax = 1000;
     return {
         colorProperty: colorProperty,
         colorMax: colorMax,
@@ -756,33 +754,5 @@ export function applyQueryParamsForLineHighlight(_router: Router, id: number, la
     _router.navigate([], {
         queryParams: { id: id, lat: lat.toFixed(5), lng: lon.toFixed(5), zoom: 16, moveTo: moveTo, sourceId },
         queryParamsHandling: 'merge',
-    });
-}
-
-export function waitForSource(map: maplibregl.Map, sourceId: string, timeoutMs = 5000): Promise<void> {
-    return new Promise((resolve, reject) => {
-        if (map.getSource(sourceId) && map.isSourceLoaded(sourceId)) {
-            resolve();
-            return;
-        }
-
-        let timer: undefined | ReturnType<typeof setTimeout>;
-
-        const onSourceData = (e: maplibregl.MapSourceDataEvent) => {
-            // Check if this event is for our source and if it is fully loaded
-            if (e.sourceId === sourceId && map.isSourceLoaded(sourceId) && e.isSourceLoaded) {
-                map.off('sourcedata', onSourceData);
-                clearTimeout(timer);
-                resolve();
-            }
-        };
-
-        map.on('sourcedata', onSourceData);
-
-        // Fail if it takes too long
-        timer = setTimeout(() => {
-            map.off('sourcedata', onSourceData);
-            reject(new Error(`Source '${sourceId}' not found after ${timeoutMs}ms`));
-        }, timeoutMs);
     });
 }

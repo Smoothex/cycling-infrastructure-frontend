@@ -1,4 +1,4 @@
-import { Component, effect, input, signal, inject, computed, model } from '@angular/core';
+import { Component, effect, input, signal, inject, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -9,27 +9,20 @@ import { Divider } from 'primeng/divider';
 import { ChartModule } from 'primeng/chart';
 import { TableModule, TableLazyLoadEvent, TableFilterEvent } from 'primeng/table';
 import { FeatureCollection, LineString } from 'geojson';
-import { 
-	IntersectionsRequestService, 
-	mapFeaturesToNodeMetricRows, 
-	mapFeaturesToEdgeMetricRows,
-	mapFeaturesToEdgeRows,
-	mapFeaturesToNodeRows
-} from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import { 
 	PageableRequest, 
-	IntersectionChart, 
-	DateFilter, 
+	IntersectionChartComponent, 
+	DateFilterComponent, 
 	DATE_FILTER_DEFAULTS, 
 	ECardMode, NodeRow, 
 	EdgeRow, 
 	ListColumn, 
 	applyQueryParamsForLineHighlight, 
-	IntersectionListContent, 
-	IntersectionListHeader, 
-	IntersectionMap, 
-	IntersectionRow, 
+	IntersectionListContentComponent, 
+	IntersectionListHeaderComponent,
+	IntersectionRow,
 	Base, 
 	Node, 
 	Edge, 
@@ -45,23 +38,28 @@ import {
 	onLazyHelper,
 	NodeMetricRow, 
 	EdgeMetricRow,
-	IntersectionChartMetric,
+	IntersectionChartMetricComponent,
 	NodePageableMetricRequest,
 	EdgePageableMetricRequest,
 	BASE_METRIC_CHART_CONFIG,
 	NODE_METRIC_CHART_CONFIG,
-	BaseMetric
+	BaseMetric,
+	mapFeaturesToNodeMetricRows, 
+	mapFeaturesToEdgeMetricRows,
+	mapFeaturesToEdgeRows,
+	mapFeaturesToNodeRows
 } from '@simra/intersections-common';
+import { BaseIntersectionMapComponent } from '@simra/intersections-map';
 import { scrollToElementId } from '@simra/helpers';
 
 
 @Component({
-	selector: 'detail',
+	selector: 'intersection-detail',
 	imports: [CommonModule, FormsModule, TableModule, ButtonModule, Divider, TranslatePipe, ChartModule,
-    IntersectionListContent, IntersectionListHeader, IntersectionChart, IntersectionMap, Card, RouterLink, DateFilter, IntersectionChartMetric],
+    IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionChartComponent, BaseIntersectionMapComponent, Card, RouterLink, DateFilterComponent, IntersectionChartMetricComponent],
 	templateUrl: './detail.html',
 })
-export class IntersectionsDetailPage {
+export class IntersectionsDetailPageComponent {
 	private readonly _router = inject(Router);
 	private readonly _requestService = inject(IntersectionsRequestService);
 

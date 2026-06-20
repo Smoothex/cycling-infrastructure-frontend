@@ -13,7 +13,7 @@ import {
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 
 @Component({
-    selector: 'date-filter-precomputed',
+    selector: 'intersection-date-filter-precomputed',
     standalone: true,
     templateUrl: './date-filter-precomputed.html',
     styleUrl: './date-filter-precomputed.scss',
@@ -27,7 +27,7 @@ import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
     ],
     encapsulation: ViewEncapsulation.None,
 })
-export class DateFilterPrecomputed {
+export class DateFilterPrecomputedComponent {
 
     selectedYear = model.required<EYear>();
     selectedWeekDays = model.required<EWeekDays>();

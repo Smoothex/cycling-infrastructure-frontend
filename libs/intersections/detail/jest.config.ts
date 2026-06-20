@@ -1,8 +1,8 @@
 export default {
-	displayName: 'line-detail',
+	displayName: 'detail',
 	preset: '../../../jest.preset.js',
 	setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
-	coverageDirectory: '../../../coverage/libs/intersections/line-detail',
+	coverageDirectory: '../../../coverage/libs/intersections/detail',
 	transform: {
 		'^.+\\.(ts|mjs|js|html)$': [
 			'jest-preset-angular',

@@ -1,1 +1,1 @@
-export * from './lib/aggregate/aggregate';
+export { IntersectionsAggregatePageComponent } from './lib/aggregate/aggregate';

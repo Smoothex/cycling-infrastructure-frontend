@@ -1,1 +1,1 @@
-export * from './lib/detail/detail';
+export { IntersectionsDetailPageComponent } from './lib/detail/detail';

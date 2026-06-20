@@ -24,8 +24,6 @@ import {
 	getVisibleLegendItems,
 	highlightLine,
 	LegendItem,
-	MapLegend,
-	MapSettings,
 	removeLineHighlight,
 	removeQueryParamsForLineHighlight,
 	ZOOM_LEVELS,
@@ -45,17 +43,18 @@ import {
 	getRideSegmentDefaults,
 	getRegionDefaults
 } from '@simra/intersections-common';
-
+import { MapLegendComponent } from '../map-legend/map-legend';
+import { MapSettingsComponent } from '../map-settings/map-settings';
 
 
 @Component({
 	selector: 'intersection-map',
-	imports: [CommonModule, MapPage, TableModule, MapLegend, MapSettings, ProgressSpinner],
+	imports: [CommonModule, MapPage, TableModule, MapLegendComponent, MapSettingsComponent, ProgressSpinner],
 	templateUrl: './map.html',
 	styleUrl: './map.scss',
 	encapsulation: ViewEncapsulation.None,
 })
-export class IntersectionMap {
+export class BaseIntersectionMapComponent {
 	private readonly _requestService = inject(IntersectionsRequestService);
 	private readonly _router = inject(Router);
 	private readonly _activatedRoute = inject(ActivatedRoute);
@@ -165,7 +164,7 @@ export class IntersectionMap {
 		]);
   	});
 
-	mapSettings = computed<SettingGroup[]>(() => {
+	MapSettingsComponent = computed<SettingGroup[]>(() => {
 		const settings: SettingGroup[] = [];
 		if (this.metricData()) (
 			settings.push({
@@ -289,7 +288,7 @@ export class IntersectionMap {
 			if (!map || !dataLoaded || !params || !(metricData || baseData)) return;
 
 			// Highlight line specified by query parameters
-			const selectedId: number = Number(params["id"]);
+			const selectedId = Number(params["id"]);
     		const sourceId: string = params["sourceId"];
 			if (!sourceId || !selectedId) {
 				this.selectedSegmentId.set(null);

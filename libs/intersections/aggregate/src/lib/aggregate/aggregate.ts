@@ -7,22 +7,21 @@ import { Card } from 'primeng/card';
 import { Divider } from 'primeng/divider';
 import { TableModule, TableLazyLoadEvent, TableFilterEvent } from 'primeng/table';
 import { LineString } from 'geojson';
-import { IntersectionsRequestService, mapFeaturesToNodeMetricRows, mapFeaturesToEdgeMetricRows } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
 	BaseMetric,
-	DateFilterPrecomputed, 
+	DateFilterPrecomputedComponent, 
 	DATE_FILTER_DEFAULTS,
 	EdgeMetricRow,
-	IntersectionMap, 
-	IntersectionChart,
+	IntersectionChartComponent,
 	IntersectionRow, 
 	NodeMetricRow,
 	ListColumn, 
 	applyQueryParamsForLineHighlight, 
 	Base,
-	IntersectionListContent,
-	IntersectionListHeader,
+	IntersectionListContentComponent,
+	IntersectionListHeaderComponent,
 	onLazyHelper,
 	onFilterChangeHelper,
 	PagedGeoResponse,
@@ -36,8 +35,11 @@ import {
 	BASE_METRIC_CHART_CONFIG,
 	NODE_METRIC_CHART_CONFIG,
 	PageableRequest,
-	PagedProperties
+	PagedProperties,
+	mapFeaturesToNodeMetricRows,
+	mapFeaturesToEdgeMetricRows
 } from '@simra/intersections-common';
+import { BaseIntersectionMapComponent } from '@simra/intersections-map';
 import { scrollToElementId } from '@simra/helpers';
 import { StreetsRequestService } from '@simra/streets-domain';
 import { firstValueFrom } from 'rxjs';
@@ -46,12 +48,12 @@ import { HIGHWAY_TYPES_TO_TRANSLATION } from '@simra/streets-explorer';
 
 
 @Component({
-	selector: 'lib-aggregate',
-	imports: [CommonModule, TableModule, ButtonModule, Card, Divider, RouterLink, TranslatePipe,
-    DateFilterPrecomputed, IntersectionMap, IntersectionChart, IntersectionListContent, IntersectionListHeader],
+	selector: 'intersection-aggregate',
+	imports: [CommonModule, TableModule, ButtonModule, Card, Divider, RouterLink, TranslatePipe, 
+		DateFilterPrecomputedComponent, BaseIntersectionMapComponent, IntersectionChartComponent, IntersectionListContentComponent, IntersectionListHeaderComponent],
 	templateUrl: './aggregate.html',
 })
-export class IntersectionsAggregatePage {
+export class IntersectionsAggregatePageComponent {
 	private readonly _router = inject(Router);
 	private readonly _requestService = inject(IntersectionsRequestService);
 	private readonly _streetRequestService = inject(StreetsRequestService);
@@ -114,7 +116,7 @@ export class IntersectionsAggregatePage {
 	protected readonly osmId = signal<number | undefined>(undefined);
 	protected readonly osmProperties = signal<IResponseStreet | null>(null);
 
-	protected readonly isNode = signal<Boolean>(false);
+	protected readonly isNode = signal<boolean>(false);
 
     protected _selectedYear = signal<EYear>(DATE_FILTER_DEFAULTS.year);
     protected _selectedWeekDays = signal<EWeekDays>(DATE_FILTER_DEFAULTS.weekDays);

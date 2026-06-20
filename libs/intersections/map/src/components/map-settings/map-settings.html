@@ -5,12 +5,12 @@
 			<p-button icon="ph ph-camera" (onClick)="screenshotMode.set(!screenshotMode())" size="small"/>
 		</div>
 
-		<settings [isSettingsVisible]="isSettingsVisible()" [settings]="settings()" />
+		<intersection-settings [isSettingsVisible]="isSettingsVisible()" [settings]="settings()" />
 	</div>
 	<div class="popover-container flex flex-col gap-2">
 		@if (extendedSettings()) {
 			<div class="flex flex-col">
-				<label class="font-bold text-xs">Select Ride ID</label>
+				<label class="font-bold text-xs" for="rideSelection">Select Ride ID</label>
 				<p-select 
 				[options]="selectableRideIds()"
 				[(ngModel)]="selectedRideId"
@@ -30,6 +30,7 @@
 				(onLazyLoad)="loadRides($event)"
 				[loading]="loadingRideIds()"
 				size="small"
+				inputId="rideSelection"
 			/>
 			</div>
 		}

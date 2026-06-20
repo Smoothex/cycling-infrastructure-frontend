@@ -33,8 +33,6 @@ import {
   getVisibleLegendItems,
 	highlightLine,
   LegendItem,
-  MapLegend,
-  MapSettings,
   removeLineHighlight,
   removeQueryParamsForLineHighlight,
   deleteDisplay,
@@ -56,6 +54,8 @@ import {
   getRegionDefaults,
   styleRideSegment
 } from '@simra/intersections-common';
+import { MapLegendComponent } from '../../components/map-legend/map-legend';
+import { MapSettingsComponent } from '../../components/map-settings/map-settings';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -72,13 +72,13 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 
 
 @Component({
-	selector: 'lib-map',
-	imports: [CommonModule, MapPage, FormsModule, CheckboxModule, SelectModule, MapSettings, MapLegend],
+	selector: 'intersection-map',
+	imports: [CommonModule, MapPage, FormsModule, CheckboxModule, SelectModule, MapSettingsComponent, MapLegendComponent],
 	templateUrl: './map.html',
   styleUrl: './map.scss',
   encapsulation: ViewEncapsulation.None,
 })
-export class IntersectionsMap {
+export class IntersectionMapComponent {
   private readonly _requestService = inject(IntersectionsRequestService);
   private readonly _router = inject(Router);
   private readonly _activatedRoute = inject(ActivatedRoute);
@@ -211,7 +211,7 @@ export class IntersectionsMap {
     return labelMap;
   }
 
-  mapSettings = computed<SettingGroup[]>(() => [
+  MapSettingsComponent = computed<SettingGroup[]>(() => [
     {
       group: 'Display', items: [
         { label: 'Show Traffic Signals', props: { type: "boolean", value: this.showTrafficSignals }},
@@ -254,7 +254,7 @@ export class IntersectionsMap {
     effect(() => {
       const map = this.map();
 			if (!map) return;
-      map.on('dblclick', e => {
+      map.on('dblclick', () => {
         removeQueryParamsForLineHighlight(this._router);
         this.rideAdded().forEach(l => removeLineHighlight(map, l));
         const edgeMetricsAdded = this.edgeMetricsAdded;
@@ -275,7 +275,7 @@ export class IntersectionsMap {
 			if (!map || !params) return;
 
       const sourceId: string = params["sourceId"];
-      const queryId: number = Number(params["id"]);
+      const queryId = Number(params["id"]);
       if (!sourceId || !queryId) return;
 
       this.queryId.set(queryId);

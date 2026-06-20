@@ -1,4 +1,4 @@
-<chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+<intersection-chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
     <div label [style.font-size]="isExporting() ? '48px' : '12px'" [style.line-height]="'1.2'">
         @if (minView() !== null || maxView() !== null) {
             <div class="flex flex-row items-center justify-center">
@@ -7,4 +7,4 @@
             </div>
         }
     </div> 
-</chart-wrapper>
+</intersection-chart-wrapper>

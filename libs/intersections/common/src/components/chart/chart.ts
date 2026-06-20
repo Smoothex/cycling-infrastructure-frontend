@@ -12,18 +12,18 @@ import {
 	ChartConfig,
 	ChartFilter,
 	TimeCategory
-} from '@simra/intersections-common';
+} from '../../lib/common/interfaces';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
 	YEAR_TO_TRANSLATION
 } from '@simra/common-components';
-import { BoxplotChart } from './chart-types/boxplot/boxplot';
-import { HistogramChart } from './chart-types/histogram/histogram';
-import { HeatmapChart } from './chart-types/heatmap/heatmap';
-import { HeatmapStartTimeChart } from './chart-types/heatmap-startTime/heatmap';
-import { ScatterPlot } from './chart-types/scatterplot/scatterplot';
-import { ScatterPlotStartTime } from './chart-types/scatterplot-startTime/scatterplot';
+import { BoxplotChartComponent } from './chart-types/boxplot/boxplot';
+import { HistogramChartComponent } from './chart-types/histogram/histogram';
+import { HeatmapChartComponent } from './chart-types/heatmap/heatmap';
+import { HeatmapStartTimeChartComponent } from './chart-types/heatmap-startTime/heatmap';
+import { ScatterPlotComponent } from './chart-types/scatterplot/scatterplot';
+import { ScatterPlotStartTimeComponent } from './chart-types/scatterplot-startTime/scatterplot';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -36,10 +36,10 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 @Component({
 	selector: 'intersection-chart',
 	imports: [CommonModule, FormsModule, Card, ChartModule, Skeleton, Button,
-    	HistogramChart, BoxplotChart, HeatmapChart, HeatmapStartTimeChart, ScatterPlot, ScatterPlotStartTime],
+    	HistogramChartComponent, BoxplotChartComponent, HeatmapChartComponent, HeatmapStartTimeChartComponent, ScatterPlotComponent, ScatterPlotStartTimeComponent],
 	templateUrl: './chart.html'
 })
-export class IntersectionChart<T, R extends PageableRequest | PrecomputedPageableRequest> {
+export class IntersectionChartComponent<T, R extends PageableRequest | PrecomputedPageableRequest> {
 	public readonly header = input.required<string>();
     public readonly config = input.required<ChartConfig<T>>();
 

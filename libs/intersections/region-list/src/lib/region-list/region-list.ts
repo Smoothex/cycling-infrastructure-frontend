@@ -1,10 +1,9 @@
-import { Component, inject, signal, computed, effect, WritableSignal } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Card } from 'primeng/card';
 import { TableModule, TableFilterEvent, TableLazyLoadEvent } from 'primeng/table';
-import { Polygon } from 'geojson';
-import { ESortOrder, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
+import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -13,11 +12,10 @@ import {
 import { 
 	ListColumn,
 	RegionMetricRow,
-	IntersectionListContent, 
-	IntersectionListHeader,
-	IntersectionListHeaderFilter,
+	IntersectionListContentComponent, 
+	IntersectionListHeaderComponent,
+	IntersectionListHeaderFilterComponent,
 	RegionPageableRequest,
-	PagedGeoResponse,
 	onFilterChangeHelper,
 	onLazyHelper,
 	PagedProperties
@@ -37,11 +35,11 @@ const defaults: RegionPageableRequest = {
 }
 
 @Component({
-	selector: 'region-list',
-	imports: [CommonModule, FormsModule, TableModule, Card, IntersectionListContent, IntersectionListHeader, IntersectionListHeaderFilter],
+	selector: 'intersection-region-list',
+	imports: [CommonModule, FormsModule, TableModule, Card, IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionListHeaderFilterComponent],
 	templateUrl: './region-list.html'
 })
-export class IntersectionsRegionList {
+export class IntersectionsRegionListComponent {
 	private readonly _requestService = inject(IntersectionsRequestService);
 
 	protected readonly columns: ListColumn<RegionMetricRow>[] = [

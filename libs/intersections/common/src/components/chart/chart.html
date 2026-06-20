@@ -14,28 +14,28 @@
                 <p-skeleton height="21rem" />
                 <p-skeleton height="21rem" />
             } @else {
-                <histogram-chart 
+                <intersection-histogram-chart 
                     [data]="filteredData()" 
                     [(selectedMetric)]="propertyChart" 
                     [label]="label()" 
                     [config]="config()"
                     [chartFilter]="chartFilter()"/>
                 @if (!compare()) {
-                    <boxplot-chart 
+                    <intersection-boxplot-chart 
                         [data]="filteredData()" 
                         [(selectedMetric)]="propertyChart"  
                         [label]="label()" 
                         [config]="config()"
                         [chartFilter]="chartFilter()"/>
                     @if (showScatter()) {
-                        <scatter-plot-start-time
+                        <intersection-scatter-plot-start-time
                             [data]="filteredData()" 
                             [(selectedMetric)]="propertyChart"  
                             [label]="label()" 
                             [config]="config()"
                             [chartFilter]="chartFilter()"/>
                     } @else {
-                        <heatmap-start-time-chart
+                        <intersection-heatmap-start-time-chart
                             [data]="filteredData()" 
                             [(selectedMetric)]="propertyChart"  
                             [label]="label()" 
@@ -44,14 +44,14 @@
                     }
                 }
                 @if (showScatter()) {
-                    <scatter-plot
+                    <intersection-scatter-plot
                         [data]="filteredData()" 
                         [(selectedMetric)]="propertyChart"  
                         [label]="label()"
                         [config]="config()"
                         [chartFilter]="chartFilter()"/>
                 } @else {
-                    <heatmap-chart
+                    <intersection-heatmap-chart
                         [data]="filteredData()" 
                         [(selectedMetric)]="propertyChart"  
                         [label]="label()"
@@ -60,13 +60,13 @@
                 }
                 @let cConfig = compareConfig();
                 @if (cConfig) {
-                    <histogram-chart 
+                    <intersection-histogram-chart 
                         [data]="mergedCompareData()" 
                         [(selectedMetric)]="compareProperty" 
                         [label]="compareLabel()" 
                         [config]="cConfig"
                         [chartFilter]="$any(chartFilter())"/>
-                    <heatmap-chart
+                    <intersection-heatmap-chart
                         [data]="mergedCompareData()" 
                         [(selectedMetric)]="compareProperty" 
                         [label]="compareLabel()" 

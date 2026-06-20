@@ -9,7 +9,7 @@ import {
   RegionMetricRow,
   NodeRow,
   EdgeRow
-} from '@simra/intersections-common';
+} from './interfaces';
 import { along, length, centroid } from '@turf/turf';
 
 function getLink (id: number, path: linkPrefixes) {
@@ -44,7 +44,7 @@ function setTimeFormatted (properties: GeoJsonProperties, source: string, target
     }
 }
 
-function setDecimalFormatted (properties: GeoJsonProperties, source: string, target: string, decimalPlaces: number = 1) {
+function setDecimalFormatted (properties: GeoJsonProperties, source: string, target: string, decimalPlaces = 1) {
     if (properties?.[source]) {
         properties[target] = new DecimalPipe('en-US').transform(properties[source], `1.0-${decimalPlaces}`);
     }

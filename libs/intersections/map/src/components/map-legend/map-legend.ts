@@ -2,13 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, input, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Card } from 'primeng/card';
-import { 
-	LegendItem
-} from '@simra/intersections-common';
+import { LegendItem } from '@simra/intersections-common';
 
 
 @Component({
-	selector: 'map-legend',
+	selector: 'intersection-map-legend',
 	imports: [
 		CommonModule,
 		FormsModule,
@@ -18,7 +16,7 @@ import {
 	styleUrl: './map-legend.scss',
 	encapsulation: ViewEncapsulation.None
 })
-export class MapLegend {
+export class MapLegendComponent {
 	items = input.required<LegendItem[]>();
 
 	gradient(stops: { value: number; color: string }[]): string {

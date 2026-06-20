@@ -8,15 +8,15 @@ import {
 	AggregatedResult,
 	PrecomputedRequest,
 	ChartConfig,
-	createBarChartForMetric,
-	ChartWrapper,
 	SettingGroup,
 	ChartFilter,
 	TimeCategory,
 	recordToOptions,
 	TimeCategoryLabels,
 	ChartComplete
-} from '@simra/intersections-common';
+} from '../../lib/common/interfaces';
+import { createBarChartForMetric } from '../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../chart-wrapper/chart-wrapper';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
@@ -34,10 +34,10 @@ const ChartCatergoryLabelTranslations = {
 
 @Component({
 	selector: 'intersection-chart-metric',
-	imports: [CommonModule, FormsModule, ChartModule, ChartWrapper, Skeleton, Card],
+	imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent, Skeleton, Card],
 	templateUrl: './chart.html'
 })
-export class IntersectionChartMetric<T extends AggregatedResult, R extends PrecomputedRequest> {
+export class IntersectionChartMetricComponent<T extends AggregatedResult, R extends PrecomputedRequest> {
 	public readonly header = input.required<string>();
     public readonly config = input.required<ChartConfig<T>>();
 

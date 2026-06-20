@@ -2,16 +2,22 @@ import { Component, input, computed, signal, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
-
-import { createScatterPlotDate, ChartConfig, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
+import {
+    ChartConfig,
+    SettingGroup,
+    ChartFilter,
+    ChartComplete,
+} from '../../../../lib/common/interfaces';
+import { createScatterPlotDate } from '../../../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
 
 @Component({
-    selector: 'scatter-plot-start-time',
+    selector: 'intersection-scatter-plot-start-time',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './scatterplot.html',
 })
-export class ScatterPlotStartTime<T> {
+export class ScatterPlotStartTimeComponent<T> {
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();

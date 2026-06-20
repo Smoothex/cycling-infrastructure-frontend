@@ -3,7 +3,17 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
-import { createBoxPlot, ChartConfig, ChartWrapper, SettingGroup, ChartFilter, TimeCategory, recordToOptions, TimeCategoryLabels, ChartComplete } from '@simra/intersections-common';
+import {
+    ChartConfig,
+    SettingGroup,
+    ChartFilter,
+    TimeCategory,
+    recordToOptions,
+    TimeCategoryLabels,
+    ChartComplete
+} from '../../../../lib/common/interfaces';
+import { createBoxPlot } from '../../../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -18,12 +28,12 @@ const ChartCatergoryLabelTranslations = {
 
 
 @Component({
-    selector: 'boxplot-chart',
+    selector: 'intersection-boxplot-chart',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './boxplot.html',
 })
-export class BoxplotChart<T> {
+export class BoxplotChartComponent<T> {
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
     config = input.required<ChartConfig<T>>();

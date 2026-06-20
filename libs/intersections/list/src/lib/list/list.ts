@@ -10,9 +10,9 @@ import {
 	EdgeMetricRow,
 	ListColumn,
 	IntersectionRow,
-	IntersectionListContent,
-	IntersectionListHeader,
-	IntersectionListHeaderFilter,
+	IntersectionListContentComponent,
+	IntersectionListHeaderComponent,
+	IntersectionListHeaderFilterComponent,
 	BaseMetric,
 	onLazyHelper,
 	onFilterChangeHelper,
@@ -31,15 +31,15 @@ import { ToggleButtonModule } from 'primeng/togglebutton';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 
 @Component({
-	selector: 'lib-list',
+	selector: 'intersection-list',
 	standalone: true,
 	imports: [
 		CommonModule, FormsModule, Card, TableModule, ToggleButtonModule, TranslatePipe, 
-		AutocompleteComponent, IntersectionListContent, IntersectionListHeader, IntersectionListHeaderFilter],
+		AutocompleteComponent, IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionListHeaderFilterComponent],
 	templateUrl: './list.html',
 	styleUrl: './list.scss',
 })
-export class IntersectionsList {
+export class IntersectionsListComponent {
 	private readonly _requestService = inject(IntersectionsRequestService);
 	private readonly _regionRequestService = inject(RegionRequestService);
 

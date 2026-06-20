@@ -7,7 +7,7 @@ import { Popover } from 'primeng/popover';
 import { Select, SelectLazyLoadEvent, SelectFilterEvent } from 'primeng/select';
 import {
 	SettingGroup,
-	Settings,
+	SettingsComponent,
 	IdListRequest,
 	PagedIds
 } from '@simra/intersections-common';
@@ -15,13 +15,13 @@ import { IntersectionsRequestService } from '@simra/intersections-domain';
 
 
 @Component({
-	selector: 'map-settings',
-	imports: [CommonModule, FormsModule, Button, Card, Popover, Select, Settings],
+	selector: 'intersection-map-settings',
+	imports: [CommonModule, FormsModule, Button, Card, Popover, Select, SettingsComponent],
 	templateUrl: './map-settings.html',
 	styleUrl: './map-settings.scss',
 	encapsulation: ViewEncapsulation.None
 })
-export class MapSettings {
+export class MapSettingsComponent {
 	screenshotMode = model.required<boolean>();
 
 	@HostListener('window:keydown.escape')

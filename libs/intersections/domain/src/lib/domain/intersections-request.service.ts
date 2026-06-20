@@ -10,7 +10,6 @@ import {
   NodePageableMetricRequest, 
   EdgePageableMetricRequest,
   RegionPageableRequest,
-  MetricRequest,
   PagedGeoResponse,
   RawBase,
   Base,
@@ -28,13 +27,11 @@ import {
   NodeMetricRow,
   EdgeMetricRow,
   RegionMetricRow,
-  RegionCompleteRequest
-} from '@simra/intersections-common';
-import {
+  RegionCompleteRequest,
   processIntersectionNodeMetricsProperties,
   processIntersectionEdgeMetricsProperties,
   processRegionMetricsProperties
-} from './request-helper'
+} from '@simra/intersections-common';
 
 @Injectable({
   providedIn: 'root'

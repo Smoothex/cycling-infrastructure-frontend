@@ -4,7 +4,7 @@
         <m-autocomplete 
             class="table__autocomplete"
             [fetchFunction]="col.headerFilter.fetchFunction"
-            (selectionChange)="onFilterChange.emit($event)"
+            (selectionChange)="filterChange.emit($event)"
             [field]="col.field"
         />
     }
@@ -14,7 +14,7 @@
             [optionEnum]="col.headerFilter.enum"
             [selected]="col.headerFilter.default"
             [translationMap]="col.translationMap"
-            (selectionChange)="onFilterChange.emit($event)"
+            (selectionChange)="filterChange.emit($event)"
         />
     }
     @else if (col.headerFilter && col.display === "number") {
@@ -24,7 +24,7 @@
             [step]="col.headerFilter.step"
             [min]="col.headerFilter.min"
             [defaultValue]="col.headerFilter.default ?? 0"
-            (filterChange)="onFilterChange.emit($event)"
+            (filterChange)="filterChange.emit($event)"
         />
     }
 </th>

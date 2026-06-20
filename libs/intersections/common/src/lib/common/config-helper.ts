@@ -6,7 +6,7 @@ import {
     RideRegionMetric,
     RegionMetric,
     SelectableProperty,
-} from '@simra/intersections-common';
+} from './interfaces';
 
 export const BASE_SELECTABLE_PROPERTIES: SelectableProperty<Base>[] = [
     {

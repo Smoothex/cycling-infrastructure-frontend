@@ -9,16 +9,15 @@ import { ChartModule } from 'primeng/chart';
 import { TableModule } from 'primeng/table';
 import { Divider } from 'primeng/divider';
 import { FeatureCollection, GeoJsonProperties,  Polygon } from 'geojson';
-import { IntersectionsRequestService, mapFeaturesToRegionMetricRows } from '@simra/intersections-domain';
+import { IntersectionsRequestService } from '@simra/intersections-domain';
 import {
 	Base,
-	DateFilterPrecomputed,
+	DateFilterPrecomputedComponent,
 	DATE_FILTER_DEFAULTS,
 	RegionMetricRow,
 	RegionPageableRequest,
-	IntersectionMap,
-	IntersectionChart,
-	IntersectionChartMetric,
+	IntersectionChartComponent,
+	IntersectionChartMetricComponent,
 	RideRegionMetric,
 	BASE_CHART_CONFIG,
 	EdgePageableRequestPrecomputed,
@@ -29,19 +28,21 @@ import {
 	NodePageableMetricRequest,
 	RIDE_CHART_CONFIG,
 	RegionMetric,
-	REGION_CHART_CONFIG
+	REGION_CHART_CONFIG,
+	mapFeaturesToRegionMetricRows
 } from '@simra/intersections-common';
+import { BaseIntersectionMapComponent } from '@simra/intersections-map';
 import { EYear, ETrafficTimes, EWeekDays,  } from '@simra/common-models';
 import { area } from '@turf/turf';
 
 
 @Component({
-	selector: 'region-detail',
+	selector: 'intersection-region-detail',
 	imports: [CommonModule, FormsModule, ButtonModule, Card, ChartModule, TableModule, Divider, TranslatePipe, RouterLink,
-		IntersectionMap, IntersectionChart, IntersectionChartMetric, DateFilterPrecomputed],
+		BaseIntersectionMapComponent, IntersectionChartComponent, IntersectionChartMetricComponent, DateFilterPrecomputedComponent],
 	templateUrl: './region-detail.html'
 })
-export class IntersectionsRegionDetail {
+export class IntersectionsRegionDetailComponent {
 	private readonly _requestService = inject(IntersectionsRequestService);
 
 	protected readonly regionRequest = signal<RegionPageableRequest | null>(null);

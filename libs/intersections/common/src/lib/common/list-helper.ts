@@ -1,7 +1,7 @@
 import { WritableSignal } from '@angular/core';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { ESortOrder } from '@simra/common-models';
-import { PageableRequest } from '@simra/intersections-common';
+import { PageableRequest } from './interfaces';
 
 
 export function onFilterChangeHelper<T extends object>(event: any, requestFilter: WritableSignal<T>) {

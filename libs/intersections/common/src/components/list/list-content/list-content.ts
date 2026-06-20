@@ -5,22 +5,23 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Button } from 'primeng/button';
 import { Tooltip } from 'primeng/tooltip';
-import { IntersectionRow, ListColumn } from '@simra/intersections-common';
+import { IntersectionRow, ListColumn } from '../../../lib/common/interfaces';
 
 
 @Component({
+	// eslint-disable-next-line @angular-eslint/component-selector
 	selector: '[intersection-list-content]',
 	standalone: true,
 	imports: [CommonModule, TranslatePipe, RouterLink, Button, Tooltip],
 	templateUrl: './list-content.html',
 })
-export class IntersectionListContent<T extends IntersectionRow> {
+export class IntersectionListContentComponent<T extends IntersectionRow> {
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
 
 	public row = input.required<T>();
     public columns = input.required<ListColumn<T>[]>();
-    public onAction = output<T>();
+    public action = output<T>();
 
 	protected getFieldValue(field: keyof T): any {
         return this.row()[field];

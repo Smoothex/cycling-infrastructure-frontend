@@ -1,18 +1,24 @@
-import { Component, input, computed, signal, effect, model, linkedSignal } from '@angular/core';
+import { Component, input, computed, signal, model, linkedSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
-
-import { ChartConfig, createHeatmapBinning, ChartWrapper, SettingGroup, ChartFilter, ChartComplete } from '@simra/intersections-common';
+import {
+    ChartConfig,
+    SettingGroup,
+    ChartFilter,
+    ChartComplete,
+} from '../../../../lib/common/interfaces';
+import { createHeatmapBinning } from '../../../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
 
 @Component({
-    selector: 'heatmap-chart',
+    selector: 'intersection-heatmap-chart',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapper],
+    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './heatmap.html',
     styleUrl: './heatmap.scss'
 })
-export class HeatmapChart<T> {
+export class HeatmapChartComponent<T> {
     // Inputs
     data = input.required<T[]>();
     selectedMetric = model.required<keyof T>();
