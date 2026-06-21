@@ -93,7 +93,7 @@
     <p-card>
         @let rows = isNode() ? nodeRows() : edgeRows();
 		<p-table 
-        [value]="rows"
+        [value]="$any(rows)"
         [loading]="tableDataIsLoading()"
         [paginator]="true"
         [lazy]="true"

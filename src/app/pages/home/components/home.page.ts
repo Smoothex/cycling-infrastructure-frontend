@@ -1,4 +1,4 @@
-import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -10,17 +10,16 @@ import { CITY_POSITION_LINKS } from '../models/const';
 @Component({
 	selector: 'app-home.page',
 	imports: [
-		CommonModule,
-		Tabs,
-		TabList,
-		Tab,
-		TabPanels,
-		TabPanel,
-		TranslatePipe,
-		ChipModule,
-		NgOptimizedImage,
-		RouterLink,
-	],
+    Tabs,
+    TabList,
+    Tab,
+    TabPanels,
+    TabPanel,
+    TranslatePipe,
+    ChipModule,
+    NgOptimizedImage,
+    RouterLink
+],
 	templateUrl: './home.page.html',
 	styleUrl: './home.page.scss',
 	encapsulation: ViewEncapsulation.None,

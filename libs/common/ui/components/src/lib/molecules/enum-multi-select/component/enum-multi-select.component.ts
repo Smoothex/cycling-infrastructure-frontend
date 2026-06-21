@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, inject, input, model, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { TTranslationMap } from '../../../translations/interfaces/translation-map.type';
@@ -10,13 +10,12 @@ import { $enum } from 'ts-enum-util';
 @Component({
 	selector: 'm-enum-multi-select-component',
 	imports: [
-		CommonModule,
-		TranslateModule,
-		MultiSelect,
-		PrimeTemplate,
-		TranslatePipe,
-		FormsModule,
-	],
+    TranslateModule,
+    MultiSelect,
+    PrimeTemplate,
+    TranslatePipe,
+    FormsModule
+],
 	templateUrl: './enum-multi-select.component.html',
 	styleUrl: './enum-multi-select.component.scss',
 	host: {

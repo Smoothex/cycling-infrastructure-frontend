@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	Component,
 	computed, effect,
@@ -24,15 +24,14 @@ import { ITagCard } from '../models/tag-card.interface';
 @Component({
 	selector: 'm-street-information-card',
 	imports: [
-		CommonModule,
-		Card,
-		TranslatePipe,
-		Skeleton,
-		MapCarouselComponent,
-		ButtonDirective,
-		FallbackValueDirective,
-		RouterLink,
-	],
+    Card,
+    TranslatePipe,
+    Skeleton,
+    MapCarouselComponent,
+    ButtonDirective,
+    FallbackValueDirective,
+    RouterLink
+],
 	templateUrl: './street-information-card.component.html',
 	styleUrl: './street-information-card.component.scss',
 	host: {

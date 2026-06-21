@@ -6,7 +6,7 @@ import {
 	input, resource,
 	ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { StreetDetailViewFacade } from '@simra/streets-domain';
 import { firstValueFrom } from 'rxjs';
 import { IncidentListComponent } from '../../../components/incident-list/component/incident-list.component';
@@ -18,11 +18,10 @@ import { StreetInformationCardComponent } from '../../../components/street-infor
 @Component({
 	selector: 'p-street-detail-view',
 	imports: [
-		CommonModule,
-		StreetInformationCardComponent,
-		IncidentListComponent,
-		SafetyMetricsCardLogicComponent,
-	],
+    StreetInformationCardComponent,
+    IncidentListComponent,
+    SafetyMetricsCardLogicComponent
+],
 	templateUrl: './street-detail-view.page.html',
 	styleUrl: './street-detail-view.page.scss',
 	encapsulation: ViewEncapsulation.None,
@@ -40,13 +39,13 @@ export class StreetDetailViewPage {
 	streetId = input<number>();
 
 	streetInformation = resource({
-		request: () => this.streetId(),
-		loader: async ({ request }) => {
-			if (!request) {
+		params: () => this.streetId(),
+		loader: async ({ params }) => {
+			if (!params) {
 				return;
 			}
 
-			return await firstValueFrom(this._facade.getAndSetStreet(request));
+			return await firstValueFrom(this._facade.getAndSetStreet(params));
 		},
 	})
 

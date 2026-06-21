@@ -1,4 +1,4 @@
-import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/core';
 import { YouTubePlayer } from '@angular/youtube-player';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -8,13 +8,12 @@ import { Card } from 'primeng/card';
 @Component({
 	selector: 'app-about',
 	imports: [
-		CommonModule,
-		TranslatePipe,
-		Card,
-		NgOptimizedImage,
-		ButtonDirective,
-		YouTubePlayer,
-	],
+    TranslatePipe,
+    Card,
+    NgOptimizedImage,
+    ButtonDirective,
+    YouTubePlayer
+],
 	templateUrl: './about.page.html',
 	styleUrl: './about.page.scss',
 	encapsulation: ViewEncapsulation.None,

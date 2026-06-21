@@ -1,6 +1,6 @@
-import { Component, input, computed, signal, effect, linkedSignal } from '@angular/core';
+import { Component, input, computed, signal, effect, linkedSignal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { Card } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
 import { Skeleton } from 'primeng/skeleton';
@@ -34,7 +34,7 @@ const ChartCatergoryLabelTranslations = {
 
 @Component({
 	selector: 'intersection-chart-metric',
-	imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent, Skeleton, Card],
+	imports: [FormsModule, ChartModule, ChartWrapperComponent, Skeleton, Card],
 	templateUrl: './chart.html'
 })
 export class IntersectionChartMetricComponent<T extends AggregatedResult, R extends PrecomputedRequest> {
@@ -132,7 +132,8 @@ export class IntersectionChartMetricComponent<T extends AggregatedResult, R exte
 		return createBarChartForMetric(this.filteredData(), groupKey, selected, TimeCategoryLabels[groupKey], labelMap, this.label());
 	});
 
-	constructor(private translate: TranslateService) {
+	private translate = inject(TranslateService);
+	constructor() {
 		effect(async () => {
 			const defaultRequest = this.request();
 			if (!defaultRequest) return;

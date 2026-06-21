@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, input, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Card } from 'primeng/card';
@@ -8,10 +8,9 @@ import { LegendItem } from '@simra/intersections-common';
 @Component({
 	selector: 'intersection-map-legend',
 	imports: [
-		CommonModule,
-		FormsModule,
-		Card
-	],
+    FormsModule,
+    Card
+],
 	templateUrl: './map-legend.html',
 	styleUrl: './map-legend.scss',
 	encapsulation: ViewEncapsulation.None

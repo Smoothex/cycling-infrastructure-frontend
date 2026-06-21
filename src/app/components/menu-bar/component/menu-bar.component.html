@@ -1,6 +1,6 @@
-<p-menubar [model]="_items" breakpoint="820px">
+<p-menubar [model]="_items" breakpoint="820px" class="simra-menubar">
 			<ng-template #start>
-				<div class="menu-bar__start">
+				<div class="simra-menubar-start">
 					<h1>SimRa</h1>
 				</div>
 			</ng-template>
@@ -30,4 +30,4 @@
 			</p-selectbutton>
 		</ng-template>
 </p-menubar>
-<p-breadcrumb class="max-w-full text-sm" styleClass="pt-0" [model]="_breadcrumbItems$()" [home]="_home" />
+<p-breadcrumb class="max-w-full text-sm simra-breadcrumb" styleClass="pt-0" [model]="_breadcrumbItems$()" [home]="_home" />

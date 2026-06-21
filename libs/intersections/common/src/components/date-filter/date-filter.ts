@@ -1,5 +1,5 @@
 import { Component, model, input, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FloatLabelModule } from 'primeng/floatlabel';
@@ -23,15 +23,14 @@ import { ECardMode } from '../../lib/common/interfaces';
     templateUrl: './date-filter.html',
     styleUrl: './date-filter.scss',
     imports: [
-        CommonModule,
-        FormsModule,
-        TranslatePipe,
-        EnumSelectButtonComponent,
-        EnumSelectComponent,
-        FloatLabelModule,
-        DatePickerModule,
-        Card
-    ],
+    FormsModule,
+    TranslatePipe,
+    EnumSelectButtonComponent,
+    EnumSelectComponent,
+    FloatLabelModule,
+    DatePickerModule,
+    Card
+],
     encapsulation: ViewEncapsulation.None,
 })
 export class DateFilterComponent {

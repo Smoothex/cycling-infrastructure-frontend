@@ -163,11 +163,11 @@ export class StreetListViewPage {
 		sort: 'dangerousScore,DESC',
 	});
 	protected readonly _streets$ = resource({
-		request: () => ({ ...this.filtering() }),
-		loader: async ({ request }) => {
+		params: () => ({ ...this.filtering() }),
+		loader: async ({ params }) => {
 			this.loading.set(true);
 			const response = await firstValueFrom(
-				this._streetListViewFace.fetchStreetList(request),
+				this._streetListViewFace.fetchStreetList(params),
 			);
 			this.loading.set(false);
 			return response;

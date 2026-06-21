@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, input, model, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslatePipe } from '@ngx-translate/core';
 import { Select } from 'primeng/select';
@@ -11,14 +11,13 @@ import { $enum } from 'ts-enum-util';
 @Component({
 	selector: 'm-enum-select-component',
 	imports: [
-		CommonModule,
-		TranslateModule,
-		PrimeTemplate,
-		TranslatePipe,
-		FormsModule,
-		Select,
-		Tooltip,
-	],
+    TranslateModule,
+    PrimeTemplate,
+    TranslatePipe,
+    FormsModule,
+    Select,
+    Tooltip
+],
 	templateUrl: './enum-select.component.html',
 	styleUrl: './enum-select.component.scss',
 	host: {

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -28,11 +28,10 @@ import { ECardMode } from '../models/card-mode.enum';
 @Component({
 	selector: 't-safety-metrics-card-logic',
 	imports: [
-		CommonModule,
-		SafetyMetricsCardComponent,
-		FormsModule,
-		EnumSelectButtonComponent
-	],
+    SafetyMetricsCardComponent,
+    FormsModule,
+    EnumSelectButtonComponent
+],
 	templateUrl: './safety-metrics-card-logic.component.html',
 	styleUrl: './safety-metrics-card-logic.component.scss',
 	host: {

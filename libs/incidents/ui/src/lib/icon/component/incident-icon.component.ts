@@ -1,10 +1,10 @@
 import { Component, Input, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Tooltip } from 'primeng/tooltip';
 
 @Component({
     selector: 'a-icon',
-    imports: [CommonModule, Tooltip],
+    imports: [Tooltip],
     templateUrl: './incident-icon.component.html',
     styleUrl: './incident-icon.component.scss',
     encapsulation: ViewEncapsulation.None,

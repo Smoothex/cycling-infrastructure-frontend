@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -15,7 +15,6 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { Deck } from '@deck.gl/core';
 import { GeocodingControl } from '@maptiler/geocoding-control/maplibregl';
 import { APP_CONFIG, IMapPosition } from '@simra/common-models';
 import * as maplibregl from 'maplibre-gl';
@@ -28,7 +27,7 @@ import { EPin } from '../models/enum/pin.enum';
  */
 @Component({
 	selector: 't-map-component',
-	imports: [CommonModule, PopoverModule],
+	imports: [PopoverModule],
 	templateUrl: './map.page.html',
 	styleUrl: './map.page.scss',
 	host: {
@@ -42,7 +41,6 @@ export class MapPage implements OnDestroy, OnInit {
 	mapContainer: ElementRef<HTMLDivElement>;
 	private readonly _mapTilerToken = inject(APP_CONFIG).mapTilerToken;
 	private mlMap?: maplibregl.Map;
-	private deck?: Deck;
 
 	private readonly _activatedRoute = inject(ActivatedRoute);
 
@@ -125,7 +123,6 @@ export class MapPage implements OnDestroy, OnInit {
 	}
 
 	ngOnDestroy() {
-		if (this.deck) this.deck.finalize();
 		if (this.mlMap) this.mlMap.remove();
 	}
 }

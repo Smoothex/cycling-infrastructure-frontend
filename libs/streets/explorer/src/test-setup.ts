@@ -4,9 +4,11 @@ globalThis.ngJest = {
 		errorOnUnknownProperties: true,
 	},
 };
+import 'jest-canvas-mock';
 import 'reflect-metadata';
-import 'jest-preset-angular/setup-jest';
+import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 
+setupZoneTestEnv();
 /* eslint-disable @typescript-eslint/no-empty-function */
 global.ResizeObserver = class {
 	observe() {}

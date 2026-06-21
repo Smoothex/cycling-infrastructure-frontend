@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -26,13 +26,12 @@ import { EAdminLevel } from '../models/admin-level.enum';
 @Component({
 	selector: 't-region-list-view',
 	imports: [
-		CommonModule,
-		TableModule,
-		BaseRegionListViewComponent,
-		Select,
-		FormsModule,
-		TranslatePipe,
-	],
+    TableModule,
+    BaseRegionListViewComponent,
+    Select,
+    FormsModule,
+    TranslatePipe
+],
 	templateUrl: './region-list-view.page.html',
 	styleUrl: './region-list-view.page.scss',
 	encapsulation: ViewEncapsulation.None,

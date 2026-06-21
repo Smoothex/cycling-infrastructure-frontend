@@ -7,6 +7,8 @@
 		"noFallthroughCasesInSwitch": true,
 		"esModuleInterop": true,
 		"strictPropertyInitialization": false,
+		"module": "preserve",
+		"moduleResolution": "bundler"
 	},
 	"files": [],
 	"include": [],

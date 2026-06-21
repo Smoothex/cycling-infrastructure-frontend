@@ -1,5 +1,5 @@
 import { Component, input, computed, signal, model } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
 import {
@@ -14,7 +14,7 @@ import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
 @Component({
     selector: 'intersection-histogram-chart',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
+    imports: [FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './histogram.html',
 })
 export class HistogramChartComponent<T> {

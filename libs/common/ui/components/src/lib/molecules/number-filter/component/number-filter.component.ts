@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, input, model, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TableModule } from 'primeng/table';
@@ -7,7 +7,7 @@ import { InputNumber } from 'primeng/inputnumber';
 
 @Component({
 	selector: 'm-number-filter',
-	imports: [CommonModule, TranslatePipe, FormsModule, TableModule, InputNumber],
+	imports: [TranslatePipe, FormsModule, TableModule, InputNumber],
 	templateUrl: './number-filter.component.html',
 	styleUrl: './number-filter.component.scss',
 	host: {

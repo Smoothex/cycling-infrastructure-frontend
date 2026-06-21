@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, signal, model, ViewEncapsulation, effect, input, HostListener } from '@angular/core';
+
+import { Component, signal, model, ViewEncapsulation, effect, input, inject, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
@@ -16,7 +16,7 @@ import { IntersectionsRequestService } from '@simra/intersections-domain';
 
 @Component({
 	selector: 'intersection-map-settings',
-	imports: [CommonModule, FormsModule, Button, Card, Popover, Select, SettingsComponent],
+	imports: [FormsModule, Button, Card, Popover, Select, SettingsComponent],
 	templateUrl: './map-settings.html',
 	styleUrl: './map-settings.scss',
 	encapsulation: ViewEncapsulation.None
@@ -50,7 +50,9 @@ export class MapSettingsComponent {
 
 	protected readonly pagedResponse = signal<PagedIds | null>(null);
 
-	constructor(private _requestService: IntersectionsRequestService) {
+	private _requestService = inject(IntersectionsRequestService);
+
+	constructor() {
 		effect(async () => {
 			if (!this.extendedSettings()) return;
 			const request = this.rideIdsRequest();

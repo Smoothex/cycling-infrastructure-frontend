@@ -1,5 +1,5 @@
 import { Component, effect, input, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslatePipe } from '@ngx-translate/core';
 import { RouterLink, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -49,8 +49,7 @@ import { HIGHWAY_TYPES_TO_TRANSLATION } from '@simra/streets-explorer';
 
 @Component({
 	selector: 'intersection-aggregate',
-	imports: [CommonModule, TableModule, ButtonModule, Card, Divider, RouterLink, TranslatePipe, 
-		DateFilterPrecomputedComponent, BaseIntersectionMapComponent, IntersectionChartComponent, IntersectionListContentComponent, IntersectionListHeaderComponent],
+	imports: [TableModule, ButtonModule, Card, Divider, RouterLink, TranslatePipe, DateFilterPrecomputedComponent, BaseIntersectionMapComponent, IntersectionChartComponent, IntersectionListContentComponent, IntersectionListHeaderComponent],
 	templateUrl: './aggregate.html',
 })
 export class IntersectionsAggregatePageComponent {

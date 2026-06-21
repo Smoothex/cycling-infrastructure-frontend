@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -24,14 +24,13 @@ import { SafetyMetricsService } from '../../../services/safety-metrics.service';
 @Component({
 	selector: 'p-region-detail-view',
 	imports: [
-		CommonModule,
-		AutoCompleteModule,
-		FormsModule,
-		TranslatePipe,
-		ButtonDirective,
-		RouterLink,
-		BaseRegionDetailViewComponent,
-	],
+    AutoCompleteModule,
+    FormsModule,
+    TranslatePipe,
+    ButtonDirective,
+    RouterLink,
+    BaseRegionDetailViewComponent
+],
 	templateUrl: './region-detail-view.page.html',
 	styleUrl: './region-detail-view.page.scss',
 	host: {
@@ -48,13 +47,13 @@ export class RegionDetailViewPage {
 
 	protected readonly _safetyMetrics = signal<ISafetyMetricsRegion>(undefined);
 	protected readonly _detailedRegion = resource({
-		request: () => this.regionName(),
-		loader: async ({ request }) => {
-			if (!request) {
+		params: () => this.regionName(),
+		loader: async ({ params }) => {
+			if (!params) {
 				return;
 			}
 
-			return await firstValueFrom(this._facade.getDetailedRegion(request));
+			return await firstValueFrom(this._facade.getDetailedRegion(params));
 		},
 	});
 	protected readonly _lastRunRegionMetrics = toSignal(this._facade.getLastMethodRun('SafetyMetricsService->updateSafetyMetrics'));

@@ -4,7 +4,6 @@ import { provideRouter } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { APP_CONFIG } from '@simra/common-models';
 import { RidesFacade } from '@simra/rides-domain';
-import { polyline } from 'leaflet';
 import { of } from 'rxjs';
 import { RidesMapPage } from './rides-map.page';
 
@@ -25,7 +24,7 @@ describe('RidesMapPage', () => {
 					provide: RidesFacade,
 					useValue: {
 						getRideGeometries: jest.fn().mockReturnValue(of([
-							polyline([[0, 0], [1, 1]]),
+							[[0, 0], [1, 1]],
 						])),
 					}
 				},

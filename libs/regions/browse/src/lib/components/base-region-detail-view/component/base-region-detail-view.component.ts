@@ -16,7 +16,6 @@ import { IRegion } from '@simra/models';
 import { IEnrichedRegion } from '@simra/streets-common';
 import { area, centroid, polygon as turfPolygon } from '@turf/turf';
 import { FeatureCollection, Geometry } from 'geojson';
-import { LatLng, latLng,  MapOptions } from 'leaflet';
 import { find, first } from 'lodash';
 import * as maplibregl from 'maplibre-gl';
 import { MarkdownComponent } from 'ngx-markdown';
@@ -31,6 +30,12 @@ import { scoreFormulaMarkdownRegion } from '../../utils/markdown';
 import { regionLayer, regionSource } from '../models/const';
 import { getZoomLevelByArea } from '../models/functions/zoom.util';
 import { IDetailViewChange } from '../models/interfaces/detail-view-change.interface';
+
+// TODO: replace this. This is only temporary to remove leaflet
+interface SimpleMapOptions {
+    zoom: number;
+    center: { lat: number; lng: number };
+}
 
 @Component({
 	selector: 't-base-region-detail-view',
@@ -88,7 +93,7 @@ export class BaseRegionDetailViewComponent {
 		},
 	);
 	public readonly detailedRegion = input.required<IRegion>();
-	protected readonly _mapOptions$ = computed<MapOptions | undefined>(() => {
+	protected readonly _mapOptions$ = computed<SimpleMapOptions | undefined>(() => {
 		const region = this.detailedRegion();
 		if (!region) {
 			return;
@@ -102,7 +107,7 @@ export class BaseRegionDetailViewComponent {
 			},
 		} = centroid(tPoly);
 
-		return { zoom , center: latLng(lat, lng) };
+		return { zoom , center: { lat, lng } };
 	});
 
 	constructor() {
@@ -141,7 +146,7 @@ export class BaseRegionDetailViewComponent {
 				return;
 			}
 
-			const center = mapOptions.center as LatLng;
+			const center = mapOptions.center;
 			this.queryOptions.set({ zoom: mapOptions.zoom + 5, lat: center.lat, lng: center.lng });
 			this._router.navigate([], {
 				queryParams: { lat: center.lat, lng: center.lng, zoom: mapOptions.zoom },

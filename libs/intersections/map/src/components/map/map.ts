@@ -1,5 +1,5 @@
 import { Component, effect, input, computed, signal, inject, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MapPage } from '@simra/common-components';
@@ -49,7 +49,7 @@ import { MapSettingsComponent } from '../map-settings/map-settings';
 
 @Component({
 	selector: 'intersection-map',
-	imports: [CommonModule, MapPage, TableModule, MapLegendComponent, MapSettingsComponent, ProgressSpinner],
+	imports: [MapPage, TableModule, MapLegendComponent, MapSettingsComponent, ProgressSpinner],
 	templateUrl: './map.html',
 	styleUrl: './map.scss',
 	encapsulation: ViewEncapsulation.None,

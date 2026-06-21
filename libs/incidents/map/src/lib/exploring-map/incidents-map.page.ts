@@ -5,7 +5,7 @@ import {
 	inject, Injector, signal,
 	ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngxs/store';
 import { IncidentsMapFacade, IncidentsState} from '@simra/incidents-domain';
@@ -19,7 +19,7 @@ import { incidentsLayer, incidentsLayerCluster, incidentsLayerClusterCount, inci
 
 @Component({
 	selector: 'incident-map',
-	imports: [CommonModule, MapPage],
+	imports: [MapPage],
 	templateUrl: './incidents-map.page.html',
 	styleUrl: './incidents-map.page.scss',
 	changeDetection: ChangeDetectionStrategy.OnPush,

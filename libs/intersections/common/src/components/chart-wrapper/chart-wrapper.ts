@@ -1,5 +1,5 @@
-import { Component, ElementRef, input, signal, computed, viewChild, model } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, input, signal, computed, viewChild, model, inject } from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
@@ -35,7 +35,7 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 @Component({
     selector: 'intersection-chart-wrapper',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, ChartModule, PopoverModule, SettingsComponent],
+    imports: [FormsModule, ButtonModule, ChartModule, PopoverModule, SettingsComponent],
     templateUrl: './chart-wrapper.html'
 })
 export class ChartWrapperComponent<T> {
@@ -147,5 +147,5 @@ export class ChartWrapperComponent<T> {
         this.isExporting.set(false);
     }
 
-    constructor(private translate: TranslateService) { }
+    private translate = inject(TranslateService);
 }

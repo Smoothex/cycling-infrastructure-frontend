@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -23,7 +23,7 @@ import { linesLayer, rideSource, markerLayer,  } from '../models/const';
 
 @Component({
     selector: 'p-ride-exploring-map',
-    imports: [CommonModule, MapPage, FormsModule, InputNumber, Card],
+    imports: [MapPage, FormsModule, InputNumber, Card],
     templateUrl: './rides-map.page.html',
     styleUrl: './rides-map.page.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

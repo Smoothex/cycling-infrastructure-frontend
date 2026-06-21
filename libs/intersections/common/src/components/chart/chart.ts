@@ -1,6 +1,6 @@
-import { Component, input, computed, signal, effect, untracked, linkedSignal, WritableSignal } from '@angular/core';
+import { Component, input, computed, signal, effect, untracked, linkedSignal, WritableSignal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { Card } from 'primeng/card';
 import { Button } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
@@ -35,8 +35,7 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 
 @Component({
 	selector: 'intersection-chart',
-	imports: [CommonModule, FormsModule, Card, ChartModule, Skeleton, Button,
-    	HistogramChartComponent, BoxplotChartComponent, HeatmapChartComponent, HeatmapStartTimeChartComponent, ScatterPlotComponent, ScatterPlotStartTimeComponent],
+	imports: [FormsModule, Card, ChartModule, Skeleton, Button, HistogramChartComponent, BoxplotChartComponent, HeatmapChartComponent, HeatmapStartTimeChartComponent, ScatterPlotComponent, ScatterPlotStartTimeComponent],
 	templateUrl: './chart.html'
 })
 export class IntersectionChartComponent<T, R extends PageableRequest | PrecomputedPageableRequest> {
@@ -261,7 +260,8 @@ export class IntersectionChartComponent<T, R extends PageableRequest | Precomput
 		return filteredMergedArray;
 	});
 
-	constructor(private translate: TranslateService) {
+	private translate = inject(TranslateService);
+	constructor() {
 		effect(() => {
 			const request = this.requestValue();
 			const requestCompare = this.requestCompare();

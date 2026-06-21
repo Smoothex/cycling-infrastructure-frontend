@@ -1,5 +1,5 @@
 import { Component, inject, signal, effect, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { IntersectionsRequestService } from '@simra/intersections-domain';
 import { RegionRequestService } from '@simra/streets-domain';
@@ -34,8 +34,16 @@ import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 	selector: 'intersection-list',
 	standalone: true,
 	imports: [
-		CommonModule, FormsModule, Card, TableModule, ToggleButtonModule, TranslatePipe, 
-		AutocompleteComponent, IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionListHeaderFilterComponent],
+    FormsModule,
+    Card,
+    TableModule,
+    ToggleButtonModule,
+    TranslatePipe,
+    AutocompleteComponent,
+    IntersectionListContentComponent,
+    IntersectionListHeaderComponent,
+    IntersectionListHeaderFilterComponent
+],
 	templateUrl: './list.html',
 	styleUrl: './list.scss',
 })

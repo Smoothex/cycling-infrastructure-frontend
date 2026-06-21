@@ -1,5 +1,5 @@
 import { Component, model, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { DatePickerModule } from 'primeng/datepicker';
@@ -18,13 +18,12 @@ import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
     templateUrl: './date-filter-precomputed.html',
     styleUrl: './date-filter-precomputed.scss',
     imports: [
-        CommonModule,
-        FormsModule,
-        EnumSelectComponent,
-        FloatLabelModule,
-        DatePickerModule,
-        Card
-    ],
+    FormsModule,
+    EnumSelectComponent,
+    FloatLabelModule,
+    DatePickerModule,
+    Card
+],
     encapsulation: ViewEncapsulation.None,
 })
 export class DateFilterPrecomputedComponent {

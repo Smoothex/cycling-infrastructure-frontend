@@ -1,5 +1,5 @@
-import { Component, input, computed, signal, model } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, signal, model, inject } from '@angular/core';
+
 import { ChartModule } from 'primeng/chart';
 import { FormsModule } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
@@ -30,7 +30,7 @@ const ChartCatergoryLabelTranslations = {
 @Component({
     selector: 'intersection-boxplot-chart',
     standalone: true,
-    imports: [CommonModule, FormsModule, ChartModule, ChartWrapperComponent],
+    imports: [FormsModule, ChartModule, ChartWrapperComponent],
     templateUrl: './boxplot.html',
 })
 export class BoxplotChartComponent<T> {
@@ -102,5 +102,5 @@ export class BoxplotChartComponent<T> {
         return `${baseName}${viewName}`;
     });
 
-    constructor(private translate: TranslateService) {}
+    private translate = inject(TranslateService);
 }

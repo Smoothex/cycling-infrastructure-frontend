@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Card } from 'primeng/card';
 import { TableModule, TableFilterEvent, TableLazyLoadEvent } from 'primeng/table';
@@ -36,7 +36,7 @@ const defaults: RegionPageableRequest = {
 
 @Component({
 	selector: 'intersection-region-list',
-	imports: [CommonModule, FormsModule, TableModule, Card, IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionListHeaderFilterComponent],
+	imports: [FormsModule, TableModule, Card, IntersectionListContentComponent, IntersectionListHeaderComponent, IntersectionListHeaderFilterComponent],
 	templateUrl: './region-list.html'
 })
 export class IntersectionsRegionListComponent {

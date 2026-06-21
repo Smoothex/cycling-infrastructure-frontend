@@ -1,7 +1,7 @@
 <div>
 	<p-card>
 		<p-table
-            [value]="rows()"
+            [value]="$any(rows())"
             [paginator]="true"
             [loading]="loading()"
             [lazy]="true"

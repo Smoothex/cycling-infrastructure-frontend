@@ -4,7 +4,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideStore } from '@ngxs/store';
 import { StreetDetailState } from '@simra/streets-domain';
 import { applicationConfig, Preview } from '@storybook/angular';
-import Aura from '@primeng/themes/aura';
+import Aura from '@primeuix/themes/aura';
 import { PrimeNG } from 'primeng/config';
 import { setCompodocJson } from '@storybook/addon-docs/angular';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

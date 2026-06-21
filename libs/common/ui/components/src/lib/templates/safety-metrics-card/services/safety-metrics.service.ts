@@ -2,8 +2,7 @@ import { Injectable, inject, computed } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
 import { ChartColors } from '../../../models/chart-colors';
-import { ChartOptions } from 'chart.js';
-import { Tick } from 'chart.js/dist/types';
+import { ChartOptions, Tick } from 'chart.js';
 
 @Injectable({
 	providedIn: 'root',

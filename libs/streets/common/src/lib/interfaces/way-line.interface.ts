@@ -1,6 +1,4 @@
-import { LatLngExpression } from 'leaflet';
-
 export interface IWay {
-	coordinates: LatLngExpression[];
+	coordinates: [number, number][]; // [longitude, latitude]
 	type: string;
 }

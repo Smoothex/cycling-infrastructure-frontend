@@ -16,10 +16,13 @@ export class FallbackValueDirective {
 	private readonly langSignal = toSignal(this._translateService.onLangChange);
 
 	private readonly _translation$ = resource({
-		request: () => this.langSignal() ?? this._translateService.currentLang,
-		loader: async () => {
-			return await firstValueFrom(this._translateService.get(this.fallback()));
-		}
+		params: () => ({
+            lang: this.langSignal() ?? this._translateService.currentLang,
+            key: this.fallback()
+        }),
+        loader: async ({ params }) => {
+            return await firstValueFrom(this._translateService.get(params.key));
+        }
 	});
 
 	constructor() {

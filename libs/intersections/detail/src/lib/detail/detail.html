@@ -139,7 +139,7 @@
     </p-card>
     <p-card>
 		<p-table 
-            [value]="isNode() ? nodeRows() : edgeRows()"
+            [value]="$any(isNode() ? nodeRows() : edgeRows())"
             [loading]="tableDataIsLoading()"
             [paginator]="true"
             [lazy]="true"

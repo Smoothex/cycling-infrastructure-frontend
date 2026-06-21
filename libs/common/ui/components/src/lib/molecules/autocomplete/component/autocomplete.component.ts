@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostBinding, input, model, Output, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { AutoCompleteCompleteEvent, AutoCompleteModule, AutoCompleteSelectEvent } from 'primeng/autocomplete';
@@ -9,12 +9,11 @@ import { debounceTime, firstValueFrom, Observable, of, switchMap } from 'rxjs';
 @Component({
 	selector: 'm-autocomplete',
 	imports: [
-		CommonModule,
-		TranslateModule,
-		FormsModule,
-		AutoCompleteModule,
-		FloatLabel,
-	],
+    TranslateModule,
+    FormsModule,
+    AutoCompleteModule,
+    FloatLabel
+],
 	templateUrl: './autocomplete.component.html',
 	styleUrl: './autocomplete.component.scss',
 	host: {

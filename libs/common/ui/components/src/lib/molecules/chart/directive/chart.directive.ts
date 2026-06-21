@@ -21,7 +21,7 @@ export class ChartDirective {
 	private readonly langSignal = toSignal(this._translateService.onLangChange);
 
 	private readonly _translation$ = resource({
-		request: () => this.langSignal() ?? this._translateService.currentLang,
+		params: () => this.langSignal() ?? this._translateService.currentLang,
 		loader: () => {
 			return firstValueFrom(this._translateService.get('COMPONENTS.GENERAL.CHART.NO_DATA'));
 		}

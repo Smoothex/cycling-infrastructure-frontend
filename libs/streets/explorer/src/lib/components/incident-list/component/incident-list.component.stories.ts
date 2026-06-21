@@ -5,7 +5,7 @@ import { ECyclewayType, EHighwayTypes, EParking } from '@simra/common-models';
 import { StorybookTranslateModule } from '@simra/helpers';
 import { IResponseStreet, ITags } from '@simra/streets-common';
 import { Meta, moduleMetadata, StoryObj } from '@storybook/angular';
-import { jest } from '@storybook/jest';
+import { jest } from '@storybook/test';
 import { IncidentListComponent } from './incident-list.component';
 
 const mockStore = {

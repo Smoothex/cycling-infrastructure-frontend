@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -25,15 +25,14 @@ import { SafetyMetricsService } from '../../../services/safety-metrics.service';
 @Component({
 	selector: 'p-region-detail-view',
 	imports: [
-		CommonModule,
-		AutoCompleteModule,
-		FormsModule,
-		BaseRegionDetailViewComponent,
-		RouterLink,
-		ButtonDirective,
-		TranslatePipe,
-		Skeleton,
-	],
+    AutoCompleteModule,
+    FormsModule,
+    BaseRegionDetailViewComponent,
+    RouterLink,
+    ButtonDirective,
+    TranslatePipe,
+    Skeleton
+],
 	templateUrl: './simra-region-detail-view.page.html',
 	styleUrl: './simra-region-detail-view.page.scss',
 	host: {
@@ -49,20 +48,20 @@ export class SimraRegionDetailViewPage {
 
 	protected readonly _safetyMetrics = signal<ISafetyMetricsRegion>(undefined);
 	protected readonly _detailedRegion = resource({
-		request: () => this.regionName(),
-		loader: async ({ request }) => {
-			if (!request) {
+		params: () => this.regionName(),
+		loader: async ({ params }) => {
+			if (!params) {
 				return;
 			}
 
-			return await firstValueFrom(this._facade.getSimraDetailedRegion(request));
+			return await firstValueFrom(this._facade.getSimraDetailedRegion(params));
 		},
 	});
 	protected readonly _queryOptions = model<IMapPosition>();
 	protected readonly _profileSafetyMetrics$ = resource({
-		request: () => this.regionName(),
-		loader: async ({ request }) => {
-			return await firstValueFrom(this._facade.getSimraProfileSafetyMetrics(request));
+		params: () => this.regionName(),
+		loader: async ({ params }) => {
+			return await firstValueFrom(this._facade.getSimraProfileSafetyMetrics(params));
 		},
 	});
 

@@ -3,12 +3,11 @@ import {
 	computed,
 	effect,
 	inject,
-  Inject,
 	signal,
   untracked,
   ViewEncapsulation
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -61,7 +60,7 @@ import {
 	WEEK_DAYS_TO_TRANSLATION, 
 	YEAR_TO_TRANSLATION
 } from '@simra/common-components';
-import { APP_CONFIG, AppEnvironmentInterface, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
+import { APP_CONFIG, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { TranslateService } from '@ngx-translate/core';
 
 const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
@@ -73,7 +72,7 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 
 @Component({
 	selector: 'intersection-map',
-	imports: [CommonModule, MapPage, FormsModule, CheckboxModule, SelectModule, MapSettingsComponent, MapLegendComponent],
+	imports: [MapPage, FormsModule, CheckboxModule, SelectModule, MapSettingsComponent, MapLegendComponent],
 	templateUrl: './map.html',
   styleUrl: './map.scss',
   encapsulation: ViewEncapsulation.None,
@@ -250,7 +249,10 @@ export class IntersectionMapComponent {
     }
   ]);
 
-  constructor(@Inject(APP_CONFIG) private config: AppEnvironmentInterface, private translate: TranslateService) {
+  private config = inject(APP_CONFIG);
+  private translate = inject(TranslateService);
+
+  constructor() {
     effect(() => {
       const map = this.map();
 			if (!map) return;

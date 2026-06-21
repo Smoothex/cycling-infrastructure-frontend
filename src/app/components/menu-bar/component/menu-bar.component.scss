@@ -1,42 +1,37 @@
-.menu-bar {
+.simra-menubar {
+    @apply mx-4 my-4 p-4;
+    display: flex;
+    justify-content: space-between;
 
-    p-menubar {
-
-       .p-menubar {
-           @apply mx-4 my-4 p-4;
-           display: flex;
-           justify-content: space-between;
-
-           .p-menubar-submenu, .p-menubar-root-list {
-               z-index: 1002;
-           }
-
-           .menu-bar__start {
-               @apply lg:mr-2;
-
-               h1 {
-                   @apply font-bold text-4xl leading-none tracking-tight text-gray-900 underline underline-offset-2 decoration-8 decoration-primary-400;
-               }
-           }
-
-           .p-menubar-item-content {
-               z-index: 2;
-
-               & > * {
-                   @apply text-lg;
-               }
-           }
-
-           .p-menubar-root-list {
-               @apply lg:mt-2;
-           }
-       }
+    .p-menubar-submenu, .p-menubar-root-list {
+        z-index: 1002;
     }
 
-    .p-breadcrumb {
-        @apply pt-0;
+    .simra-menubar-start {
+        @apply lg:mr-2;
+
+        h1 {
+            @apply font-bold text-4xl leading-none tracking-tight text-gray-900 underline underline-offset-2 decoration-8 decoration-primary-400;
+        }
+    }
+
+    .p-menubar-item {
+        z-index: 2;
+
+        & > * {
+            @apply text-lg;
+        }
+    }
+
+    .p-menubar-root-list {
+        @apply lg:mt-2;
     }
 }
+
+.simra-breadcrumb {
+    @apply pt-0;
+}
+
 
 .p-select-overlay {
     left: auto !important;
