@@ -15,4 +15,9 @@ export interface IMapPosition extends CoordinateInterface {
 	 * Indicates if a jump or fly is performed
 	 */
 	isNavigated?: boolean;
+
+	/*
+	 * Whether to move to the position or not
+	*/
+	moveTo?: boolean;
 }

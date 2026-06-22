@@ -5,7 +5,6 @@ import { ISafetyMetricsRegion, MapFilterOptionsInterface } from '@simra/common-m
 import { IIncident } from '@simra/incidents-models';
 import { IEnrichedRegion, IEnrichedStreet, IStreetGrid, SafetyMetricsDto } from '@simra/streets-common';
 import { FeatureCollection, Geometry } from 'geojson';
-import { GeoJSON } from 'leaflet';
 import { Observable, Subject, take, tap } from 'rxjs';
 import { IRegionMap } from '@simra/streets-common';
 import { IncidentsRequestService } from '../../infrastructure/incidents-request.service';
@@ -13,11 +12,9 @@ import { RegionRequestService } from '../../infrastructure/region-request.servic
 import { SafetyMetricsRequestService } from '../../infrastructure/safety-metrics-request.service';
 import { StreetsRequestService } from '../../infrastructure/streets-request.service';
 import { StreetInformationDto } from '../../models/dtos/street-information.dto';
-import * as L from 'leaflet';
-import { SetRegionName } from '../store/region-detail.actions';
 import { SetEnrichedRegions, SetRegionCollection, SetRegions, SetRegionSafetyMetrics } from '../store/region-map.actions';
 import { RegionMapState } from '../store/region-map.state';
-import { SetSelectedSafetyMetrics, SetStreet } from '../store/street-detail.actions';
+import { SetSelectedSafetyMetrics } from '../store/street-detail.actions';
 import { SetEnrichedStreets, SetStreets, SetStreetSafetyMetrics } from '../store/street-map.actions';
 import { StreetMapState } from '../store/street-map.state';
 
@@ -104,22 +101,9 @@ export class StreetsMapFacade {
 		this._fetchStreetSubject.next(requestParams);
 	}
 
-	private toGeoJSON(street: StreetInformationDto, zoom: number): GeoJSON<any, Geometry> {
-		return L.geoJSON(JSON.parse(`${street.way}`), {
-			style: {
-				color: street.dangerousColor,
-				weight: 2.5,
-			},
-			onEachFeature: (feature, layer) => {
-				layer.on('click', () => {
-					if (zoom <= 11) {
-						this._store.dispatch(new SetRegionName({ name: street?.name}))
-					} else {
-						this._store.dispatch(new SetStreet({ id: street.osm_id } as any));
-					}
-				});
-			}
-		});
+	// TODO: handle click events
+	private toGeoJSON(street: StreetInformationDto): FeatureCollection<Geometry> {
+		return JSON.parse(`${street.way}`);
 	}
 
 	public fetchStreetGrid(): void {

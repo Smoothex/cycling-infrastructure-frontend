@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostBinding, input, model, Output, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { AutoCompleteCompleteEvent, AutoCompleteModule, AutoCompleteSelectEvent } from 'primeng/autocomplete';
@@ -9,12 +9,11 @@ import { debounceTime, firstValueFrom, Observable, of, switchMap } from 'rxjs';
 @Component({
 	selector: 'm-autocomplete',
 	imports: [
-		CommonModule,
-		TranslateModule,
-		FormsModule,
-		AutoCompleteModule,
-		FloatLabel,
-	],
+    TranslateModule,
+    FormsModule,
+    AutoCompleteModule,
+    FloatLabel
+],
 	templateUrl: './autocomplete.component.html',
 	styleUrl: './autocomplete.component.scss',
 	host: {
@@ -25,12 +24,12 @@ import { debounceTime, firstValueFrom, Observable, of, switchMap } from 'rxjs';
 })
 export class AutocompleteComponent {
 	public readonly field = input.required<string>();
-	public readonly size = input<'small' | 'large'>();
+	public readonly size = input<'small' | 'large'>('small');
 	public readonly placeholder = input<string>();
 	public readonly showDropdown = input<boolean>(false);
 	public readonly selected = model();
 	public readonly fetchFunction = input.required<(query: string) => Observable<string[]>>();
-	protected readonly filteredOptions = model<string[]>();
+	protected readonly filteredOptions = model<string[]>([]);
 	@Output()
 	public selectionChange = new EventEmitter<Record<string, string>>();
 

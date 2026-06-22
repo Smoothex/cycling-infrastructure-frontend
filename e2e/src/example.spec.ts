@@ -4,5 +4,6 @@ test('has title', async ({ page }) => {
 	await page.goto('/');
 
 	// Expect h1 to contain a substring.
-	expect(await page.locator('a').filter({ hasText: 'Map' }).innerText()).toContain('Map');
+	const intersectionsMapLink = page.locator('a[href="/intersections/map"]');
+    expect(await intersectionsMapLink.innerText()).toContain('Map');
 });

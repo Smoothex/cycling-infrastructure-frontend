@@ -13,7 +13,6 @@ import {
 	StreetMapState,
 	StreetsMapFacade,
 } from '@simra/streets-domain';
-import { polyline } from 'leaflet';
 import { BehaviorSubject, of } from 'rxjs';
 import { StreetsMapPage } from './streets-map.page';
 
@@ -31,10 +30,10 @@ describe('StreetsMapPage', () => {
 					useValue: {
 						fetchStreetInformation: jest.fn().mockReturnValue(
 							new BehaviorSubject([
-								polyline([
+								[
 									[0, 0],
 									[1, 1],
-								]),
+								],
 							]),
 						),
 						fetchLastMethodRun: jest.fn().mockReturnValue(of(new Date())),

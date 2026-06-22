@@ -9,6 +9,12 @@ yarn-error.log
 /out-tsc
 #/**/*.d.ts
 
+# Block Nx and local build caches
+.nx/
+.cache/
+dist/
+node_modules/
+
 # Ignore development-specific files
 *.md
 

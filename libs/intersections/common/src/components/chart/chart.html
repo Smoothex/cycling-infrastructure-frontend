@@ -1,0 +1,79 @@
+<p-card [header]="header()">
+    <div class="flex flex-col gap-20">
+        <div class="flex flex-row flex-wrap gap-5">
+            <p-button label="Load Next Batch" [badge]="'(' + accumulatedData().length  + '/' + totalElements() + ')'" [disabled]="loading()" (onClick)="loadMore(pagedProperties, accumulatedData, requestValue())" />
+            @if (compare()) {
+                <p-button label="Load Next Compare Batch" [badge]="'(' + compareAccumulatedData().length  + '/' + compareTotalElements() + ')'" [disabled]="loading()" (onClick)="loadMore(comparePagedProperties, compareAccumulatedData, requestCompare())" />
+            }
+            <p-button label="Load All" [disabled]="loading()" (onClick)="loadAll()" />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-10">
+            @if (loading()) {
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+                <p-skeleton height="21rem" />
+            } @else {
+                <intersection-histogram-chart 
+                    [data]="filteredData()" 
+                    [(selectedMetric)]="propertyChart" 
+                    [label]="label()" 
+                    [config]="config()"
+                    [chartFilter]="chartFilter()"/>
+                @if (!compare()) {
+                    <intersection-boxplot-chart 
+                        [data]="filteredData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()" 
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                    @if (showScatter()) {
+                        <intersection-scatter-plot-start-time
+                            [data]="filteredData()" 
+                            [(selectedMetric)]="propertyChart"  
+                            [label]="label()" 
+                            [config]="config()"
+                            [chartFilter]="chartFilter()"/>
+                    } @else {
+                        <intersection-heatmap-start-time-chart
+                            [data]="filteredData()" 
+                            [(selectedMetric)]="propertyChart"  
+                            [label]="label()" 
+                            [config]="config()"
+                            [chartFilter]="chartFilter()"/>
+                    }
+                }
+                @if (showScatter()) {
+                    <intersection-scatter-plot
+                        [data]="filteredData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()"
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                } @else {
+                    <intersection-heatmap-chart
+                        [data]="filteredData()" 
+                        [(selectedMetric)]="propertyChart"  
+                        [label]="label()"
+                        [config]="config()"
+                        [chartFilter]="chartFilter()"/>
+                }
+                @let cConfig = compareConfig();
+                @if (cConfig) {
+                    <intersection-histogram-chart 
+                        [data]="mergedCompareData()" 
+                        [(selectedMetric)]="compareProperty" 
+                        [label]="compareLabel()" 
+                        [config]="cConfig"
+                        [chartFilter]="$any(chartFilter())"/>
+                    <intersection-heatmap-chart
+                        [data]="mergedCompareData()" 
+                        [(selectedMetric)]="compareProperty" 
+                        [label]="compareLabel()" 
+                        [config]="cConfig"
+                        [chartFilter]="$any(chartFilter())"/>
+                }
+            }
+        </div>
+    </div>
+</p-card>

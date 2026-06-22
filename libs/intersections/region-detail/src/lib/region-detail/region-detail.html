@@ -1,0 +1,105 @@
+<div class="flex flex-col gap-4">
+    <intersection-date-filter-precomputed
+    [(selectedYear)]="_selectedYear"
+    [(selectedWeekDays)]="_selectedWeekDays"
+    [(selectedTrafficTime)]="_selectedTrafficTime"
+    />
+	<p-card [header]="region()?.name">
+        <div class="flex flex-row gap-4">
+            <div class="w-1/3 flex flex-col gap-4">
+                <div class="flex-1 rounded-lg border p-4">
+                    <table class="simple-table">
+                        @if (region(); as r) {
+                            <tr>
+                                <td>OSM ID</td>
+                                <td>{{ r.id }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Area (km&#178;)</td>
+                                <td>{{ regionArea() | number: '1.0-2' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.RIDES' | translate }}</td>
+                                <td>{{ r.numberOfRides| number }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Traveled Distance (km)</td>
+                                <td>{{ r.length| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Total Duration (s)</td>
+                                <td>{{ r.duration | number: '1.0-2' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Total Wait Time (s)</td>
+                                <td>{{ r.nodeWaitingTime | number: '1.0-2' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Waiting Rate (%)</td>
+                                <td>{{ r.nodeWaitingRate| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Density (#/km)</td>
+                                <td>{{ r.nodesPerKm| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Avg. Waiting (s)</td>
+                                <td>{{ r.nodeAvgWaitingTime| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Avg. Waiting When Stopped (s)</td>
+                                <td>{{ r.nodeAvgWaitingTimeWhenStopped| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Intersection Stop Rate (%)</td>
+                                <td>{{ r.nodeStopRate| number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Street Waiting Rate (%)</td>
+                                <td>{{ r.edgeWaitingRate| number: '1.0-1' }}</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+                <div>
+                    @if (regionZoom(); as r) {
+                        <a pButton
+                            routerLink="/intersections/map"
+                            queryParamsHandling="merge"
+                            target="_blank"
+                            [queryParams]="r"
+                            icon="ph-bold ph-map-pin-area"
+                            size="small">
+                            {{ 'STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.BUTTONS.SIMRA_MAP' | translate }}
+                        </a>
+                    }
+                </div>
+            </div>
+            <div class="w-2/3">
+                <intersection-map id="intersection-map"
+                    [zoomTarget]="regionZoom()"
+                    [regionData]="regionFeature()"
+                    [trafficSignalClusterId]="trafficSignalClusterId"
+                    [loading]="mapLoading()"
+                ></intersection-map>
+            </div>
+        </div>
+	</p-card>
+    <intersection-chart-metric header="Region Metric" [config]="REGION_CHART_CONFIG" [fetchFn]="loadRegionMetric" [request]="regionRequest()"  />
+    <intersection-chart [header]="'Rides'" [config]="RIDE_CHART_CONFIG" [fetchFn]="loadRides" [request]="regionRequest()"/>
+    <intersection-chart header="Intersection Metric" [config]="NODE_METRIC_CHART_CONFIG" [fetchFn]="loadNodeMetric" [request]="regionRequest()"/>
+    <intersection-chart header="Edge Metric" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="loadEdgeMetric" [request]="regionRequest()"/>
+    <intersection-chart [header]="'Intersections'" [config]="baseConfig" [fetchFn]="loadNodes" [request]="regionRequest()"/>
+    <intersection-chart [header]="'Edges'" [config]="baseConfig" [fetchFn]="loadEdges" [request]="regionRequest()" />
+</div>

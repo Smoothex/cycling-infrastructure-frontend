@@ -1,0 +1,22 @@
+<div class="relative w-full" [class.screenshot-mode]="screenshotMode()">
+    <div class="absolute top-4 left-4 z-10 legend-wrapper">
+        <intersection-map-legend [items]="legendItems()"/>
+    </div>
+
+    <div class="absolute bottom-4 left-4 z-10">
+        
+        <intersection-map-settings
+            [settings]="MapSettingsComponent()"
+            [(screenshotMode)]="screenshotMode"
+            [extendedSettings]="true"
+            [(selectedRideId)]="selectedRideId"
+        />
+
+    </div>
+
+    <t-map-component 
+        (mapReady)="onMapReady($event)"
+        [isNavigable]="true"
+        id="intersection-map">
+    </t-map-component>
+</div>

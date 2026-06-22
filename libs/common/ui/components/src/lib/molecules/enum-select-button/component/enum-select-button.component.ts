@@ -1,5 +1,5 @@
 import { Component, computed, input, model } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TTranslationMap } from '../../../translations/interfaces/translation-map.type';
@@ -10,7 +10,7 @@ import { $enum } from 'ts-enum-util';
 
 @Component({
 	selector: 'm-enum-select-button',
-	imports: [CommonModule, SelectButton, FormsModule, Tooltip, TranslatePipe],
+	imports: [SelectButton, FormsModule, Tooltip, TranslatePipe],
 	templateUrl: './enum-select-button.component.html',
 	styleUrl: './enum-select-button.component.scss',
 })

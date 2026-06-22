@@ -1,248 +1,219 @@
 {
-  "name": "simra",
-  "$schema": "node_modules/nx/schemas/project-schema.json",
-  "includedScripts": [],
-  "projectType": "application",
-  "prefix": "app",
-  "sourceRoot": "./src",
-  "tags": [],
-  "targets": {
-    "build": {
-      "executor": "@nx/angular:application",
-      "outputs": [
-        "{options.outputPath.base}"
-      ],
-      "options": {
-        "plugins": [
-          "plugins/env-var-plugin.js"
-        ],
-        "outputPath": {
-          "base": "dist/simra"
-        },
-        "index": "./src/index.html",
-        "polyfills": [
-          "zone.js",
-          "src/polyfill.js"
-        ],
-        "tsConfig": "tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
-        "assets": [
-          {
-            "glob": "**/*",
-            "input": "public"
-          },
-          "src/favicon.ico",
-          "src/assets",
-          {
-            "input": "src/assets/i18n",
-            "glob": "**/*",
-            "output": "assets/i18n/app"
-          },
-          {
-            "input": "libs/incidents/ui/assets/icons",
-            "glob": "**/*",
-            "output": "assets/icons/incidents/ui"
-          },
-          {
-            "input": "libs/common/ui/components/assets/i18n",
-            "glob": "**/*",
-            "output": "assets/i18n/common/ui/components"
-          },
-          {
-            "input": "libs/streets/explorer/assets/i18n",
-            "glob": "**/*",
-            "output": "assets/i18n/streets/explorer"
-          },
-          {
-            "input": "libs/regions/browse/assets/i18n",
-            "glob": "**/*",
-            "output": "assets/i18n/regions/browse"
-          },
-          {
-            "input": "libs/incidents/ui/assets/i18n",
-            "glob": "**/*",
-            "output": "assets/i18n/incidents/ui"
-          },
-          {
-            "glob": "**/*",
-            "input": "node_modules/leaflet/dist/images",
-            "output": "./media/"
-          }
-        ],
-        "styles": [
-          "./src/styles.scss",
-          "./node_modules/flag-icons/css/flag-icons.min.css",
-          "./libs/common/ui/styles/src/css/mapillary.css",
-          "./node_modules/maplibre-gl/dist/maplibre-gl.css",
-          "./node_modules/@maptiler/geocoding-control/style.css",
-          "./node_modules/katex/dist/katex.css"
-        ],
-        "stylePreprocessorOptions": {
-          "includePaths": [
-            "libs/common/ui/styles/src/scss"
-          ]
-        },
-        "scripts": [
-          "node_modules/katex/dist/katex.min.js",
-          "node_modules/katex/dist/contrib/auto-render.min.js"
-        ],
-        "browser": "./src/main.ts"
-      },
-      "configurations": {
-        "production": {
-          "budgets": [
-            {
-              "type": "initial",
-              "maximumWarning": "3mb",
-              "maximumError": "5mb"
-            },
-            {
-              "type": "anyComponentStyle",
-              "maximumWarning": "2kb",
-              "maximumError": "4kb"
-            }
-          ],
-          "outputHashing": "all",
-          "fileReplacements": [
-            {
-              "replace": "src/environments/environment.ts",
-              "with": "src/environments/environment.prod.ts"
-            }
-          ]
-        },
-        "development": {
-          "optimization": false,
-          "extractLicenses": false,
-          "sourceMap": true,
-          "namedChunks": true,
-          "outputHashing": "media"
-        }
-      },
-      "defaultConfiguration": "production"
-    },
-    "serve": {
-      "executor": "@nx/angular:dev-server",
-      "configurations": {
-        "production": {
-          "buildTarget": "simra:build:production"
-        },
-        "development": {
-          "buildTarget": "simra:build:development"
-        }
-      },
-      "defaultConfiguration": "development"
-    },
-    "extract-i18n": {
-      "executor": "@angular/build:extract-i18n",
-      "options": {
-        "buildTarget": "simra:build"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "./src"
-        ]
-      }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectName}"
-      ],
-      "options": {
-        "jestConfig": "jest.config.app.ts"
-      }
-    },
-    "serve-static": {
-      "executor": "@nx/web:file-server",
-      "options": {
-        "buildTarget": "simra:build",
-        "port": 4200,
-        "spa": true
-      }
-    },
-    "storybook": {
-      "executor": "@storybook/angular:start-storybook",
-      "options": {
-        "port": 4400,
-        "configDir": "./.storybook",
-        "browserTarget": "simra:build-storybook",
-        "compodoc": true,
-        "compodocArgs": [
-          "-e",
-          "json",
-          "-d",
-          "./.storybook"
-        ],
-        "styles": [
-          "./src/styles.scss"
-        ],
-        "stylePreprocessorOptions": {
-          "includePaths": [
-            "libs/common/ui/styles/src/scss"
-          ]
-        }
-      },
-      "configurations": {
-        "ci": {
-          "quiet": true
-        }
-      }
-    },
-    "build-storybook": {
-      "executor": "@storybook/angular:build-storybook",
-      "outputs": [
-        "{options.outputDir}"
-      ],
-      "options": {
-        "outputDir": "dist/storybook/simra",
-        "configDir": "./.storybook",
-        "browserTarget": "simra:build-storybook",
-        "compodoc": true,
-        "compodocArgs": [
-          "-e",
-          "json",
-          "-d",
-          "./.storybook"
-        ],
-        "styles": [
-          "./src/styles.scss"
-        ],
-        "stylePreprocessorOptions": {
-          "includePaths": [
-            "libs/common/ui/styles/src/scss"
-          ]
-        }
-      },
-      "configurations": {
-        "ci": {
-          "quiet": true
-        }
-      }
-    },
-    "test-storybook": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "test-storybook -c ./.storybook --url=http://localhost:4400"
-      }
-    },
-    "static-storybook": {
-      "executor": "@nx/web:file-server",
-      "dependsOn": [
-        "build-storybook"
-      ],
-      "options": {
-        "buildTarget": "simra:build-storybook",
-        "staticFilePath": "dist/storybook/simra",
-        "spa": true
-      },
-      "configurations": {
-        "ci": {
-          "buildTarget": "simra:build-storybook:ci"
-        }
-      }
-    }
-  }
+	"name": "simra",
+	"$schema": "node_modules/nx/schemas/project-schema.json",
+	"includedScripts": [],
+	"projectType": "application",
+	"prefix": "app",
+	"sourceRoot": "./src",
+	"tags": [],
+	"targets": {
+		"build": {
+			"executor": "@nx/angular:application",
+			"outputs": ["{options.outputPath.base}"],
+			"options": {
+				"plugins": ["plugins/env-var-plugin.js"],
+				"outputPath": {
+					"base": "dist/simra"
+				},
+				"index": "./src/index.html",
+				"polyfills": ["zone.js", "src/polyfill.js"],
+				"tsConfig": "tsconfig.app.json",
+				"inlineStyleLanguage": "scss",
+				"assets": [
+					{
+						"glob": "**/*",
+						"input": "public"
+					},
+					"src/favicon.ico",
+					"src/assets",
+					{
+						"input": "src/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/app"
+					},
+					{
+						"input": "libs/incidents/ui/assets/icons",
+						"glob": "**/*",
+						"output": "assets/icons/incidents/ui"
+					},
+					{
+						"input": "libs/common/ui/components/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/common/ui/components"
+					},
+					{
+						"input": "libs/streets/explorer/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/streets/explorer"
+					},
+					{
+						"input": "libs/regions/browse/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/regions/browse"
+					},
+					{
+						"input": "libs/incidents/ui/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/incidents/ui"
+					},
+					{
+						"input": "libs/intersections/assets/i18n",
+						"glob": "**/*",
+						"output": "assets/i18n/intersections"
+					},
+					{
+						"glob": "**/*",
+						"input": "node_modules/leaflet/dist/images",
+						"output": "./media/"
+					}
+				],
+				"styles": [
+					"./src/styles.scss",
+					"./node_modules/flag-icons/css/flag-icons.min.css",
+					"./libs/common/ui/styles/src/css/mapillary.css",
+					"./node_modules/maplibre-gl/dist/maplibre-gl.css",
+					"./node_modules/@maptiler/geocoding-control/style.css",
+					"./node_modules/katex/dist/katex.css"
+				],
+				"stylePreprocessorOptions": {
+					"includePaths": ["libs/common/ui/styles/src/scss"]
+				},
+				"scripts": [
+					"node_modules/katex/dist/katex.min.js",
+					"node_modules/katex/dist/contrib/auto-render.min.js"
+				],
+				"browser": "./src/main.ts"
+			},
+			"configurations": {
+				"production": {
+					"budgets": [
+						{
+							"type": "initial",
+							"maximumWarning": "3mb",
+							"maximumError": "5mb"
+						},
+						{
+							"type": "anyComponentStyle",
+							"maximumWarning": "2kb",
+							"maximumError": "4kb"
+						}
+					],
+					"outputHashing": "all",
+					"fileReplacements": [
+						{
+							"replace": "src/environments/environment.ts",
+							"with": "src/environments/environment.prod.ts"
+						}
+					]
+				},
+				"development": {
+					"optimization": false,
+					"extractLicenses": false,
+					"sourceMap": true,
+					"namedChunks": true,
+					"outputHashing": "media"
+				}
+			},
+			"defaultConfiguration": "production"
+		},
+		"serve": {
+			"executor": "@nx/angular:dev-server",
+			"configurations": {
+				"production": {
+					"buildTarget": "simra:build:production"
+				},
+				"development": {
+					"buildTarget": "simra:build:development"
+				}
+			},
+			"defaultConfiguration": "development",
+			"continuous": true
+		},
+		"extract-i18n": {
+			"executor": "@angular/build:extract-i18n",
+			"options": {
+				"buildTarget": "simra:build"
+			}
+		},
+		"lint": {
+			"executor": "@nx/eslint:lint",
+			"options": {
+				"lintFilePatterns": ["./src"]
+			}
+		},
+		"test": {
+			"executor": "@nx/jest:jest",
+			"outputs": ["{workspaceRoot}/coverage/{projectName}"],
+			"options": {
+				"jestConfig": "jest.config.app.ts"
+			}
+		},
+		"serve-static": {
+			"executor": "@nx/web:file-server",
+			"options": {
+				"buildTarget": "simra:build",
+				"port": 4200,
+				"spa": true
+			}
+		},
+		"storybook": {
+			"executor": "@storybook/angular:start-storybook",
+			"options": {
+				"port": 4400,
+				"configDir": "./.storybook",
+				"browserTarget": "simra:build-storybook",
+				"compodoc": true,
+				"compodocArgs": ["-e", "json", "-d", "./.storybook"],
+				"styles": ["./src/styles.scss"],
+				"stylePreprocessorOptions": {
+					"includePaths": ["libs/common/ui/styles/src/scss"]
+				}
+			},
+			"configurations": {
+				"ci": {
+					"quiet": true
+				}
+			}
+		},
+		"build-storybook": {
+			"executor": "@storybook/angular:build-storybook",
+			"outputs": ["{options.outputDir}"],
+			"options": {
+				"outputDir": "dist/storybook/simra",
+				"configDir": "./.storybook",
+				"browserTarget": "simra:build-storybook",
+				"compodoc": true,
+				"compodocArgs": ["-e", "json", "-d", "./.storybook"],
+				"styles": ["./src/styles.scss"],
+				"stylePreprocessorOptions": {
+					"includePaths": ["libs/common/ui/styles/src/scss"]
+				}
+			},
+			"configurations": {
+				"ci": {
+					"quiet": true
+				}
+			}
+		},
+		"test-storybook": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "test-storybook -c ./.storybook --url=http://localhost:4400"
+			}
+		},
+		"static-storybook": {
+			"executor": "@nx/web:file-server",
+			"dependsOn": ["build-storybook"],
+			"options": {
+				"buildTarget": "simra:build-storybook",
+				"staticFilePath": "dist/storybook/simra",
+				"spa": true
+			},
+			"configurations": {
+				"ci": {
+					"buildTarget": "simra:build-storybook:ci"
+				}
+			}
+		}
+	}
 }

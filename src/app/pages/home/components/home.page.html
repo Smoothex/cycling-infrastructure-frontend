@@ -105,4 +105,54 @@
 			</p-tabpanel>
 		</p-tabpanels>
 	</p-tabs>
+
+	<h2>{{ 'APP.COMPONENTS.MENU_BAR.ITEMS.INTERSECTIONS' | translate }}</h2>
+	<p-tabs value="0">
+		<p-tablist>
+			<p-tab value="0">{{ "APP.COMPONENTS.MENU_BAR.ITEMS.LIST" | translate}}</p-tab>
+			<p-tab value="1">{{ "APP.COMPONENTS.MENU_BAR.ITEMS.MAP" | translate}}</p-tab>
+			<p-tab value="2">{{ "APP.COMPONENTS.MENU_BAR.ITEMS.ADMINISTRATIVE_REGIONS" | translate}}</p-tab>
+		</p-tablist>
+		<p-tabpanels>
+			<p-tabpanel value="0">
+				<section>
+					<img ngSrc="/assets/images/home/traffic-signal.jpg" alt="" width="640" height="400" [alt]="'APP.COMPONENTS.HOME.STREETS.LIST.IMAGE_ALT' | translate">
+					<div class="tabs__information-content">
+						<p [innerHTML]="'APP.COMPONENTS.HOME.INTERSECTIONS.LIST.DESCRIPTION' | translate"></p>
+					</div>
+				</section>
+				<a routerLink="/intersections" class="link-button">{{ "APP.COMPONENTS.HOME.GO_TO" | translate }}</a>
+			</p-tabpanel>
+			<p-tabpanel value="1">
+				<section>
+					<img ngSrc="/assets/images/home/street-map.avif" alt="" width="640" height="400" [alt]="'APP.COMPONENTS.HOME.STREETS.MAP.IMAGE_ALT' | translate">
+					<div class="tabs__information-content">
+						<p [innerHTML]="'APP.COMPONENTS.HOME.INTERSECTIONS.MAP.DESCRIPTION' | translate"></p>
+					</div>
+				</section>
+				<div class="city-box">
+					<h3>{{ "APP.COMPONENTS.HOME.JUMP_TO_POSITION" | translate }}:</h3>
+					@for(cityLink of CITY_POSITION_LINKS; track cityLink.position) {
+						<a [routerLink]="['intersections', 'map']" [queryParams]="cityLink.position" class="link-button">{{ cityLink.label }}</a>
+						@if(!$last) {
+							,
+						}
+					}
+				</div>
+			</p-tabpanel>
+			<p-tabpanel value="2">
+				<section class="">
+					<img ngSrc="/assets/images/home/berlin.avif" width="640" height="400" [alt]="'APP.COMPONENTS.HOME.REGIONS.ADMINISTRATIVE_REGIONS.IMAGE_ALT' | translate">
+					<div class="tabs__information-content">
+						<p [innerHTML]="'APP.COMPONENTS.HOME.INTERSECTIONS.ADMINISTRATIVE_REGIONS.DESCRIPTION' | translate"></p>
+						<section>
+							<p-chip [label]="'APP.COMPONENTS.HOME.CHIPS.TRAFFIC_ANALYTICS' | translate" />
+							<p-chip [label]="'APP.COMPONENTS.HOME.CHIPS.CHARTS' | translate" />
+						</section>
+					</div>
+				</section>
+				<a [routerLink]="['intersections', 'regions']" class="link-button">{{ "APP.COMPONENTS.HOME.GO_TO" | translate }}</a>
+			</p-tabpanel>
+		</p-tabpanels>
+	</p-tabs>
 </div>

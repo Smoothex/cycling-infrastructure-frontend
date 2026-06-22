@@ -14,6 +14,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Log in to DockerHub
+              if: github.event_name != 'pull_request' || secrets.DOCKER_PASSWORD != ''
               uses: docker/login-action@v3
               with:
                   username: ${{ vars.DOCKER_USERNAME }}
@@ -29,7 +30,7 @@ jobs:
               uses: docker/build-push-action@v6
               with:
                   platforms: linux/amd64,linux/arm64
-                  push: true
+                  push: ${{ github.event_name != 'pull_request' || secrets.DOCKER_PASSWORD != '' }}
                   tags: ${{ vars.DOCKER_USERNAME }}/simra-frontend:latest
                   target: github_production
                   build-args: |

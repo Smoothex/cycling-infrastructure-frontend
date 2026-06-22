@@ -8,7 +8,7 @@ import {
 	ViewChild,
 	ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { APP_CONFIG } from '@simra/common-models';
@@ -18,7 +18,7 @@ import { firstValueFrom } from 'rxjs';
 
 @Component({
 	selector: 'a-mapillary',
-	imports: [CommonModule],
+	imports: [],
 	templateUrl: './mapillary.component.html',
 	styleUrl: './mapillary.component.scss',
 	host: {
@@ -56,9 +56,9 @@ export class MapillaryComponent {
 	});
 
 	private readonly _mapillaryImageId$ = resource({
-		request: () => this._coords(),
-		loader: async ({ request }) => {
-			const { lat, lng } = request;
+		params: () => this._coords(),
+		loader: async ({ params }) => {
+			const { lat, lng } = params;
 			if (!lat || !lng) {
 				return;
 			}

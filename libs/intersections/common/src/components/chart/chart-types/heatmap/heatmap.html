@@ -1,0 +1,23 @@
+<intersection-chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+    <div label >        
+        @if (chartData().outliers > 0) {
+            <div class="flex items-center justify-center">
+                <i class="ph ph-arrows-in-line-horizontal mr-1" style="font-size: 1em"></i>
+                <span class="mr-2">Scale: X [{{ minViewX() ?? 'Start' }}, {{ maxViewX() ?? 'End' }}] | Y [{{ minViewY() ?? 'Start' }}, {{ maxViewY() ?? 'End' }}], Outliers: {{chartData().outliers}}/{{data().length}}</span>
+            </div>
+        }
+        
+        <div class="flex flex-row items-center justify-center">
+            <span class="mr-2">Low ({{ chartData().minCount || 0 }})</span>
+            <div class="absolut">
+                <div class="relative top-1/2 inferno-gradient" [style.width]="'8em'" [style.height]="'1em'"></div>
+            </div>
+            @if (maxViewCount()) {
+                <span>High ({{ maxViewCount() || 0 }}), </span>
+                <span class="ml-2">Max: {{ chartData().maxCount || 0 }}</span>
+            } @else {
+                <span class="ml-2">High ({{ chartData().maxCount || 0 }})</span>
+            }
+        </div>
+    </div>
+</intersection-chart-wrapper>

@@ -1,0 +1,35 @@
+{
+    "HEADERS": {
+        "PREVOSMNEXTID": "OSM IDs",
+        "INTERSECTIONID": "Intersection ID",
+        "OSMID": "OSM ID",
+        "SEGMENTID": "Segment ID",
+        "RIDES": "Rides",
+        "SPEED": "Speed (km/h)",
+        "LENGTH": "Length (m)",
+        "LENGTHKM": "Length (km)",
+        "DURATION": "Duration (s)",
+        "MEDIANWAITINGTIME": "Waiting Time (s)",
+        "MAXWAITINGTIME": "Max Waiting Time (s)",
+        "SUMWAITINGTIME": "Sum Waiting Time (s)",
+        "WEEKDAY": "Weekday",
+        "TRAFFICTIME": "Traffic Time",
+        "YEAR": "Year",
+        "NODEMEDIANWAITINGTIME": "Waiting Time at Intersections (s)",
+        "NODEMEDIANWAITINGTIMEDISTANCE": "Waiting Time due to Intersections (s/km)"
+    },
+    "TIP": {
+        "RIDES": "Total number of passages through the segment.",
+        "SPEED": "Median speed (km/h) of all passages through the segment.",
+        "LENGTH": "Median length (m) of all passages through the segment.",
+        "DURATION": "Median duration (s) of all passages through the segment.",
+        "MEDIANWAITINGTIME": "Median waiting time (s) of all passages through the segment.\nThe waiting time is the difference between the duration of the segment and the length of the segment divided by the median speed of all segments (excluding intersections) of a ride." ,
+        "MAXWAITINGTIME": "Maximum waiting time (s) of all passages of the segment.\nThe waiting time is the difference between the duration of the segment and the length of the segment divided by the median speed of all segments (excluding intersections) of a ride.",
+        "INTERSECTIONID": "The intersection ID uniquely identifies an intersection.",
+        "SEGMENTID":"The segment ID uniquely identifies a driving segment.\nA segment is either a crossing of an intersection or part of a path between intersections.",
+        "STREETNAMES": "If available: street names of the segment. Otherwise, two street names of the intersection.",
+        "OSMID": "The OSM ID uniquely identifies a path defined by Open Street Map.",
+        "NAME": "Street name of the segment."
+    }
+}
+

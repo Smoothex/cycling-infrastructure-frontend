@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, model, signal, ViewEncapsulation } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { toSignal } from '@angular/core/rxjs-interop';
 import { IPage } from '@simra/common-models';
 import { ISafetyMetricsRequest } from '@simra/streets-common';
@@ -12,10 +12,9 @@ import { BaseRegionListViewComponent } from '../../../components/base-region-lis
 @Component({
 	selector: 't-simra-region-list-view',
 	imports: [
-		CommonModule,
-		TableModule,
-		BaseRegionListViewComponent,
-	],
+    TableModule,
+    BaseRegionListViewComponent
+],
 	templateUrl: './simra-region-list-view.page.html',
 	styleUrl: './simra-region-list-view.page.scss',
 	encapsulation: ViewEncapsulation.None,

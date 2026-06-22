@@ -1,0 +1,74 @@
+<div class="date-filter flex flex-row">
+    @if (changeableMode()) {
+        <p-card>
+            <m-enum-select-button
+                [optionEnum]="ECardMode"
+                [translationMap]="CARD_MODE_TO_TRANSLATION_MAP"
+                [(selected)]="mode">
+            </m-enum-select-button>
+        </p-card>
+    }
+    <div class="flex-1"></div>
+    <p-card>
+        <div class="flex gap-2">
+
+            @if(mode() === ECardMode.PRECOMPUTED) {
+                <m-enum-select-component
+                    [optionEnum]="ETrafficTimes"
+                    [(selected)]="selectedTrafficTime"
+                    [translationMap]="TRAFFIC_TIMES_TO_TRANSLATION">
+                </m-enum-select-component>
+
+                <m-enum-select-component
+                    [optionEnum]="EWeekDays"
+                    [(selected)]="selectedWeekDays"
+                    [translationMap]="WEEK_DAYS_TO_TRANSLATION">
+                </m-enum-select-component>                
+                
+                <m-enum-select-component
+                    [optionEnum]="EYear"
+                    [(selected)]="selectedYear"
+                    [translationMap]="YEAR_TO_TRANSLATION">
+                </m-enum-select-component>
+            } @else {
+
+                <div>
+                    <p-float-label>
+                        <p-datepicker inputId="startTime"
+                                      [(ngModel)]="startTime"
+                                      [timeOnly]="true"/>
+                        <label for="startTime">
+                            {{ 'STREETS.EXPLORER.COMPONENTS.SAFETY_METRICS_CARD.MODE.REALTIME.START_TIME' | translate }}
+                        </label>
+                    </p-float-label>
+                </div>
+
+                <div>
+                    <p-float-label>
+                        <p-datepicker inputId="endTime"
+                                      [(ngModel)]="endTime"
+                                      [timeOnly]="true"/>
+                        <label for="endTime">
+                            {{ 'STREETS.EXPLORER.COMPONENTS.SAFETY_METRICS_CARD.MODE.REALTIME.END_TIME' | translate }}
+                        </label>
+                    </p-float-label>
+                </div>
+
+                <div>
+                    <p-float-label>
+                        <p-datepicker
+                                      inputId="calendar"
+                                      selectionMode="range"
+                                      [(ngModel)]="datetime"
+                                      dateFormat="dd/mm/yy"
+                                      [showIcon]="true"/>
+                        <label for="calendar">
+                            {{ 'STREETS.EXPLORER.COMPONENTS.SAFETY_METRICS_CARD.MODE.REALTIME.DATE_RANGE' | translate }}
+                        </label>
+                    </p-float-label>
+                </div>
+            }
+
+        </div>
+    </p-card>
+</div>

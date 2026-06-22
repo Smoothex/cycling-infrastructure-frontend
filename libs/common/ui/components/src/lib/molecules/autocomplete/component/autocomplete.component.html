@@ -1,6 +1,6 @@
-<p-floatlabel variant="on" class="inline-block w-auto flex-grow">
+<p-floatlabel variant="on" class="inline-block w-full flex-grow">
 	<p-autocomplete
-		class="w-full"
+		[inputStyle]="{'maxWidth': '12rem'}"
 		inputId="autocomplete"
 		[(ngModel)]="selected"
 		[size]="size()"

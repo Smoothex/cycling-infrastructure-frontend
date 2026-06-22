@@ -11,7 +11,7 @@ import { QuicklinkStrategy } from 'ngx-quicklink';
 import { providePrimeNG } from 'primeng/config';
 import { IncidentsState } from '@simra/incidents-domain';
 import { APP_ROUTES } from './app.routes';
-import Aura from '@primeng/themes/aura';
+import Aura from '@primeuix/themes/aura';
 import { backendUrlInterceptor } from './models/interceptors/backend-url.interceptor';
 import { mapillaryInterceptor } from './models/interceptors/mapillary.interceptor';
 import { AppTranslationModule } from './translations/translation.module';

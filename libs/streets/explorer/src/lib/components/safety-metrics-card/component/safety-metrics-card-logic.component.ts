@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -28,11 +28,10 @@ import { ECardMode } from '../models/card-mode.enum';
 @Component({
 	selector: 't-safety-metrics-card-logic',
 	imports: [
-		CommonModule,
-		SafetyMetricsCardComponent,
-		FormsModule,
-		EnumSelectButtonComponent
-	],
+    SafetyMetricsCardComponent,
+    FormsModule,
+    EnumSelectButtonComponent
+],
 	templateUrl: './safety-metrics-card-logic.component.html',
 	styleUrl: './safety-metrics-card-logic.component.scss',
 	host: {
@@ -48,7 +47,7 @@ export class SafetyMetricsCardLogicComponent {
 	private readonly _streetDetailViewFacade = inject(StreetDetailViewFacade);
 
 	protected readonly _lastRun$ = toSignal(
-		this._streetDetailViewFacade.fetchLastMethodRun('calculateSafetyMetricsHighway'),
+		this._streetDetailViewFacade.fetchLastMethodRun('SafetyMetricsService->updateSafetyMetrics'),
 	);
 	protected _mode$: ModelSignal<ECardMode> = model<ECardMode>(ECardMode.PRECOMPUTED);
 	protected readonly _datetime$ = model<Date[]>([new Date('2019-01-01T00:00'), new Date()]);

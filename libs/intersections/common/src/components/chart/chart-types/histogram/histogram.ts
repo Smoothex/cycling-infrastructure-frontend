@@ -1,0 +1,86 @@
+import { Component, input, computed, signal, model } from '@angular/core';
+
+import { ChartModule } from 'primeng/chart';
+import { FormsModule } from '@angular/forms';
+import {
+    ChartConfig,
+    SettingGroup,
+    ChartFilter,
+    ChartComplete,
+} from '../../../../lib/common/interfaces';
+import { createHistogram } from '../../../../lib/common/chart-helper';
+import { ChartWrapperComponent } from '../../../chart-wrapper/chart-wrapper';
+
+@Component({
+    selector: 'intersection-histogram-chart',
+    standalone: true,
+    imports: [FormsModule, ChartModule, ChartWrapperComponent],
+    templateUrl: './histogram.html',
+})
+export class HistogramChartComponent<T> {
+    data = input.required<T[]>();
+    selectedMetric = model.required<keyof T>();
+    config = input.required<ChartConfig<T>>();
+    label = input.required<string>();
+    chartFilter = input.required<ChartFilter<T>>();
+
+    
+    protected bucketSize = signal<number>(10);
+    protected offset = signal<number>(5);
+    protected minView = signal<number | null>(null);
+    protected maxView = signal<number | null>(null);
+
+    chartSettings = computed<SettingGroup[]>(() => [
+        {
+            group: 'Metric', items: [
+                { label: 'Select Metric', props: { type: "select", value: this.selectedMetric, options: this.config().selectableProperties }}
+            ]
+        },
+        {
+            group: 'Buckets', items: [
+                { label: 'Bucket Size', props: { type: "number", value: this.bucketSize, min: 0.01 }},
+                { label: 'Offset', props: { type: "number", value: this.offset, min: 0 }},
+            ]
+        },
+        {
+            group: 'View', items: [
+                { label: 'Minimum Value', props: { type: "number", value: this.minView }},
+                { label: 'Maximum Value', props: { type: "number", value: this.maxView }},
+            ]
+        }
+    ]);
+
+    protected chart = computed<ChartComplete>(() => {
+        const d = this.chartData();
+        return {
+            chartType: "bar",
+            data: d.chart,
+            options: d.options
+        }
+    });
+    protected isExporting = signal<boolean>(false); 
+
+
+    protected chartData = computed(() => {
+        return createHistogram(
+            this.data(),
+            this.selectedMetric(),
+            this.bucketSize(),
+            this.offset(),
+            this.label(),
+            this.config().aggregationLabel,
+            this.minView() ?? undefined,
+            this.maxView() ?? undefined
+        );
+    });
+
+    protected downloadFileName = computed<string>(() => {
+        const baseName = `bar-${String(this.selectedMetric())}-numberOfRides`;
+
+        const viewMin = this.minView() ? `-min-${this.minView()}` : "";
+        const viewMax = this.maxView() ? `-max-${this.maxView()}` : "";
+        const viewName = (viewMin || viewMax) ? `-view${viewMin}${viewMax}` : "";
+
+        return `${baseName}${viewName}`;
+    });
+}

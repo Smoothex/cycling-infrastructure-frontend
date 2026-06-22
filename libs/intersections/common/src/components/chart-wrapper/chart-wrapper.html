@@ -1,0 +1,43 @@
+<div class="relative group h-full max-w-96 border-round overflow-hidden">
+    <div class="absolute top-0 right-0 p-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <p-button 
+            icon="pi pi-cog" 
+            [rounded]="true" 
+            [text]="true" 
+            severity="secondary"
+            (click)="op.toggle($event)" />
+    </div>
+
+    <div #screenshotContainer [style.width]="isExporting() ? '1376px' : null">
+        <div class="flex-1 flex flex-col w-full px-4 pb-2 mt-1 text-xs text-gray-500" [style.font-size]="isExporting() ? '48px' : '12px'" [style.line-height]="'1.2'">
+            @if (chartFilter().min() || chartFilter().max()) {
+                <div class="flex justify-center flex-row flex-wrap">
+                    <div class="flex items-center">
+                        <i class="ph ph-funnel mr-1" style="font-size: 1em"></i>
+                        <span class="mr-1">Subset: {{chartFilter().onPropertyLabel()}} [{{ chartFilter().min() ?? 'Start' }}, {{ chartFilter().max() ?? 'End' }}], </span>
+                    </div>
+                    <div class="flex items-center">
+                        <span>Excluded: {{chartFilter().excludedElements()}}/{{chartFilter().totalElements()}}</span>
+                    </div>
+                </div>
+            }
+            <ng-content select="[label]"></ng-content>
+        </div>
+        <p-chart
+            [type]="$any(chart().chartType)" 
+            [data]="chart().data" 
+            [options]="scaledChartOptions()" 
+            [height]="isExporting() ? '84rem' : '21rem'"/>
+    </div>
+
+    <p-popover #op (onShow)="setSettingVisibility(true)" (onHide)="setSettingVisibility(false)">
+        <div class="flex flex-col gap-4 w-80 p-2">
+            <div class="flex flex-row">
+                <span class="flex-1 font-bold text-m mb-2 block">Settings</span>
+                <p-button icon="pi pi-download" (onClick)="downloadAsImage()" size="small"/>
+            </div>
+
+            <intersection-settings [isSettingsVisible]="isSettingsVisible()" [settings]="settingsWithTimeCategory()" />
+        </div>
+    </p-popover>
+</div>

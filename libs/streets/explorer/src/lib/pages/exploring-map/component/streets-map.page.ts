@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ApplicationRef,
 	ChangeDetectionStrategy,
@@ -38,13 +38,12 @@ import {
 @Component({
 	selector: 'streets-map',
 	imports: [
-		CommonModule,
-		MapPage,
-		DangerousScoreBarComponent,
-		SafetyMetricsDigitPanelComponent,
-		Card,
-		TranslatePipe,
-	],
+    MapPage,
+    DangerousScoreBarComponent,
+    SafetyMetricsDigitPanelComponent,
+    Card,
+    TranslatePipe
+],
 	templateUrl: './streets-map.page.html',
 	styleUrl: './streets-map.page.scss',
 	standalone: true,
@@ -68,7 +67,7 @@ export class StreetsMapPage {
 	protected readonly lastSafetyMetrics$ = signal<any>(null);
 	protected readonly showOverlay$ = signal(true);
 	protected readonly lastRun$ = toSignal(
-		this._streetsMapFacade.fetchLastMethodRun('calculateSafetyMetricsHighway'),
+		this._streetsMapFacade.fetchLastMethodRun('SafetyMetricsService->updateSafetyMetrics'),
 	);
 	private _mlMap= signal<maplibregl.Map>(undefined);
 
@@ -330,14 +329,14 @@ export class StreetsMapPage {
 	 * @protected
 	 */
 	protected readonly safetyMetricsStreets$ = resource({
-		request: () => {
+		params: () => {
 			const street = this.hoveredStreet$();
 			const filter = this._filterState();
 
 			return { street, filter };
 		},
-		loader: async ({ request }) => {
-			const { street, filter } = request;
+		loader: async ({ params }) => {
+			const { street, filter } = params;
 			if (!street || !filter) {
 				return;
 			}
@@ -351,14 +350,14 @@ export class StreetsMapPage {
 		},
 	});
 	protected readonly safetyMetricsRegion$ = resource({
-		request: () => {
+		params: () => {
 			const regionName = this.hoveredRegion$();
 			const filter = this._filterState();
 
 			return { regionName, filter };
 		},
-		loader: async ({ request }) => {
-			const { regionName, filter } = request;
+		loader: async ({ params }) => {
+			const { regionName, filter } = params;
 
 			if (!regionName || !filter) {
 				return;
@@ -384,9 +383,9 @@ export class StreetsMapPage {
 		);
 	});
 	safetyMetricsStreets = resource({
-		request: () => this._filterState(),
-		loader: async ({ request }) => {
-			const filter = request;
+		params: () => this._filterState(),
+		loader: async ({ params }) => {
+			const filter = params;
 
 			if (!filter || isEmpty(omitBy(filter, isEmpty))) {
 				return;
@@ -406,14 +405,14 @@ export class StreetsMapPage {
 	 * Query used data
 	 */
 	incidents = resource({
-		request: () => this.hoveredStreet$(),
-		loader: async ({ request }) => {
-			if (!request) {
+		params: () => this.hoveredStreet$(),
+		loader: async ({ params }) => {
+			if (!params) {
 				return;
 			}
 
 			return await firstValueFrom(
-				this._streetsMapFacade.fetchIncidentsForStreet(request.id, this._filterState()),
+				this._streetsMapFacade.fetchIncidentsForStreet(params.id, this._filterState()),
 			);
 		},
 	})

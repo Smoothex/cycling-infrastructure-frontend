@@ -13,3 +13,17 @@
         z-index: 5;
     }
 }
+
+.screenshot-mode {
+    .maplibregl-ctrl-top-right {
+        display: none !important;
+    }
+
+    .maplibregl-ctrl-bottom-right {
+        display: none !important;
+    }
+
+    #intersection-map, .maplibregl-canvas {
+        border-radius: 0 !important;
+    }
+}

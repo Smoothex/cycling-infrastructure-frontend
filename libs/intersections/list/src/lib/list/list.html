@@ -1,0 +1,42 @@
+<div>
+	<p-card>
+		<p-table
+            [value]="$any(rows())"
+            [paginator]="true"
+            [loading]="loading()"
+            [lazy]="true"
+            [rows]="requestFilter().size"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [totalRecords]="totalElements()"
+			(onFilter)="onFilterChange($event)"
+			(onLazyLoad)="onLazy($event)"
+            [resetPageOnSort]="true"
+            [sortField]="'avgWaitingTime'"
+            [sortOrder]="-1"
+        >
+            <ng-template pTemplate="caption" class="pt-0">
+				<div class="title-filter">
+                    <p-togglebutton [(ngModel)]="isNode" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
+					<m-autocomplete class="region__autocomplete" [fetchFunction]="fetchRegionNames" [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate" (selectionChange)="onFilterChange($event)" field="region" [showDropdown]="true" />
+                </div>
+			</ng-template>
+            <ng-template pTemplate="header">
+                <tr intersection-list-header
+                    [columns]="columns()"
+                ></tr>
+                <tr intersection-list-header-filter
+                    [columns]="columns()"
+                    (filterChange)="onFilterChange($event)">
+				</tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-rowData>
+                <tr intersection-list-content 
+                    [row]="rowData" 
+                    [columns]="columns()">
+                </tr>
+            </ng-template>
+		</p-table>
+	</p-card>
+</div>
+

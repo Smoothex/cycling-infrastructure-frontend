@@ -1,4 +1,4 @@
-import { ISafetyMetricsStreet } from '@simra/common-models';
+import { EHighwayTypes, ISafetyMetricsStreet } from '@simra/common-models';
 import { IIncident } from '@simra/incidents-models';
 import { ITags } from './tags.interface';
 import { IWay } from './way-line.interface';
@@ -8,7 +8,7 @@ export interface IResponseStreet {
 	safetyMetricPlanetOsmLines: ISafetyMetricsStreet[];
 	rideIncident: IIncident[];
 	way: IWay;
-	highway: string;
+	highway: EHighwayTypes;
 	name: string;
 	tags: ITags;
 }

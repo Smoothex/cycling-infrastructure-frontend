@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
 	ApplicationRef,
 	ChangeDetectionStrategy,
@@ -34,14 +34,13 @@ import { MapillaryComponent } from '../../mapillar/component/mapillary.component
 @Component({
 	selector: 'm-map-carousel',
 	imports: [
-		TabsModule,
-		CommonModule,
-		MapillaryComponent,
-		TabList,
-		TabPanels,
-		MapPage,
-		TranslatePipe,
-	],
+    TabsModule,
+    MapillaryComponent,
+    TabList,
+    TabPanels,
+    MapPage,
+    TranslatePipe
+],
 	templateUrl: './map-carousel.component.html',
 	styleUrl: './map-carousel.component.scss',
 	encapsulation: ViewEncapsulation.None,

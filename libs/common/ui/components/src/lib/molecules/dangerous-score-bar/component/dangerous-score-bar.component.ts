@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { ChangeDetectionStrategy, Component, effect, inject, model, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -22,16 +22,15 @@ import { EnumSelectComponent } from '../../enum-select/component/enum-select.com
 @Component({
 	selector: 'm-dangerous-score-bar',
 	imports: [
-		CommonModule,
-		ColorBlockComponent,
-		FormsModule,
-		Button,
-		Card,
-		Popover,
-		TranslatePipe,
-		EnumSelectComponent,
-		EnumSelectButtonComponent
-	],
+    ColorBlockComponent,
+    FormsModule,
+    Button,
+    Card,
+    Popover,
+    TranslatePipe,
+    EnumSelectComponent,
+    EnumSelectButtonComponent
+],
 	templateUrl: './dangerous-score-bar.component.html',
 	styleUrl: './dangerous-score-bar.component.scss',
 	changeDetection: ChangeDetectionStrategy.OnPush,

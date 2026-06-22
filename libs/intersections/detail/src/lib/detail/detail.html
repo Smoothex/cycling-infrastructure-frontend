@@ -1,0 +1,172 @@
+<div class="flex flex-col gap-4">
+    <intersection-date-filter
+    [changeableMode]="true"
+    [(mode)]="_mode"
+    [(selectedYear)]="_selectedYear"
+    [(selectedWeekDays)]="_selectedWeekDays"
+    [(selectedTrafficTime)]="_selectedTrafficTime"
+    [(startTime)]="_startTime"
+    [(endTime)]="_endTime"
+    [(datetime)]="_datetime$">
+    </intersection-date-filter>
+    <p-card [header]="'Segment - ' + (isNode() ? 'Intersection' : 'Way')">
+        <div class="flex flex-row gap-4">
+            <div class="w-1/3 flex flex-col gap-4">
+                <div class="flex-1 rounded-lg border p-4">
+                    <table class="simple-table">
+                        @if (metricNode(); as n) {
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.INTERSECTIONID' | translate }}</td>
+                                <td><a [routerLink]="['/intersections/node', n.trafficSignalClusterId]" class="link-button">{{ n.trafficSignalClusterId }}</a></td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.SEGMENTID' | translate }}</td>
+                                <td>{{ n.id }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Start OSM ID</td>
+                                <td>{{ n.startOsmId }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>End OSM ID</td>
+                                <td>{{ n.endOsmId }}</td>
+                            </tr>
+                            @if (n.startName || n.endName) {
+                                <p-divider/>
+                                <tr>
+                                    <td>Start Name</td>
+                                    <td>{{ n.startName }}</td>
+                                </tr>
+                                <p-divider/>
+                                <tr>
+                                    <td>End Name</td>
+                                    <td>{{ n.endName }}</td>
+                                </tr>
+                            } @else {
+                                <p-divider/>
+                                <tr>
+                                    <td>Intersection Name</td>
+                                    <td>{{ n.streetNames }}</td>
+                                </tr>
+                            }
+                        }
+                        @if (metricEdge(); as e) {
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.OSMID' | translate }}</td>
+                                <td>{{ e.osmId }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>{{ 'INTERSECTIONS.HEADERS.SEGMENTID' | translate }}</td>
+                                <td>{{ e.id }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Prev OSM Id</td>
+                                <td>{{ e.prevOsmId }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Next OSM Id</td>
+                                <td>{{ e.nextOsmId }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Name</td>
+                                <td>{{ e.name }}</td>
+                            </tr>
+                        }
+                        @if (metricBase(); as b) {                       
+                            <p-divider/>
+                            <tr>
+                                <td>Avg. Wait Time (s)</td>
+                                <td>{{ b.avgWaitingTime | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Avg. Wait Time When Stopped (s)</td>
+                                <td>{{ b.avgWaitingTimeWhenStopped | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Stop Rate (%)</td>
+                                <td>{{ b.stopRate | number: '1.0-1' }}</td>
+                            </tr>
+                            <p-divider/>
+                            <tr>
+                                <td>Number of Rides (#)</td>
+                                <td>{{b.numberOfRides}}</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+                <div>
+                    @if (baseIdZoom(); as b) {
+                        <div class="flex flex-row gap-4">
+                            <a pButton
+                                routerLink="/intersections/map"
+                                queryParamsHandling="merge"
+                                target="_blank"
+                                [queryParams]="b"
+                                icon="ph-bold ph-map-pin-area"
+                                size="small">
+                                {{ 'STREETS.EXPLORER.COMPONENTS.STREET_INFORMATION_CARD.BUTTONS.SIMRA_MAP' | translate }}
+                            </a>
+                            <a pButton
+                                [href]="'https://www.openstreetmap.org/#map=17/' + b.lat.toFixed(6) + '/' + b.lng.toFixed(6)"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                icon="ph-bold ph-map-pin"
+                                size="small">
+                                OSM
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="w-2/3">
+                <intersection-map id="intersection-map"
+                    [zoomTarget]="baseIdZoom()"
+                    [baseData]="pagedGeoResponse()?.geoData"
+                    [trafficSignalClusterId]="trafficSignalClusterId()"
+                    [loading]="tableDataIsLoading()"
+                ></intersection-map>
+            </div>
+        </div>
+    </p-card>
+    <p-card>
+		<p-table 
+            [value]="$any(isNode() ? nodeRows() : edgeRows())"
+            [loading]="tableDataIsLoading()"
+            [paginator]="true"
+            [lazy]="true"
+            [rows]="pagedRequest().size"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            [totalRecords]="totalElements()"
+            (onFilter)="onFilterChange($event)"
+            (onLazyLoad)="onLazy($event)"
+            [resetPageOnSort]="true"
+            [sortField]="'waitingTime'"
+            [sortOrder]="-1"
+        >
+            <ng-template pTemplate="header">
+                <tr intersection-list-header
+                    [columns]="columns()"
+                ></tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-rowData>
+                <tr intersection-list-content 
+                    [row]="rowData" 
+                    [columns]="columns()"
+                    (action)="handleZoom($event)">
+                </tr>
+            </ng-template>
+        </p-table>
+    </p-card>
+    <intersection-chart-metric header="Metric" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()" [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG" />
+    <intersection-chart header="Detail" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()" />
+</div>

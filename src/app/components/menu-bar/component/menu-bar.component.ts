@@ -86,6 +86,27 @@ export class MenuBarComponent {
 			icon: 'ph-bold ph-warning-diamond',
 			routerLink: '/incidents',
 		},
+		{
+			label: 'APP.COMPONENTS.MENU_BAR.ITEMS.INTERSECTIONS',
+			icon: 'ph-bold ph-traffic-signal',
+			items: [
+				{
+					label: 'APP.COMPONENTS.MENU_BAR.ITEMS.MAP',
+					icon: 'ph-bold ph-map-pin-area',
+					routerLink: '/intersections/map'
+				},
+				{
+					label: 'APP.COMPONENTS.MENU_BAR.ITEMS.STREETS',
+					icon: 'ph-bold ph-road-horizon',
+					routerLink: '/intersections',
+				},
+				{
+					label: 'APP.COMPONENTS.MENU_BAR.ITEMS.ADMINISTRATIVE_REGIONS',
+					icon: 'ph-bold ph-city',
+					routerLink: '/intersections/regions'
+				}
+			],
+		},
 	];
 	private readonly _devItems: MenuItem[] = [
 		{

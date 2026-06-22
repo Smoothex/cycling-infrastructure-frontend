@@ -1,0 +1,12 @@
+<p-card [header]="header()">
+    <div class="flex flex-col gap-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-10">
+            @if (loading() ) {
+                <p-skeleton height="21rem" />
+            } @else {
+                <intersection-chart-wrapper [(isExporting)]="isExporting" [chart]="chart()" [settings]="chartSettings()" [chartFilter]="chartFilter()" [downloadFileName]="downloadFileName()">
+                </intersection-chart-wrapper>
+            }
+        </div>
+    </div>
+</p-card>
