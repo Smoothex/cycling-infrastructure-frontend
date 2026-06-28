@@ -1,0 +1,20 @@
+{
+	"name": "thesis-shell",
+	"$schema": "../../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "libs/thesis/shell/src",
+	"prefix": "lib",
+	"projectType": "library",
+	"tags": ["type:shell", "domain:thesis"],
+	"targets": {
+		"test": {
+			"executor": "@nx/jest:jest",
+			"outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+			"options": {
+				"jestConfig": "libs/thesis/shell/jest.config.ts"
+			}
+		},
+		"lint": {
+			"executor": "@nx/eslint:lint"
+		}
+	}
+}

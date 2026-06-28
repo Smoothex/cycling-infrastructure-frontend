@@ -23,7 +23,7 @@
 				</a>
 			</ng-template>
 		<ng-template #end>
-			<p-selectbutton [options]="_languages" [unselectable]="true" [(ngModel)]="_selectedLanguage" optionLabel="justify" (onChange)="selectLanguage($event)" >
+			<p-selectbutton [options]="_languages" [unselectable]="true" [(ngModel)]="_selectedLanguage" optionLabel="label" dataKey="id" (onChange)="selectLanguage($event)" >
 				<ng-template #item let-item>
 					<i class="opacity-90 rounded" [pTooltip]="item.label | translate"  [class]="item.icon"></i>
 				</ng-template>

@@ -14,6 +14,10 @@ const PRODUCTION_ROUTES: Route[] = [
 		loadChildren: () => import('@simra/incidents-shell').then((m) => m.RIDE_INCIDENT_SHELL_ROUTES),
 	},
 	{
+		path: 'preference-and-avoidance',
+		loadChildren: () => import('@simra/thesis-shell').then((m) => m.THESIS_SHELL_ROUTES),
+	},
+	{
 		path: 'streets',
 		loadChildren: () => import('@simra/streets-shell').then((m) => m.STREET_SHELL_ROUTES),
 	},

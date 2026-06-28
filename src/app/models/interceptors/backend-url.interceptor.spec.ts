@@ -45,10 +45,79 @@ describe('backendUrlInterceptor', () => {
 		expect(req.request.url).toEqual('http://localhost:8080/api/resource');
 	});
 
+	it('should not duplicate the API base segment if the configured backend URL already includes it', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{
+					provide: APP_CONFIG,
+					useValue: {
+						apiUrl: 'http://localhost:8080/api',
+					},
+				},
+				provideHttpClient(withInterceptors([backendUrlInterceptor])),
+				provideHttpClientTesting(),
+			],
+		});
+		httpTestingController = TestBed.inject(HttpTestingController);
+		httpClient = TestBed.inject(HttpClient);
+
+		httpClient.get('/api/resource').subscribe();
+
+		const req = httpTestingController.expectOne('http://localhost:8080/api/resource');
+		expect(req.request.url).toEqual('http://localhost:8080/api/resource');
+	});
+
+	it('should add an HTTP protocol if the configured backend URL does not include one', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{
+					provide: APP_CONFIG,
+					useValue: {
+						apiUrl: 'localhost:8080/api',
+					},
+				},
+				provideHttpClient(withInterceptors([backendUrlInterceptor])),
+				provideHttpClientTesting(),
+			],
+		});
+		httpTestingController = TestBed.inject(HttpTestingController);
+		httpClient = TestBed.inject(HttpClient);
+
+		httpClient.get('/api/resource').subscribe();
+
+		const req = httpTestingController.expectOne('http://localhost:8080/api/resource');
+		expect(req.request.url).toEqual('http://localhost:8080/api/resource');
+	});
+
 	it('should return a new request with the backend URL if the request URL starts with the JPA API base segment', () => {
 		const url = '/api/jpa/resource';
 
 		httpClient.get(url).subscribe();
+
+		const req = httpTestingController.expectOne('http://localhost:8080/resource');
+		expect(req.request.url).toEqual('http://localhost:8080/resource');
+	});
+
+	it('should keep JPA requests root-relative if the configured backend URL already includes the API segment', () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				{
+					provide: APP_CONFIG,
+					useValue: {
+						apiUrl: 'http://localhost:8080/api/',
+					},
+				},
+				provideHttpClient(withInterceptors([backendUrlInterceptor])),
+				provideHttpClientTesting(),
+			],
+		});
+		httpTestingController = TestBed.inject(HttpTestingController);
+		httpClient = TestBed.inject(HttpClient);
+
+		httpClient.get('/api/jpa/resource').subscribe();
 
 		const req = httpTestingController.expectOne('http://localhost:8080/resource');
 		expect(req.request.url).toEqual('http://localhost:8080/resource');
