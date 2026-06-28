@@ -1,0 +1,280 @@
+<section class="preference-avoidance">
+	<header class="preference-avoidance__header">
+		<div>
+			<h2>Preference and Avoidance</h2>
+			<p>{{ eventRange(overview.value()?.summary) }}</p>
+		</div>
+		<p-tag value="Segment event map" severity="info"></p-tag>
+	</header>
+
+	<div class="preference-avoidance__summary">
+		@if (overview.isLoading()) {
+			@for (_ of [1, 2, 3, 4, 5, 6, 7, 8]; track _) {
+				<p-card>
+					<p-skeleton height="1rem" width="7rem"></p-skeleton>
+					<p-skeleton height="2rem" width="5rem"></p-skeleton>
+				</p-card>
+			}
+		} @else {
+			@for (card of summaryCards(); track card.label) {
+				<p-card>
+					<span>{{ card.label }}</span>
+					<strong>{{ card.value | number }}</strong>
+				</p-card>
+			}
+		}
+	</div>
+
+	<div class="preference-avoidance__main-grid">
+		<p-card class="preference-avoidance__map-card">
+			<ng-template pTemplate="header">
+				<div class="card-header">
+					<h3>Segment map</h3>
+					<div class="event-legend">
+						<span class="event-legend__endpoint">
+							Preferred
+						</span>
+						<div class="risk-legend" aria-label="Preference to avoidance risk legend">
+							<i class="risk-legend__segment risk-legend__segment--preference-strong"></i>
+							<i class="risk-legend__segment risk-legend__segment--preference"></i>
+							<i class="risk-legend__segment risk-legend__segment--baseline"></i>
+							<i class="risk-legend__segment risk-legend__segment--avoidance"></i>
+							<i class="risk-legend__segment risk-legend__segment--avoidance-strong"></i>
+						</div>
+						<span class="event-legend__endpoint">
+							Avoided
+						</span>
+					</div>
+				</div>
+			</ng-template>
+			<t-map-component (mapReady)="onMapReady($event)"></t-map-component>
+		</p-card>
+
+		<div class="preference-avoidance__inspector">
+			<p-card class="segment-inspector-card">
+				<ng-template pTemplate="header">
+					<div class="card-header">
+						<div>
+							<h3>Segment inspector</h3>
+							@if (selectedSegment(); as segment) {
+								<p>{{ segment.streetName || 'Unknown street' }} · {{ segment.id }}</p>
+							}
+						</div>
+						<div class="panel-toggle" role="group" aria-label="Segment inspector view">
+							@for (option of panelViewOptions; track option.value) {
+								<button
+									type="button"
+									[class.panel-toggle__button--active]="selectedPanelView() === option.value"
+									(click)="onPanelViewChange(option.value)"
+								>
+									{{ option.label }}
+								</button>
+							}
+						</div>
+					</div>
+				</ng-template>
+
+				@if (selectedSegment(); as segment) {
+					@if (selectedPanelView() === 'INFO') {
+						<div class="detail-grid">
+							@for (metric of segmentInfoMetrics(); track metric.label) {
+								<div class="detail-grid__item">
+									<span>{{ metric.label }}</span>
+									<strong>{{ metric.value }}</strong>
+									@if (metric.detail) {
+										<small>{{ metric.detail }}</small>
+									}
+								</div>
+							}
+						</div>
+
+						@if (infrastructureHighlights().length) {
+							<div class="context-strip">
+								@for (context of infrastructureHighlights(); track context.label) {
+									<div>
+										<span>{{ context.label }}</span>
+										<strong>{{ context.value }}</strong>
+										<small>{{ context.count | number }} events</small>
+									</div>
+								}
+							</div>
+						}
+					} @else if (selectedPanelView() === 'EVENTS') {
+						<div class="event-filter-row">
+							<span>{{ (selectedSegmentEvents.value() ?? []).length | number }} events loaded</span>
+							<select
+								[ngModel]="selectedEventFilter()"
+								(ngModelChange)="onEventFilterChange($event)"
+								aria-label="Selected segment event type"
+							>
+								@for (option of eventFilterOptions; track option.value) {
+									<option [value]="option.value">{{ option.label }}</option>
+								}
+							</select>
+						</div>
+
+						@if (selectedSegmentEvents.isLoading()) {
+							<div class="event-card-list">
+								@for (_ of [1, 2, 3]; track _) {
+									<p-skeleton height="5rem"></p-skeleton>
+								}
+							</div>
+						} @else if ((selectedSegmentEvents.value() ?? []).length) {
+							<div class="event-card-list">
+								@for (event of selectedSegmentEvents.value() ?? []; track event.id) {
+									<article
+										class="event-card"
+										[class.event-card--avoidance]="event.eventType === 'AVOIDANCE'"
+										[class.event-card--preference]="event.eventType === 'PREFERENCE'"
+										[class.event-card--expanded]="selectedEventId() === event.id"
+									>
+										<button
+											type="button"
+											class="event-card__button"
+											[attr.aria-expanded]="selectedEventId() === event.id"
+											(click)="onEventCardClick(event.id)"
+										>
+											<span
+												class="event-pill"
+												[class.event-pill--avoidance]="event.eventType === 'AVOIDANCE'"
+												[class.event-pill--preference]="event.eventType === 'PREFERENCE'"
+											>
+												{{ formatValue(event.eventType) }}
+											</span>
+											<span class="event-card__time">{{ formatDateTime(event.eventTimestamp) }}</span>
+											@if (formatDirection(event.pathBearingDegrees); as direction) {
+												<span class="event-card__direction">{{ direction }}</span>
+											}
+										</button>
+
+										@if (eventPreviewChips(event).length) {
+											<div class="event-chip-list">
+												@for (chip of eventPreviewChips(event); track chip.label) {
+													<span
+														class="event-chip"
+														[class.event-chip--infrastructure]="chip.tone === 'infrastructure'"
+														[class.event-chip--traffic]="chip.tone === 'traffic'"
+														[class.event-chip--weather]="chip.tone === 'weather'"
+														[class.event-chip--wind]="chip.tone === 'wind'"
+													>
+														{{ chip.label }}: {{ chip.value }}
+													</span>
+												}
+											</div>
+										}
+
+										@if (selectedEventId() === event.id) {
+											<div class="event-detail">
+												@for (group of eventDetailGroups(event); track group.label) {
+													<section class="event-detail__group">
+														<h4>{{ group.label }}</h4>
+														<dl>
+															@for (item of group.items; track item.label) {
+																<div>
+																	<dt>
+																		{{ item.label }}
+																		@if (item.infoId) {
+																			<span class="event-detail__info">
+																				<button
+																					type="button"
+																					class="event-detail__info-button"
+																					[class.event-detail__info-button--active]="selectedInfoPopoverId() === item.infoId"
+																					aria-label="Weather code documentation"
+																					[attr.aria-expanded]="selectedInfoPopoverId() === item.infoId"
+																					(click)="onInfoPopoverToggle($event, item.infoId)"
+																				>
+																					i
+																				</button>
+																				@if (selectedInfoPopoverId() === item.infoId && item.infoUrl) {
+																					<span class="event-detail__popover" role="tooltip">
+																						<a [href]="item.infoUrl" target="_blank" rel="noopener noreferrer">
+																							Open-Meteo weather code documentation
+																						</a>
+																					</span>
+																				}
+																			</span>
+																		}
+																	</dt>
+																	<dd>{{ item.value }}</dd>
+																</div>
+															}
+														</dl>
+													</section>
+												}
+											</div>
+										}
+									</article>
+								}
+							</div>
+						} @else {
+							<p class="empty-state">No event details available for this segment.</p>
+						}
+					}
+				} @else {
+					<p-skeleton height="18rem"></p-skeleton>
+				}
+			</p-card>
+		</div>
+	</div>
+
+	<p-card>
+		<ng-template pTemplate="header">
+			<div class="card-header">
+				<div>
+					<h3>Segments</h3>
+					<p>{{ (overview.value()?.segments ?? []).length | number }} segments loaded · click a row to inspect</p>
+				</div>
+			</div>
+		</ng-template>
+		<p-table
+			[value]="sortedSegments()"
+			[loading]="overview.isLoading()"
+			[paginator]="true"
+			[rows]="15"
+			[rowsPerPageOptions]="[15, 25, 50]"
+			[tableStyle]="{ 'min-width': '60rem' }"
+			[sortField]="segmentSortField()"
+			[sortOrder]="segmentSortOrder()"
+			(sortFunction)="onSegmentSort($event)"
+			[customSort]="true"
+			styleClass="segments-list-table"
+		>
+			<ng-template pTemplate="header">
+				<tr>
+					<th pSortableColumn="streetName">Street <p-sortIcon field="streetName"></p-sortIcon></th>
+					<th pSortableColumn="avoidanceCount">Avoidances <p-sortIcon field="avoidanceCount"></p-sortIcon></th>
+					<th pSortableColumn="avoidanceRatio">Avoid % <p-sortIcon field="avoidanceRatio"></p-sortIcon></th>
+					<th pSortableColumn="preferenceCount">Preferences <p-sortIcon field="preferenceCount"></p-sortIcon></th>
+					<th pSortableColumn="preferenceRatio">Prefer % <p-sortIcon field="preferenceRatio"></p-sortIcon></th>
+					<th pSortableColumn="totalObservationCount">Observations <p-sortIcon field="totalObservationCount"></p-sortIcon></th>
+					<th pSortableColumn="gradientPercent">Gradient <p-sortIcon field="gradientPercent"></p-sortIcon></th>
+				</tr>
+			</ng-template>
+			<ng-template pTemplate="body" let-segment>
+				<tr
+					class="segment-row"
+					[class.segment-row--selected]="selectedSegmentId() === segment.id"
+					(mouseenter)="onSegmentRowHover(segment.id)"
+					(mouseleave)="onSegmentRowLeave()"
+					(click)="flyToSegment(segment.id)"
+				>
+					<td>
+						<strong>{{ segment.streetName || 'Unknown street' }}</strong>
+						<span>{{ segment.id }}</span>
+					</td>
+					<td>{{ segment.avoidanceCount | number }}</td>
+					<td>{{ formatPercent(segment.avoidanceRatio) }}</td>
+					<td>{{ segment.preferenceCount | number }}</td>
+					<td>{{ formatPercent(segment.preferenceRatio) }}</td>
+					<td>{{ segment.totalObservationCount | number }}</td>
+					<td>{{ segment.gradientPercent != null ? (segment.gradientPercent | number: '1.1-1') + '%' : '-' }}</td>
+				</tr>
+			</ng-template>
+			<ng-template pTemplate="emptymessage">
+				<tr>
+					<td colspan="7">No segments available.</td>
+				</tr>
+			</ng-template>
+		</p-table>
+	</p-card>
+</section>

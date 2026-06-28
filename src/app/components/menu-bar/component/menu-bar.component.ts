@@ -87,6 +87,11 @@ export class MenuBarComponent {
 			routerLink: '/incidents',
 		},
 		{
+			label: 'APP.COMPONENTS.MENU_BAR.ITEMS.PREFERENCE_AND_AVOIDANCE',
+			icon: 'ph-bold ph-path',
+			routerLink: '/preference-and-avoidance',
+		},
+		{
 			label: 'APP.COMPONENTS.MENU_BAR.ITEMS.INTERSECTIONS',
 			icon: 'ph-bold ph-traffic-signal',
 			items: [
