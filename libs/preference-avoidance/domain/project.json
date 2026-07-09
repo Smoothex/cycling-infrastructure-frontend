@@ -1,16 +1,16 @@
 {
-	"name": "thesis-domain",
+	"name": "preference-avoidance-domain",
 	"$schema": "../../../node_modules/nx/schemas/project-schema.json",
-	"sourceRoot": "libs/thesis/domain/src",
+	"sourceRoot": "libs/preference-avoidance/domain/src",
 	"prefix": "lib",
 	"projectType": "library",
-	"tags": ["type:domain", "domain:thesis"],
+	"tags": ["type:domain", "domain:preference-avoidance"],
 	"targets": {
 		"test": {
 			"executor": "@nx/jest:jest",
 			"outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
 			"options": {
-				"jestConfig": "libs/thesis/domain/jest.config.ts"
+				"jestConfig": "libs/preference-avoidance/domain/jest.config.ts"
 			}
 		},
 		"lint": {

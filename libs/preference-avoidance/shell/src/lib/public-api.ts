@@ -1,1 +1,1 @@
-export * from './thesis-shell.routes';
+export * from './preference-avoidance-shell.routes';
