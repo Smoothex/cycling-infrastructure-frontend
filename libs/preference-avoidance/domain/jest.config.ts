@@ -1,8 +1,8 @@
 export default {
-	displayName: 'thesis-domain',
+	displayName: 'preference-avoidance-domain',
 	preset: '../../../jest.preset.js',
 	setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
-	coverageDirectory: '../../../coverage/libs/thesis/domain',
+	coverageDirectory: '../../../coverage/libs/preference-avoidance/domain',
 	transform: {
 		'^.+\\.(ts|mjs|js|html)$': [
 			'jest-preset-angular',

@@ -1,12 +1,54 @@
 .t-preference-avoidance-page {
+	// design tokens
+	--pa-page-bg: #f2f5fa; // pale blue-gray
+	--pa-card-bg: var(--surface-card, #fff);
+	--pa-card-border: color-mix(in srgb, var(--surface-border) 80%, #e2e8f0);
+	--pa-radius-card: 14px;
+	--pa-radius-control: 10px;
+	--pa-shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 20px rgb(15 23 42 / 0.06);
+	--pa-heading: #0f172a; // dark navy
+	--pa-label: #64748b; // slate gray
+	--pa-accent: var(--primary-color);
+	// tinted icon circles
+	--pa-tint-blue-bg: #e0edfe;
+	--pa-tint-blue-fg: #2563eb;
+	--pa-tint-green-bg: #dcfce7;
+	--pa-tint-green-fg: #16a34a;
+	--pa-tint-purple-bg: #f3e8ff;
+	--pa-tint-purple-fg: #9333ea;
+	--pa-tint-orange-bg: #ffedd5;
+	--pa-tint-orange-fg: #ea580c;
+
 	display: block;
+	background: var(--pa-page-bg);
+	min-height: 100%;
+}
+
+@mixin pa-card {
+	background: var(--pa-card-bg);
+	border: 1px solid var(--pa-card-border);
+	border-radius: var(--pa-radius-card);
+	box-shadow: var(--pa-shadow-card);
+}
+
+@mixin pa-control {
+	border: 1px solid var(--pa-card-border);
+	border-radius: var(--pa-radius-control);
+	background: var(--pa-card-bg);
+	color: var(--pa-heading);
+	font: inherit;
+	font-size: 0.82rem;
 }
 
 .preference-avoidance {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
-	padding: 1rem clamp(1rem, 2vw, 2rem) 2rem;
+	gap: 1.1rem;
+	padding: 1.15rem clamp(1rem, 2vw, 2rem) 2rem;
+
+	.p-card {
+		@include pa-card;
+	}
 
 	&__header,
 	.card-header {
@@ -14,12 +56,16 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+	}
+
+	.card-header {
 		padding: 1rem 1rem 0;
 	}
 
 	&__header h2,
 	h3 {
 		margin: 0;
+		color: var(--pa-heading);
 		font-weight: 700;
 	}
 
@@ -27,78 +73,366 @@
 		font-size: 1.5rem;
 	}
 
+	&__header-title {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
+	}
+
+	.year-select {
+		@include pa-control;
+		border-radius: 999px;
+		cursor: pointer;
+		padding: 0.4rem 0.85rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.pa-map-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		border: 1px solid color-mix(in srgb, var(--pa-accent) 55%, transparent);
+		border-radius: 999px;
+		color: var(--pa-accent);
+		padding: 0.4rem 0.85rem;
+		font-size: 0.82rem;
+		font-weight: 650;
+		white-space: nowrap;
+	}
+
 	h3 {
 		font-size: 1rem;
 		font-weight: 650;
 	}
 
-	&__header p,
 	.card-header p {
 		margin: 0.25rem 0 0;
-		color: var(--text-color-secondary);
+		color: var(--pa-label);
 		font-size: 0.82rem;
 	}
 
-	&__summary {
+	// ── Tinted icon circles (KPI cards + ride-condition rows) ────────────────
+	.pa-icon-circle {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-		gap: 0.75rem;
+		flex: 0 0 auto;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 50%;
+		font-size: 1.15rem;
+	}
+
+	.pa-tint--blue {
+		background: var(--pa-tint-blue-bg);
+		color: var(--pa-tint-blue-fg);
+	}
+
+	.pa-tint--green {
+		background: var(--pa-tint-green-bg);
+		color: var(--pa-tint-green-fg);
+	}
+
+	.pa-tint--purple {
+		background: var(--pa-tint-purple-bg);
+		color: var(--pa-tint-purple-fg);
+	}
+
+	.pa-tint--orange {
+		background: var(--pa-tint-orange-bg);
+		color: var(--pa-tint-orange-fg);
+	}
+
+	// ── KPI row ──────────────────────────────────────────────────────────────
+	&__summary-cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+		gap: 0.85rem;
 
 		.p-card-content {
+			padding: 0.9rem 1rem;
+		}
+
+		.pa-kpi {
+			display: flex;
+			align-items: center;
+			gap: 0.7rem;
+			min-width: 0;
+			text-align: left;
+		}
+
+		.pa-kpi__text {
 			display: flex;
 			flex-direction: column;
-			gap: 0.35rem;
-			padding: 1rem;
+			gap: 0.2rem;
+			min-width: 0;
 		}
 
-		span {
-			color: var(--text-color-secondary);
-			font-size: 0.82rem;
+		.pa-kpi__label {
+			color: var(--pa-label);
+			font-size: 0.76rem;
+			font-weight: 550;
+			line-height: 1.25;
 		}
 
-		strong {
+		.pa-kpi__value {
+			color: var(--pa-heading);
 			font-size: 1.45rem;
 			line-height: 1;
 		}
+
+		// PrimeNG v21 puts the .p-card class on the <p-card> host element itself,
+		// so the filterable/selected modifiers must be chained, not descendants.
+		.summary-card--filterable.p-card {
+			transition:
+				border-color 0.14s ease,
+				box-shadow 0.14s ease,
+				transform 0.14s ease;
+
+			// Collapse the card's own padding so the button covers the whole box;
+			// the button re-adds it to keep the content aligned with the
+			// non-clickable cards.
+			.p-card-body,
+			.p-card-content {
+				padding: 0;
+				height: 100%;
+				border-radius: inherit;
+			}
+
+			&:hover {
+				border-color: color-mix(in srgb, var(--pa-accent) 45%, transparent);
+			}
+		}
+
+		.summary-card--selected.p-card {
+			transform: translateY(-2px);
+			border-color: var(--pa-accent);
+			box-shadow:
+				0 0 0 2px color-mix(in srgb, var(--pa-accent) 16%, transparent),
+				0 0.45rem 1rem color-mix(in srgb, var(--pa-accent) 18%, transparent);
+
+			&:hover {
+				border-color: var(--pa-accent);
+			}
+		}
+
+		.summary-card-button {
+			display: block;
+			width: 100%;
+			height: 100%;
+			min-height: 4.4rem;
+			border: 0;
+			border-radius: inherit;
+			background: transparent;
+			color: inherit;
+			cursor: pointer;
+			padding: 0.9rem 1rem;
+			text-align: left;
+			font: inherit;
+
+			&:hover {
+				background: var(--surface-hover);
+			}
+
+			&:focus-visible {
+				outline: 2px solid var(--pa-accent);
+				outline-offset: -2px;
+			}
+
+			&--selected {
+				background: color-mix(in srgb, var(--pa-accent) 10%, transparent);
+			}
+		}
 	}
 
+	// ── Main grid ────────────────────────────────────────────────────────────
 	&__main-grid {
 		display: grid;
-		grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.65fr);
+		grid-template-columns: 230px minmax(0, 1fr) 380px;
+		grid-template-areas: 'sidebar map inspector';
 		gap: 1rem;
+		align-items: start;
 	}
 
+	.pa-sidebar {
+		grid-area: sidebar;
+	}
+
+	&__map-card {
+		grid-area: map;
+	}
+
+	&__inspector {
+		grid-area: inspector;
+		min-width: 0;
+	}
+
+	// ── Left sidebar ─────────────────────────────────────────────────────────
+	.pa-sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		min-width: 0;
+
+		&__clear {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.4rem;
+			align-self: flex-start;
+			border: 0;
+			background: transparent;
+			color: var(--pa-accent);
+			cursor: pointer;
+			padding: 0.15rem 0.15rem;
+			font: inherit;
+			font-size: 0.82rem;
+			font-weight: 650;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+
+		&__card .p-card-body {
+			padding: 0.9rem;
+		}
+
+		&__title {
+			margin: 0 0 0.65rem;
+			color: var(--pa-heading);
+			font-size: 0.85rem;
+			font-weight: 700;
+		}
+
+		&__fields {
+			display: flex;
+			flex-direction: column;
+			gap: 0.7rem;
+		}
+
+		.pa-field {
+			display: flex;
+			flex-direction: column;
+			gap: 0.3rem;
+			color: var(--pa-label);
+			font-size: 0.76rem;
+			font-weight: 550;
+
+			select,
+			input {
+				@include pa-control;
+				width: 100%;
+				cursor: pointer;
+				padding: 0.45rem 0.6rem;
+			}
+
+			input[type='number'] {
+				cursor: text;
+			}
+		}
+
+		&__layers {
+			display: flex;
+			flex-direction: column;
+			gap: 0.55rem;
+		}
+
+		.pa-layer-toggle {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			color: var(--pa-heading);
+			cursor: pointer;
+			font-size: 0.82rem;
+		}
+
+		&__reset {
+			@include pa-control;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.45rem;
+			cursor: pointer;
+			padding: 0.5rem 0.75rem;
+			font-weight: 650;
+
+			&:hover {
+				border-color: var(--pa-accent);
+				color: var(--pa-accent);
+			}
+		}
+	}
+
+	// ── Map card ─────────────────────────────────────────────────────────────
 	&__map-card {
 		min-height: 34rem;
 
 		.t-map-component,
 		.leaflet-map,
 		.maplibregl-map {
-			height: 31rem;
-			min-height: 31rem;
+			height: 33rem;
+			min-height: 33rem;
 		}
 	}
 
-	select {
-		min-width: 12rem;
-		border: 1px solid var(--surface-border);
-		border-radius: 6px;
-		background: #fff;
-		color: var(--text-color);
-		padding: 0.45rem 0.6rem;
+	.pa-map-frame {
+		position: relative;
+		overflow: hidden;
+		border-radius: 0 0 var(--pa-radius-card) var(--pa-radius-card);
 	}
 
-	.event-legend,
-	.panel-toggle {
+	// compact interactive legend floating bottom-center on the map
+	.pa-map-legend {
+		position: absolute;
+		z-index: 5;
+		bottom: 0.9rem;
+		left: 50%;
+		transform: translateX(-50%);
+		max-width: calc(100% - 2rem);
+		border: 1px solid var(--pa-card-border);
+		border-radius: 999px;
+		background: var(--pa-card-bg);
+		box-shadow: var(--pa-shadow-card);
+		padding: 0.4rem 0.9rem;
+	}
+
+	// Map/Satellite switch rendered as a native maplibre control
+	.pa-map-style-control {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
+
+		button {
+			width: auto;
+			height: 29px;
+			padding: 0 0.65rem;
+			color: var(--pa-label);
+			font-size: 0.75rem;
+			font-weight: 650;
+
+			&.pa-map-style-control__button--active {
+				background: var(--pa-page-bg);
+				color: var(--pa-heading);
+			}
+		}
+	}
+
+	// search bar on the map: capped so it leaves room for the nav/fullscreen
+	// controls stacked in the top-right corner
+	.maplibregl-ctrl-geocoder {
+		width: min(22rem, 60%);
+
+		form {
+			width: 100% !important;
+			max-width: none !important;
+		}
 	}
 
 	.event-legend {
+		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		color: var(--text-color-secondary);
-		font-size: 0.82rem;
+		gap: 0.5rem;
+		color: var(--pa-label);
+		font-size: 0.78rem;
 
 		span {
 			display: inline-flex;
@@ -109,63 +443,86 @@
 		&__endpoint {
 			white-space: nowrap;
 		}
-	}
 
-	.legend {
-		display: inline-block;
-		width: 1rem;
-		height: 0.45rem;
-		border-radius: 999px;
+		&__clear {
+			@include pa-control;
+			border-radius: 6px;
+			color: var(--pa-label);
+			cursor: pointer;
+			padding: 0.2rem 0.45rem;
+			font-size: 0.72rem;
+			font-weight: 650;
+			line-height: 1.2;
 
-		&--avoidance-strong {
-			background: #991b1b;
-		}
-
-		&--avoidance {
-			background: #dc2626;
-		}
-
-		&--baseline {
-			background: #6b7280;
-		}
-
-		&--preference {
-			background: #16a34a;
-		}
-
-		&--preference-strong {
-			background: #166534;
+			&:hover {
+				border-color: var(--pa-accent);
+				color: var(--pa-accent);
+			}
 		}
 	}
 
 	.risk-legend {
 		display: inline-grid;
-		grid-template-columns: repeat(5, 1fr);
-		width: min(14rem, 34vw);
-		min-width: 8.5rem;
-		height: 0.65rem;
-		overflow: hidden;
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+		align-items: stretch;
+		width: min(14rem, 32vw);
+		min-width: 8rem;
+		height: 0.95rem;
 		border-radius: 999px;
-		border: 1px solid var(--surface-border);
+		border: 1px solid var(--pa-card-border);
+		padding: 2px;
 
 		&__segment {
 			display: block;
 			min-width: 0;
+			border: 0;
+			cursor: pointer;
+			padding: 0;
+			position: relative;
+
+			&:first-child {
+				border-radius: 999px 0 0 999px;
+			}
+
+			&:last-child {
+				border-radius: 0 999px 999px 0;
+			}
+
+			&:focus-visible {
+				z-index: 2;
+				outline: 2px solid var(--pa-accent);
+				outline-offset: 2px;
+			}
+
+			&--selected {
+				z-index: 1;
+				box-shadow:
+					inset 0 0 0 2px #fff,
+					0 0 0 2px #111827;
+			}
 
 			&--preference-strong {
 				background: #166534;
 			}
 
 			&--preference {
+				background: #16a34a;
+			}
+
+			&--preference-light {
 				background: #86efac;
 			}
 
 			&--baseline {
-				background: #9ca3af;
+				background: #6b7280;
+			}
+
+			&--avoidance-light {
+				background: #fca5a5;
 			}
 
 			&--avoidance {
-				background: #fca5a5;
+				background: #dc2626;
 			}
 
 			&--avoidance-strong {
@@ -174,31 +531,40 @@
 		}
 	}
 
+	// ── Segment inspector ────────────────────────────────────────────────────
 	.segment-inspector-card .p-card-content {
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
 	}
 
+	// pill tabs
 	.panel-toggle {
-		justify-content: flex-end;
-		gap: 0.25rem;
+		display: inline-flex;
+		flex-wrap: nowrap;
+		align-self: flex-start;
+		border: 1px solid var(--pa-card-border);
+		border-radius: 999px;
+		background: var(--pa-page-bg);
+		padding: 2px;
 
 		button {
-			border: 1px solid var(--surface-border);
-			border-radius: 6px;
-			background: var(--surface-card);
-			color: var(--text-color-secondary);
+			border: 0;
+			border-radius: 999px;
+			background: transparent;
+			color: var(--pa-label);
 			cursor: pointer;
-			padding: 0.35rem 0.55rem;
+			padding: 0.3rem 0.75rem;
 			font: inherit;
 			font-size: 0.78rem;
+			font-weight: 650;
+			line-height: 1.2;
 		}
 
 		&__button--active {
-			border-color: var(--primary-color);
-			background: var(--primary-color);
-			color: var(--primary-color-text);
+			background: var(--pa-card-bg);
+			color: var(--pa-heading);
+			box-shadow: 0 1px 3px rgb(15 23 42 / 0.16);
 		}
 	}
 
@@ -210,18 +576,17 @@
 	}
 
 	.context-strip div,
-	.detail-grid__item,
-	.signal-list__item {
-		border: 1px solid var(--surface-border);
-		border-left: 3px solid var(--surface-border);
-		border-radius: 6px;
+	.detail-grid__item {
+		border: 1px solid var(--pa-card-border);
+		border-left: 3px solid var(--pa-card-border);
+		border-radius: var(--pa-radius-control);
 		padding: 0.65rem 0.75rem;
 		min-width: 0;
 
 		span,
 		small {
 			display: block;
-			color: var(--text-color-secondary);
+			color: var(--pa-label);
 			font-size: 0.74rem;
 		}
 
@@ -229,59 +594,9 @@
 			display: block;
 			overflow: hidden;
 			margin: 0.2rem 0;
+			color: var(--pa-heading);
 			text-overflow: ellipsis;
 			white-space: nowrap;
-		}
-	}
-
-	.signal-list__item--high {
-		border-left-color: #dc2626;
-	}
-
-	.signal-list {
-		display: grid;
-		gap: 0.55rem;
-
-		&__item--medium {
-			border-left-color: #dc2626;
-		}
-
-		&__item--low {
-			border-left-color: #16a34a;
-		}
-	}
-
-	// ── Segments list table ──────────────────────────────────────────────────
-	.segments-list-table {
-		td {
-			vertical-align: middle;
-			cursor: pointer;
-
-			strong,
-			span {
-				display: block;
-			}
-
-			span {
-				color: var(--text-color-secondary);
-				font-size: 0.78rem;
-			}
-		}
-	}
-
-	.segment-row {
-		transition: background 0.12s ease;
-
-		&:hover {
-			background: var(--surface-hover) !important;
-		}
-
-		&--selected {
-			background: color-mix(in srgb, var(--primary-color) 10%, transparent) !important;
-
-			td {
-				font-weight: 600;
-			}
 		}
 	}
 
@@ -292,8 +607,14 @@
 		gap: 0.75rem;
 
 		span {
-			color: var(--text-color-secondary);
+			color: var(--pa-label);
 			font-size: 0.78rem;
+		}
+
+		select {
+			@include pa-control;
+			cursor: pointer;
+			padding: 0.4rem 0.6rem;
 		}
 	}
 
@@ -301,16 +622,28 @@
 		display: grid;
 		gap: 0.65rem;
 		max-height: 42rem;
-		overflow: auto;
+		overflow-x: hidden;
+		overflow-y: auto;
 		padding-right: 0.15rem;
+
+		> * {
+			min-width: 0;
+		}
 	}
 
 	.event-card {
-		border: 1px solid var(--surface-border);
-		border-left: 4px solid var(--surface-border);
-		border-radius: 8px;
-		background: var(--surface-card);
+		border: 1px solid var(--pa-card-border);
+		border-left: 4px solid var(--pa-card-border);
+		border-radius: var(--pa-radius-control);
+		background: var(--pa-card-bg);
 		padding: 0.65rem;
+		// the whole card toggles expansion (see onEventCardContainerClick); the
+		// expanded detail block opts back out below
+		cursor: pointer;
+
+		.event-detail {
+			cursor: auto;
+		}
 
 		&--avoidance {
 			border-left-color: #dc2626;
@@ -323,7 +656,7 @@
 		}
 
 		&--expanded {
-			box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 22%, transparent);
+			box-shadow: 0 0 0 1px color-mix(in srgb, var(--pa-accent) 22%, transparent);
 		}
 	}
 
@@ -350,11 +683,12 @@
 	}
 
 	.event-card__time {
+		color: var(--pa-heading);
 		font-weight: 650;
 	}
 
 	.event-card__direction {
-		color: var(--text-color-secondary);
+		color: var(--pa-label);
 		font-size: 0.78rem;
 	}
 
@@ -420,7 +754,13 @@
 		gap: 0.75rem;
 		margin-top: 0.75rem;
 		padding-top: 0.75rem;
-		border-top: 1px solid var(--surface-border);
+		border-top: 1px solid var(--pa-card-border);
+
+		// grid items default to min-width auto, which would let a wide condition
+		// row blow up the event card instead of ellipsizing its subtitle
+		> * {
+			min-width: 0;
+		}
 	}
 
 	.event-detail__group {
@@ -428,7 +768,7 @@
 			margin: 0 0 0.35rem;
 			font-size: 0.78rem;
 			font-weight: 700;
-			color: var(--text-color);
+			color: var(--pa-heading);
 		}
 
 		dl {
@@ -446,7 +786,7 @@
 			display: flex;
 			align-items: center;
 			gap: 0.3rem;
-			color: var(--text-color-secondary);
+			color: var(--pa-label);
 			font-size: 0.7rem;
 		}
 
@@ -455,6 +795,124 @@
 			margin: 0.1rem 0 0;
 			font-size: 0.82rem;
 			font-weight: 600;
+		}
+	}
+
+	// ── Ride conditions card inside an event card ────────────────────────────
+	.pa-conditions {
+		border: 1px solid var(--pa-card-border);
+		border-radius: var(--pa-radius-control);
+		background: var(--pa-card-bg);
+		padding: 0.65rem 0.75rem;
+
+		h4 {
+			margin: 0 0 0.35rem;
+			color: var(--pa-heading);
+			font-size: 0.78rem;
+			font-weight: 700;
+		}
+
+		&__row {
+			&:not(:last-child) {
+				border-bottom: 1px solid var(--pa-card-border);
+			}
+		}
+
+		&__toggle {
+			display: flex;
+			align-items: center;
+			width: 100%;
+			gap: 0.6rem;
+			border: 0;
+			background: transparent;
+			color: inherit;
+			cursor: pointer;
+			padding: 0.55rem 0;
+			text-align: left;
+			font: inherit;
+		}
+
+		&__text {
+			display: flex;
+			flex-direction: column;
+			flex: 1 1 auto;
+			gap: 0.1rem;
+			min-width: 0;
+
+			strong {
+				color: var(--pa-heading);
+				font-size: 0.82rem;
+			}
+
+			small {
+				overflow: hidden;
+				color: var(--pa-label);
+				font-size: 0.74rem;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+		}
+
+		&__compact {
+			flex: 0 1 auto;
+			overflow: hidden;
+			max-width: 9rem;
+			color: var(--pa-label);
+			font-size: 0.74rem;
+			font-weight: 600;
+			text-align: right;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		&__chevron {
+			flex: 0 0 auto;
+			color: var(--pa-label);
+			font-size: 0.85rem;
+		}
+
+		&__details {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0.45rem 0.65rem;
+			margin: 0;
+			padding: 0.15rem 0 0.6rem;
+
+			div {
+				min-width: 0;
+			}
+
+			dt {
+				color: var(--pa-label);
+				font-size: 0.7rem;
+			}
+
+			dd {
+				overflow-wrap: anywhere;
+				margin: 0.1rem 0 0;
+				font-size: 0.82rem;
+				font-weight: 600;
+			}
+		}
+	}
+
+	.pa-tech-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		justify-self: center;
+		border: 0;
+		background: transparent;
+		color: var(--pa-accent);
+		cursor: pointer;
+		padding: 0.1rem 0.3rem;
+		font: inherit;
+		font-size: 0.78rem;
+		font-weight: 650;
+
+		&:hover {
+			text-decoration: underline;
 		}
 	}
 
@@ -480,7 +938,7 @@
 		padding: 0;
 
 		&--active {
-			background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+			background: color-mix(in srgb, var(--pa-accent) 10%, transparent);
 		}
 	}
 
@@ -490,14 +948,14 @@
 		left: 0;
 		bottom: calc(100% + 0.45rem);
 		width: min(14rem, 70vw);
-		border: 1px solid var(--surface-border);
+		border: 1px solid var(--pa-card-border);
 		border-radius: 6px;
 		background: #fff;
 		box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 18%, transparent);
 		padding: 0.45rem 0.55rem;
 
 		a {
-			color: var(--primary-color);
+			color: var(--pa-accent);
 			font-size: 0.72rem;
 			font-weight: 600;
 			line-height: 1.25;
@@ -507,13 +965,130 @@
 
 	.empty-state {
 		margin: 0;
-		color: var(--text-color-secondary);
+		color: var(--pa-label);
 		font-size: 0.85rem;
+	}
+
+	.inspector-empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		min-height: 18rem;
+		border: 1px dashed var(--pa-card-border);
+		border-radius: var(--pa-radius-control);
+		text-align: center;
+
+		p {
+			margin: 0;
+			color: var(--pa-heading);
+			font-size: 0.95rem;
+			font-weight: 600;
+		}
+
+		small {
+			color: var(--pa-label);
+			font-size: 0.82rem;
+		}
+	}
+
+	// ── Segments list table ──────────────────────────────────────────────────
+	.segments-list-table {
+		th {
+			color: var(--pa-label);
+			font-size: 0.72rem;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			text-transform: uppercase;
+		}
+
+		td {
+			vertical-align: middle;
+			cursor: pointer;
+
+			strong,
+			span {
+				display: block;
+			}
+
+			strong {
+				color: var(--pa-heading);
+			}
+
+			span {
+				color: var(--pa-label);
+				font-size: 0.78rem;
+			}
+		}
+	}
+
+	.segment-row {
+		transition: background 0.12s ease;
+
+		&:hover {
+			background: var(--surface-hover) !important;
+		}
+
+		&--selected,
+		&--selected:hover {
+			background: color-mix(in srgb, var(--pa-accent) 18%, var(--pa-card-bg)) !important;
+		}
+
+		&--selected td {
+			font-weight: 600;
+		}
+
+		&--selected td:first-child {
+			box-shadow: inset 4px 0 0 0 var(--pa-accent);
+		}
 	}
 }
 
 @media (max-width: 1100px) {
-	.preference-avoidance__main-grid {
+	.t-preference-avoidance-page .preference-avoidance__main-grid {
 		grid-template-columns: 1fr;
+		grid-template-areas: 'map' 'sidebar' 'inspector';
+	}
+}
+
+.detector-popup {
+	display: grid;
+	gap: 0.5rem;
+	padding: 0.25rem 0.25rem 0.1rem;
+	font-size: 0.82rem;
+
+	h4 {
+		margin: 0;
+		font-size: 0.92rem;
+	}
+
+	p {
+		margin: 0;
+		color: var(--text-color-secondary);
+	}
+
+	dl {
+		display: grid;
+		gap: 0.3rem;
+		margin: 0;
+
+		div {
+			display: flex;
+			justify-content: space-between;
+			gap: 1rem;
+		}
+
+		dt {
+			color: var(--text-color-secondary);
+			white-space: nowrap;
+		}
+
+		dd {
+			margin: 0;
+			font-weight: 650;
+			text-align: right;
+			overflow-wrap: anywhere;
+		}
 	}
 }

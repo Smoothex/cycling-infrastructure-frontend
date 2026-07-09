@@ -15,7 +15,7 @@ const PRODUCTION_ROUTES: Route[] = [
 	},
 	{
 		path: 'preference-and-avoidance',
-		loadChildren: () => import('@simra/thesis-shell').then((m) => m.THESIS_SHELL_ROUTES),
+		loadChildren: () => import('@simra/preference-avoidance-shell').then((m) => m.PREFERENCE_AVOIDANCE_SHELL_ROUTES),
 	},
 	{
 		path: 'streets',

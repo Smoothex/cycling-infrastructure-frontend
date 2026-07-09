@@ -1,1 +1,1 @@
-export * from './thesis-analysis.facade';
+export * from './preference-avoidance-analysis.facade';

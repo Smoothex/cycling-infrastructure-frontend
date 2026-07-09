@@ -28,6 +28,7 @@ export interface SegmentSummary {
 	incidentCount: number;
 	incidentBreakdown: IncidentBreakdown[];
 	externalFactors: ExternalFactor[];
+	geometry?: LineString;
 }
 
 export interface IncidentBreakdown {
@@ -43,9 +44,72 @@ export interface ExternalFactor {
 	metadata?: Record<string, unknown>;
 }
 
+export interface TileStatus {
+	state: 'IDLE' | 'RUNNING' | 'FAILED';
+	generatedAt?: number;
+	lastError?: string;
+}
+
+/**
+ * Feature properties baked into the 'segments' layer of the PMTiles tileset.
+ * The 'streets' overview layer carries the same properties minus id,
+ * avoidanceRatio, preferenceRatio and gradientPercent.
+ * Additionally each feature carries dynamic per-year properties
+ * (`eventCount_<year>`, `bucket_<year>`) for every year it has events in.
+ */
+export interface SegmentTileProperties {
+	id: number;
+	streetName?: string;
+	usageCount: number;
+	avoidanceCount: number;
+	preferenceCount: number;
+	avoidanceRatio?: number;
+	preferenceRatio?: number;
+	totalObservationCount: number;
+	gradientPercent?: number;
+	eventCount: number;
+	balance: number;
+	bucket: string;
+	trafficEnrichedEventCount: number;
+	weatherEnrichedEventCount: number;
+	ohsomeEnrichedEventCount: number;
+	trafficMeasuredEventCount: number;
+}
+
+export interface SegmentListParams {
+	minAvoidanceRatio?: number;
+	minSampleSize?: number;
+	limit?: number;
+	/** epoch millis; with from/to only segments with an event in the window are returned */
+	from?: number;
+	to?: number;
+	enrichmentFilters?: SegmentEnrichmentFilter[];
+}
+
+export interface SegmentEventsParams {
+	eventType?: SegmentEventType;
+	from?: number;
+	to?: number;
+	limit?: number;
+	enrichmentFilters?: SegmentEnrichmentFilter[];
+}
+
+export interface SegmentsGeoJsonParams {
+	minAvoidanceRatio?: number;
+	minPreferenceRatio?: number;
+	minSampleSize?: number;
+	/** "minLon,minLat,maxLon,maxLat" */
+	bbox?: string;
+	limit?: number;
+	from?: number;
+	to?: number;
+	enrichmentFilters?: SegmentEnrichmentFilter[];
+}
+
+/** Feature properties emitted by GET /api/segments/geojson. */
 export interface SegmentGeoJsonProperties {
 	id: number;
-	streetName: string;
+	streetName?: string;
 	usageCount: number;
 	avoidanceCount: number;
 	avoidanceRatio?: number;
@@ -56,28 +120,13 @@ export interface SegmentGeoJsonProperties {
 	traffic?: SegmentTrafficStats;
 }
 
-export type SegmentGeoJson = FeatureCollection<LineString, SegmentGeoJsonProperties>;
+export type SegmentsGeoJson = FeatureCollection<LineString, SegmentGeoJsonProperties>;
 
-export interface SegmentGeoJsonParams {
-	minAvoidanceRatio?: number;
-	minPreferenceRatio?: number;
-	minSampleSize?: number;
-	bbox?: string;
-	limit?: number;
-}
-
-export interface SegmentListParams {
-	minAvoidanceRatio?: number;
-	minSampleSize?: number;
-	limit?: number;
-}
-
-export interface SegmentEventsParams {
-	eventType?: SegmentEventType;
-	from?: number;
-	to?: number;
-	limit?: number;
-}
+export type SegmentEnrichmentFilter =
+	| 'TRAFFIC_ENRICHED'
+	| 'WEATHER_ENRICHED'
+	| 'OHSOME_ENRICHED'
+	| 'TRAFFIC_MEASURED';
 
 export interface SegmentEvent {
 	id: string;

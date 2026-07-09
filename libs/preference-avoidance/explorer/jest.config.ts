@@ -1,8 +1,8 @@
 export default {
-	displayName: 'thesis-explorer',
+	displayName: 'preference-avoidance-explorer',
 	preset: '../../../jest.preset.js',
 	setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
-	coverageDirectory: '../../../coverage/libs/thesis/explorer',
+	coverageDirectory: '../../../coverage/libs/preference-avoidance/explorer',
 	transform: {
 		'^.+\\.(ts|mjs|js|html)$': [
 			'jest-preset-angular',
