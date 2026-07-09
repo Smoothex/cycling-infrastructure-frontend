@@ -20,19 +20,17 @@ describe('SegmentsRequestService', () => {
 		service = TestBed.inject(SegmentsRequestService);
 	});
 
-	it('should call the geojson endpoint with params', () => {
-		service.getSegmentsGeoJson({ limit: 1000, minAvoidanceRatio: 0 });
+	it('should call the tile status endpoint', () => {
+		service.getTileStatus();
 
-		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments/geojson', {
-			params: { limit: 1000, minAvoidanceRatio: 0 },
-		});
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/tiles/status');
 	});
 
 	it('should call the segments endpoint with params', () => {
-		service.getSegments({ limit: 50, minSampleSize: 1 });
+		service.getSegments({ limit: 50, minSampleSize: 1, enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'] });
 
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments', {
-			params: { limit: 50, minSampleSize: 1 },
+			params: { limit: 50, minSampleSize: 1, enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'] },
 		});
 	});
 
@@ -43,7 +41,7 @@ describe('SegmentsRequestService', () => {
 	});
 
 	it('should call the segment events endpoint with params', () => {
-		service.getSegmentEvents(42, { limit: 100, eventType: 'AVOIDANCE' });
+		service.getSegmentEvents(42, { limit: 100, eventType: 'AVOIDANCE', enrichmentFilters: [] });
 
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments/42/events', {
 			params: { limit: 100, eventType: 'AVOIDANCE' },

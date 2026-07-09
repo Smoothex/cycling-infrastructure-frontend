@@ -3,16 +3,18 @@ import {
 	AnalyticsDistributionParams,
 	AnalyticsTimeSeriesParams,
 	SegmentEventsParams,
-	SegmentGeoJsonParams,
 	SegmentListParams,
-} from '@simra/thesis-common';
+	SegmentsGeoJsonParams,
+} from '@simra/preference-avoidance-common';
 import { AnalyticsRequestService } from '../infrastructure/analytics-request.service';
 import { SegmentsRequestService } from '../infrastructure/segments-request.service';
+import { TrafficRequestService } from '../infrastructure/traffic-request.service';
 
 @Injectable({ providedIn: 'root' })
-export class ThesisAnalysisFacade {
+export class PreferenceAvoidanceAnalysisFacade {
 	private readonly _analyticsRequestService = inject(AnalyticsRequestService);
 	private readonly _segmentsRequestService = inject(SegmentsRequestService);
+	private readonly _trafficRequestService = inject(TrafficRequestService);
 
 	public getSummary() {
 		return this._analyticsRequestService.getSummary();
@@ -26,12 +28,16 @@ export class ThesisAnalysisFacade {
 		return this._analyticsRequestService.getTimeSeries(params);
 	}
 
-	public getSegmentsGeoJson(params: SegmentGeoJsonParams) {
-		return this._segmentsRequestService.getSegmentsGeoJson(params);
+	public getTileStatus() {
+		return this._segmentsRequestService.getTileStatus();
 	}
 
 	public getSegments(params: SegmentListParams) {
 		return this._segmentsRequestService.getSegments(params);
+	}
+
+	public getSegmentsGeoJson(params: SegmentsGeoJsonParams) {
+		return this._segmentsRequestService.getSegmentsGeoJson(params);
 	}
 
 	public getSegment(segmentId: number) {
@@ -40,5 +46,9 @@ export class ThesisAnalysisFacade {
 
 	public getSegmentEvents(segmentId: number, params: SegmentEventsParams) {
 		return this._segmentsRequestService.getSegmentEvents(segmentId, params);
+	}
+
+	public getTrafficDetectors() {
+		return this._trafficRequestService.getTrafficDetectors();
 	}
 }

@@ -6,7 +6,7 @@ import {
 	DimensionBucket,
 	ProcessingSummary,
 	TimeSeriesBucket,
-} from '@simra/thesis-common';
+} from '@simra/preference-avoidance-common';
 import { omitBy, isNil } from 'lodash';
 import { Observable } from 'rxjs';
 

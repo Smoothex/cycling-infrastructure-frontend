@@ -1,8 +1,8 @@
 export default {
-	displayName: 'thesis-shell',
+	displayName: 'preference-avoidance-shell',
 	preset: '../../../jest.preset.js',
 	setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
-	coverageDirectory: '../../../coverage/libs/thesis/shell',
+	coverageDirectory: '../../../coverage/libs/preference-avoidance/shell',
 	transform: {
 		'^.+\\.(ts|mjs|js|html)$': [
 			'jest-preset-angular',
