@@ -144,6 +144,14 @@
 						/>
 						Traffic sensors
 					</label>
+					<label class="pa-layer-toggle">
+						<p-checkbox
+							[binary]="true"
+							[ngModel]="showNearMissIncidents()"
+							(ngModelChange)="onNearMissIncidentsToggle()"
+						/>
+						Near-miss incidents
+					</label>
 				</div>
 			</p-card>
 

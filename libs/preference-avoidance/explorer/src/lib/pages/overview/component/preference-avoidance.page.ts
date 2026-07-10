@@ -18,6 +18,7 @@ import {
 	SegmentEventType,
 	SegmentsGeoJson,
 	SegmentSummary,
+	NearMissIncident,
 	SegmentTileProperties,
 	TileStatus,
 	TrafficDetector,
@@ -50,6 +51,22 @@ const trafficDetectorRadiusFillLayer = 'preference-avoidance-traffic-detector-ra
 const trafficDetectorRadiusLineLayer = 'preference-avoidance-traffic-detector-radius-line-layer';
 const trafficDetectorActiveColor = '#d97706';
 const trafficDetectorInactiveColor = '#9ca3af';
+const nearMissIncidentsSource = 'preference-avoidance-near-miss-incidents-source';
+const nearMissIncidentsLayer = 'preference-avoidance-near-miss-incidents-layer';
+const nearMissIncidentColor = '#dc2626';
+const nearMissIncidentStrokeColor = '#7f1d1d';
+const nearMissIncidentTypeLabels: Record<string, string> = {
+	CLOSE_PASS: 'Close pass',
+	PULLING_IN_OUT: 'Vehicle pulling in/out',
+	NEAR_HOOK: 'Near left/right hook',
+	HEAD_ON: 'Head-on approach',
+	TAILGATING: 'Tailgating',
+	NEAR_DOORING: 'Near dooring',
+	DODGING: 'Dodging an obstacle',
+	OTHER: 'Other',
+	NOTHING: 'Unspecified',
+	DUMMY: 'Unspecified',
+};
 const berlinMapCenter: [number, number] = [13.413, 52.522];
 const berlinMapZoom = 14;
 // below this zoom the tileset only contains the aggregated 'streets' layer
@@ -295,9 +312,12 @@ export class PreferenceAvoidancePage {
 	private _trafficDetectorFeatures: GeoJSON.Feature<Point>[] = [];
 	private _trafficDetectorRadiusFeature?: GeoJSON.Feature<Polygon>;
 	private _trafficDetectorPopup?: maplibregl.Popup;
+	private _nearMissIncidentFeatures: GeoJSON.Feature<Point>[] = [];
+	private _nearMissIncidentPopup?: maplibregl.Popup;
 
 	protected readonly selectedMapBaseStyle = signal<MapBaseStyle>('MAP');
 	protected readonly showTrafficSensors = signal(false);
+	protected readonly showNearMissIncidents = signal(false);
 	protected readonly showSegmentEvents = signal(true);
 	protected readonly selectedDetectorKey = signal<string | undefined>(undefined);
 	protected readonly expandedConditionGroup = signal<string | undefined>(undefined);
@@ -401,6 +421,27 @@ export class PreferenceAvoidancePage {
 			};
 		});
 	});
+
+	protected readonly nearMissIncidents = resource<NearMissIncident[] | undefined, string | undefined>({
+		params: () => (this.showNearMissIncidents() ? `${this.selectedYear() ?? ''}` : undefined),
+		loader: async ({ params }) =>
+			firstValueFrom(this._facade.getNearMissIncidents(
+				this.yearRange(params ? Number(params) : undefined),
+			)).catch(() => undefined),
+	});
+
+	private readonly nearMissIncidentFeatures = computed<GeoJSON.Feature<Point>[]>(() =>
+		(this.nearMissIncidents.value() ?? []).map((incident) => ({
+			type: 'Feature' as const,
+			geometry: { type: 'Point' as const, coordinates: [incident.lon, incident.lat] },
+			properties: {
+				id: incident.id,
+				timestamp: incident.timestamp ?? 0,
+				incidentType: incident.incidentType ?? '',
+				description: incident.description ?? '',
+				participants: (incident.involvedParticipants ?? []).join(','),
+			},
+		})));
 
 	protected readonly selectedSegmentDetails = resource<SegmentSummary | undefined, number | undefined>({
 		params: () => this.selectedSegmentId(),
@@ -801,6 +842,16 @@ export class PreferenceAvoidancePage {
 			this._trafficDetectorFeatures = this.showTrafficSensors() ? this.trafficDetectorFeatures() : [];
 			if (map) {
 				this.syncTrafficDetectorSource(map);
+			}
+		});
+
+		effect(() => {
+			const map = this._map();
+			this._nearMissIncidentFeatures = this.showNearMissIncidents() ? this.nearMissIncidentFeatures() : [];
+			// dots may disappear under an open popup when the year filter changes
+			this.closeNearMissIncidentPopup();
+			if (map) {
+				this.syncNearMissIncidentSource(map);
 			}
 		});
 
@@ -1294,12 +1345,29 @@ export class PreferenceAvoidancePage {
 				'circle-opacity': 0.95,
 			},
 		});
+		map.addSource(nearMissIncidentsSource, {
+			type: 'geojson',
+			data: { type: 'FeatureCollection', features: [] },
+		});
+		map.addLayer({
+			id: nearMissIncidentsLayer,
+			type: 'circle',
+			source: nearMissIncidentsSource,
+			paint: {
+				'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 5.5],
+				'circle-color': nearMissIncidentColor,
+				'circle-stroke-color': nearMissIncidentStrokeColor,
+				'circle-stroke-width': 1.25,
+				'circle-opacity': 0.9,
+			},
+		});
 
 		this.applyMapFilters(map);
 		this.syncHighlightSource(map);
 		this.syncMatchedSource(map);
 		this.syncTrafficDetectorSource(map);
 		this.syncTrafficDetectorRadiusSource(map);
+		this.syncNearMissIncidentSource(map);
 
 		if (!this._mapHandlersRegistered) {
 			this.registerMapHandlers(map);
@@ -1313,6 +1381,7 @@ export class PreferenceAvoidancePage {
 			preferenceAvoidanceSegmentsLayer,
 			preferenceAvoidanceMatchedLayer,
 			trafficDetectorsLayer,
+			nearMissIncidentsLayer,
 		];
 		for (const layerId of interactiveLayers) {
 			map.on('mouseenter', layerId, () => {
@@ -1363,6 +1432,13 @@ export class PreferenceAvoidancePage {
 			}
 		});
 
+		map.on('click', nearMissIncidentsLayer, (event) => {
+			const feature = event.features?.[0];
+			if (feature) {
+				this.openNearMissIncidentPopup(map, feature);
+			}
+		});
+
 		map.on('click', (event) => {
 			const clickableLayers = interactiveLayers
 				.filter((layerId) => map.getLayer(layerId));
@@ -1375,6 +1451,7 @@ export class PreferenceAvoidancePage {
 				this.selectSegment(undefined);
 				this.clearHighlight(map);
 				this.clearTrafficDetectorSelection(map);
+				this.closeNearMissIncidentPopup();
 			}
 		});
 	}
@@ -1509,6 +1586,14 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
+	protected onNearMissIncidentsToggle(): void {
+		const enabled = !this.showNearMissIncidents();
+		this.showNearMissIncidents.set(enabled);
+		if (!enabled) {
+			this.closeNearMissIncidentPopup();
+		}
+	}
+
 	private selectTrafficDetector(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
 		const properties = feature.properties ?? {};
 		const key = String(properties['key'] ?? '');
@@ -1584,6 +1669,51 @@ export class PreferenceAvoidancePage {
 		this._trafficDetectorPopup = popup;
 	}
 
+	private openNearMissIncidentPopup(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
+		this._nearMissIncidentPopup?.remove();
+
+		const properties = feature.properties ?? {};
+		const [lon, lat] = (feature.geometry as Point).coordinates;
+		const typeKey = String(properties['incidentType'] ?? '');
+		const typeLabel = nearMissIncidentTypeLabels[typeKey] ?? 'Near-miss incident';
+		const timestamp = Number(properties['timestamp'] ?? 0);
+		const participants = String(properties['participants'] ?? '')
+			.split(',')
+			.filter(Boolean)
+			.map((participant) => this.formatValue(participant))
+			.join(', ');
+		const description = String(properties['description'] ?? '');
+		const rows = [
+			['When', timestamp ? this.formatDateTime(timestamp) : ''],
+			['Involved', this.escapeHtml(participants)],
+		].filter(([, value]) => value);
+
+		const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '320px' })
+			.setLngLat([lon, lat])
+			.setHTML(`
+				<div class="detector-popup">
+					<h4>${this.escapeHtml(typeLabel)}</h4>
+					<dl>
+						${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}
+					</dl>
+					${description ? `<p>${this.escapeHtml(description)}</p>` : ''}
+				</div>
+			`)
+			.addTo(map);
+		popup.on('close', () => {
+			if (this._nearMissIncidentPopup === popup) {
+				this._nearMissIncidentPopup = undefined;
+			}
+		});
+		this._nearMissIncidentPopup = popup;
+	}
+
+	private closeNearMissIncidentPopup(): void {
+		const popup = this._nearMissIncidentPopup;
+		this._nearMissIncidentPopup = undefined;
+		popup?.remove();
+	}
+
 	private escapeHtml(value: string): string {
 		const replacements: Record<string, string> = {
 			'&': '&amp;',
@@ -1610,6 +1740,14 @@ export class PreferenceAvoidancePage {
 		}
 		const features = this._trafficDetectorRadiusFeature ? [this._trafficDetectorRadiusFeature] : [];
 		source.setData({ type: 'FeatureCollection', features });
+	}
+
+	private syncNearMissIncidentSource(map: maplibregl.Map): void {
+		const source = map.getSource(nearMissIncidentsSource) as maplibregl.GeoJSONSource | undefined;
+		if (!source) {
+			return;
+		}
+		source.setData({ type: 'FeatureCollection', features: this._nearMissIncidentFeatures });
 	}
 
 	private syncMatchedSource(map: maplibregl.Map): void {
