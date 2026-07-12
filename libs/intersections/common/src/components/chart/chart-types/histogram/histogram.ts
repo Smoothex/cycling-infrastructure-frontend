@@ -24,6 +24,7 @@ export class HistogramChartComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
+    isLargeMode = signal<boolean>(false);
     
     protected bucketSize = signal<number>(10);
     protected offset = signal<number>(5);
@@ -58,7 +59,6 @@ export class HistogramChartComponent<T> {
             options: d.options
         }
     });
-    protected isExporting = signal<boolean>(false); 
 
 
     protected chartData = computed(() => {

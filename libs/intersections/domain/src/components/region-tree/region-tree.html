@@ -1,0 +1,10 @@
+<p-treeSelect
+    class="w-full"
+    [(ngModel)]="selectedRegionNode"
+    (ngModelChange)="onRegionChange()"
+    [options]="regions" 
+    [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate"
+    [filter]="true"
+    filterPlaceholder="Search regions..."
+    size="small">
+</p-treeSelect>

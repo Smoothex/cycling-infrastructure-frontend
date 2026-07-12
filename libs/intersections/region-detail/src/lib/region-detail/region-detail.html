@@ -72,6 +72,7 @@
                         }
                     </table>
                 </div>
+                
                 <div>
                     @if (regionZoom(); as r) {
                         <a pButton
@@ -85,6 +86,7 @@
                         </a>
                     }
                 </div>
+                
             </div>
             <div class="w-2/3">
                 <intersection-map id="intersection-map"
@@ -96,10 +98,12 @@
             </div>
         </div>
 	</p-card>
+
     <intersection-chart-metric header="Region Metric" [config]="REGION_CHART_CONFIG" [fetchFn]="loadRegionMetric" [request]="regionRequest()"  />
-    <intersection-chart [header]="'Rides'" [config]="RIDE_CHART_CONFIG" [fetchFn]="loadRides" [request]="regionRequest()"/>
-    <intersection-chart header="Intersection Metric" [config]="NODE_METRIC_CHART_CONFIG" [fetchFn]="loadNodeMetric" [request]="regionRequest()"/>
-    <intersection-chart header="Edge Metric" [config]="BASE_METRIC_CHART_CONFIG" [fetchFn]="loadEdgeMetric" [request]="regionRequest()"/>
-    <intersection-chart [header]="'Intersections'" [config]="baseConfig" [fetchFn]="loadNodes" [request]="regionRequest()"/>
-    <intersection-chart [header]="'Edges'" [config]="baseConfig" [fetchFn]="loadEdges" [request]="regionRequest()" />
+    <intersection-chart [header]="'Rides'" [config]="RIDE_CHART_CONFIG" [countFn]="loadRidesCount" [fetchFn]="loadRides" [request]="elementRequest()"/>
+
+    <intersection-chart header="Intersection Metric" [config]="NODE_METRIC_CHART_CONFIG" [countFn]="loadNodeMetricCount" [fetchFn]="loadNodeMetric" [request]="elementRequest()"/>
+    <intersection-chart header="Edge Metric" [config]="BASE_METRIC_CHART_CONFIG" [countFn]="loadEdgeMetricCount"  [fetchFn]="loadEdgeMetric" [request]="elementRequest()"/>
+    <intersection-chart [header]="'Intersections'" [config]="baseConfig" [countFn]="loadNodesCount" [fetchFn]="loadNodes" [request]="elementRequest()"/>
+    <intersection-chart [header]="'Edges'" [config]="baseConfig" [countFn]="loadEdgesCount" [fetchFn]="loadEdges" [request]="elementRequest()" />
 </div>

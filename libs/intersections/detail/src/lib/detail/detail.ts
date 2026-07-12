@@ -9,7 +9,7 @@ import { Divider } from 'primeng/divider';
 import { ChartModule } from 'primeng/chart';
 import { TableModule, TableLazyLoadEvent, TableFilterEvent } from 'primeng/table';
 import { FeatureCollection, LineString } from 'geojson';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { IntersectionsEdgeRequestService, IntersectionsNodeRequestService, IntersectionsRideRequestService } from '@simra/intersections-domain';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import { 
 	PageableRequest, 
@@ -27,10 +27,8 @@ import {
 	Node, 
 	Edge, 
 	BASE_CHART_CONFIG, 
-	NodePageableRequestPrecomputed,
-	NodePageableRequestStartEndDate, 
-	EdgePageableRequestPrecomputed,
-	EdgePageableRequestStartEndDate, 
+	NodePageableRequest,
+	EdgePageableRequest,
 	PrecomputedRequest, 
 	StartEndDateRequest, 
 	PagedGeoResponse, 
@@ -47,7 +45,9 @@ import {
 	mapFeaturesToNodeMetricRows, 
 	mapFeaturesToEdgeMetricRows,
 	mapFeaturesToEdgeRows,
-	mapFeaturesToNodeRows
+	mapFeaturesToNodeRows,
+	EdgeRequest,
+	NodeRequest
 } from '@simra/intersections-common';
 import { BaseIntersectionMapComponent } from '@simra/intersections-map';
 import { scrollToElementId } from '@simra/helpers';
@@ -61,7 +61,10 @@ import { scrollToElementId } from '@simra/helpers';
 })
 export class IntersectionsDetailPageComponent {
 	private readonly _router = inject(Router);
-	private readonly _requestService = inject(IntersectionsRequestService);
+	private readonly _edgeRequestService = inject(IntersectionsEdgeRequestService);
+	private readonly _nodeRequestService = inject(IntersectionsNodeRequestService);
+	private readonly _rideRequestService = inject(IntersectionsRideRequestService);
+	
 
 	protected readonly id = input.required<string>();
 	protected readonly base = signal<Base | null>(null);
@@ -78,8 +81,8 @@ export class IntersectionsDetailPageComponent {
 	protected request = computed<PrecomputedRequest | StartEndDateRequest | null>(() => this.precomputedRequest() ?? this.startEndRequest());
 	protected precomputedRequest = signal<PrecomputedRequest | null>(null);
 	protected startEndRequest = signal<StartEndDateRequest | null>(null);
-	protected nodeRequest = signal<NodePageableRequestPrecomputed | NodePageableRequestStartEndDate | null>(null);
-	protected edgeRequest = signal<EdgePageableRequestPrecomputed | EdgePageableRequestStartEndDate | null>(null);
+	protected nodeRequest = signal<NodePageableRequest | null>(null);
+	protected edgeRequest = signal<EdgePageableRequest | null>(null);
 	protected pagedRequest = signal<PageableRequest>({
 		page: 0,
 		size: 10,
@@ -106,7 +109,7 @@ export class IntersectionsDetailPageComponent {
 			const baseId = Number(this.id());
 			if (!baseId) return;
 
-			const data = await this._requestService.getIntersectionBasePropertiesSingular(baseId);
+			const data = await this._rideRequestService.getIntersectionBasePropertiesSingular(baseId);
 			const props = data ? <Base> data.features[0].properties : null;
 			if (!data || !props) {
 				console.error(`There is no segment with id ${baseId}`);
@@ -195,7 +198,7 @@ export class IntersectionsDetailPageComponent {
 			if (!nodeRequest) return;
 			this.tableDataIsLoading.set(true);
 			
-			const geoData = await this._requestService.getIntersectionNodes({
+			const geoData = await this._nodeRequestService.getIntersectionNodes({
 				...nodeRequest,
 				...pagedRequest
 			});
@@ -210,7 +213,7 @@ export class IntersectionsDetailPageComponent {
 			if (!edgeRequest) return;
 			this.tableDataIsLoading.set(true);
 
-			const geoData = await this._requestService.getIntersectionEdges({
+			const geoData = await this._edgeRequestService.getIntersectionEdges({
 				...edgeRequest,
 				...pagedRequest
 			});
@@ -237,7 +240,7 @@ export class IntersectionsDetailPageComponent {
 			const request = this.nodeMetricRequest();
 
 			if (!request) return;
-			const data = await this._requestService.getIntersectionNodeMetricsPageable(request);
+			const data = await this._nodeRequestService.getIntersectionNodeMetricsPageable(request);
 			this.pagedGeoResponseMetric.set(data);
 			if (data.geoData.features.length === 1) {
 				this.metricNode.set(mapFeaturesToNodeMetricRows(data.geoData)[0]);
@@ -261,7 +264,7 @@ export class IntersectionsDetailPageComponent {
 		effect(async () => {
 			const request = this.edgeMetricRequest();
 			if (!request) return;
-			const data = await this._requestService.getIntersectionEdgeMetricsPageable(request);
+			const data = await this._edgeRequestService.getIntersectionEdgeMetricsPageable(request);
 			this.pagedGeoResponseMetric.set(data);
 			if (data.geoData.features.length === 1) {
 				this.metricEdge.set(mapFeaturesToEdgeMetricRows(data.geoData)[0]);
@@ -354,20 +357,29 @@ export class IntersectionsDetailPageComponent {
 	protected readonly BASE_METRIC_CHART_CONFIG = BASE_METRIC_CHART_CONFIG;
 	protected readonly NODE_METRIC_CHART_CONFIG = NODE_METRIC_CHART_CONFIG;
 	protected readonly config = BASE_CHART_CONFIG;
-	protected loadEdges = (req: EdgePageableRequestPrecomputed | EdgePageableRequestStartEndDate, page: number, size: number) => {
-		return this._requestService.getIntersectionEdgeProperties({ ...req, page, size });
-	}
-	protected loadNodes = (req: NodePageableRequestPrecomputed | NodePageableRequestStartEndDate, page: number, size: number) => {
-		return this._requestService.getIntersectionNodeProperties({ ...req, page, size });
-	}
+	
 	protected loadEdgeMetric = async (req: EdgePageableMetricRequest) => {
-		const data = await this._requestService.getIntersectionEdgeMetricsPageableProperties(req);
+		const data = await this._edgeRequestService.getIntersectionEdgeMetricsPageableProperties(req);
 		if (data.metadata.totalElements === 1) return data.properties[0];
 		return null;
 	}
 	protected loadNodeMetric = async (req: NodePageableMetricRequest) => {
-		const data = await this._requestService.getIntersectionNodeMetricsPageableProperties(req);
+		const data = await this._nodeRequestService.getIntersectionNodeMetricsPageableProperties(req);
 		if (data.metadata.totalElements === 1) return data.properties[0];
 		return null;
 	}
+
+	protected loadEdges = (req: EdgeRequest, lastId: number | undefined, pageSize: number) => {
+		return this._edgeRequestService.getIntersectionEdgePropertiesScroll({ ...req, lastId, pageSize });
+	};
+	protected loadEdgesCount = (req: EdgeRequest) => {
+		return this._edgeRequestService.getIntersectionEdgePropertiesCount({ ...req });
+	};
+
+	protected loadNodes = (req: NodeRequest, lastId: number | undefined, pageSize: number) => {
+		return this._nodeRequestService.getIntersectionNodePropertiesScroll({ ...req, lastId, pageSize });
+	};
+	protected loadNodesCount = (req: NodeRequest) => {
+		return this._nodeRequestService.getIntersectionNodePropertiesCount({ ...req });
+	};
 }

@@ -1,4 +1,5 @@
 export { SettingsComponent } from './components/settings/settings';
+export { SettingsDrawerComponent } from './components/settings/settings-drawer';
 export { DateFilterPrecomputedComponent } from './components/date-filter-precomputed/date-filter-precomputed';
 export { DateFilterComponent } from './components/date-filter/date-filter';
 export { IntersectionListContentComponent } from './components/list/list-content/list-content';
@@ -7,6 +8,8 @@ export { IntersectionListHeaderFilterComponent } from './components/list/list-he
 export { ChartWrapperComponent } from './components/chart-wrapper/chart-wrapper';
 export { IntersectionChartComponent } from './components/chart/chart';
 export { IntersectionChartMetricComponent } from './components/chart-metric/chart';
+
+export { RouteParamUtilityService } from './lib/common/query-param';
 
 export * from './lib/common/interfaces';
 export * from './lib/common/config-helper';

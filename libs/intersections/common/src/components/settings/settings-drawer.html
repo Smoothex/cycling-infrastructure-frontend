@@ -1,0 +1,36 @@
+<p-drawer 
+    [(visible)]="visible" 
+    (onShow)="setSettingVisibility(true)"
+    (onHide)="setSettingVisibility(false)"
+    [appendTo]="getOverlayTarget()"
+>
+    <ng-template #header>
+        <div class="flex items-center gap-3 w-full pr-2">
+            <span class="font-bold text-lg flex-1">
+                Settings
+            </span>
+        </div>
+    </ng-template>
+
+    <div class="py-2">
+        <intersection-settings [isSettingsVisible]="isSettingsVisible()" [settings]="settings()" />
+        <ng-content select="[more-content]"></ng-content> 
+    </div>
+
+    <ng-template #footer>
+        <div class="flex items-center justify-end gap-2 w-full p-2">
+            <ng-content select="[footer-actions]"></ng-content>
+            <p-button 
+                [icon]="screenshotMode() ? 'ph ph-camera-slash' : 'ph ph-camera'" 
+                (onClick)="screenshotMode.set(!screenshotMode())" 
+                severity="secondary" 
+                [outlined]="true"
+            />
+            <p-button 
+                [icon]="fullscreenMode() ? 'ph ph-arrows-in' : 'ph ph-arrows-out'" 
+                (onClick)="fullscreenMode.set(!fullscreenMode())" 
+                severity="primary" 
+            />
+        </div>
+    </ng-template>
+</p-drawer>

@@ -40,6 +40,8 @@ export class BoxplotChartComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
+    isLargeMode = signal<boolean>(false);
+
     protected minView = signal<number | null>(null);
     protected maxView = signal<number | null>(null);
     protected groupBy = signal<TimeCategory>("trafficTime");
@@ -66,8 +68,7 @@ export class BoxplotChartComponent<T> {
             data: d.chart,
             options: d.options
         }
-    })
-    protected isExporting = signal<boolean>(false); 
+    });
 
     protected chartData = computed(() => {
         const data = this.data();

@@ -1,4 +1,8 @@
-<div class="relative w-full" [class.screenshot-mode]="screenshotMode()">
+<div class="relative w-full" 
+    [class.screenshot-mode]="screenshotMode()"
+    [class.fullscreen-mode]="fs.fullscreenMode()"
+    appFullscreen #fs="appFullscreen"
+>
     <div class="absolute top-4 left-4 z-10 legend-wrapper">
         <intersection-map-legend [items]="legendItems()"/>
     </div>
@@ -10,6 +14,7 @@
             [(screenshotMode)]="screenshotMode"
             [extendedSettings]="true"
             [(selectedRideId)]="selectedRideId"
+            [(fullscreenMode)]="fs.fullscreenMode"
         />
 
     </div>

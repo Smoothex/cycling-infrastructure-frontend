@@ -14,6 +14,13 @@
     }
 }
 
+.fullscreen-mode {
+    .leaflet-map {
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+}
+
 .screenshot-mode {
     .maplibregl-ctrl-top-right {
         display: none !important;

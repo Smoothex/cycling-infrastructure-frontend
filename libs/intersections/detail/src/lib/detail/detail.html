@@ -168,5 +168,5 @@
         </p-table>
     </p-card>
     <intersection-chart-metric header="Metric" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()" [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG" />
-    <intersection-chart header="Detail" [config]="config" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()" />
+    <intersection-chart header="Detail" [config]="config" [countFn]="isNode() ? loadNodesCount : loadEdgesCount" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()" />
 </div>

@@ -1,13 +1,11 @@
 @if (isSettingsVisible()) {
-    <p-accordion [multiple]="true" [value]="[]">
+    <p-accordion [value]="[]">
         @for (groupSetting of settings(); track groupSetting.group) {
             <p-accordion-panel [value]="groupSetting.group">
             <p-accordion-header>{{ groupSetting.group }}</p-accordion-header>
             <p-accordion-content>
                 <div class="flex flex-col gap-4">
                 @for (setting of groupSetting.items; track setting.label) {
-                    
-                    
                     @switch (setting.props.type) {
                         @case ('boolean') {
                             <div class="flex items-center">
@@ -16,31 +14,33 @@
                             </div>
                         }
                         @case ('number') {
-                            <div class="flex flex-col">
-                                <label class="font-bold text-xs" for="number">{{ setting.label }}</label>
+                            <div class="flex flex-col w-full">
+                                <label class="font-bold text-xs mb-1" for="number">{{ setting.label }}</label>
                                 <p-inputNumber 
                                     [(ngModel)]="setting.props.value"
                                     [showButtons]="true"
-                                
                                     [step]="setting.props.step ?? 1"
                                     size="small"
                                     mode="decimal"
                                     [minFractionDigits]="0" 
                                     [maxFractionDigits]="2"
+                                    class="w-full"
+                                    [fluid]="true"
                                     inputId="number"
                                 />
                             </div>
                         }
                         @case ('select') {
-                            <div class="flex flex-col">
-                                <label class="font-bold text-xs" for="select">{{ setting.label }}</label>
-                                <p-select 
+                            <div class="flex flex-col w-full">
+                                <label class="font-bold text-xs mb-1" for="select">{{ setting.label }}</label>
+                                <p-list-box 
                                     [(ngModel)]="setting.props.value"
                                     [options]="setting.props.options"
                                     optionLabel="label"
                                     optionValue="value"
                                     size="small"
-                                    appendTo="body"
+                                    class="w-full"
+                                    [fluid]="true"
                                     inputId="select"
                                 />
                             </div>

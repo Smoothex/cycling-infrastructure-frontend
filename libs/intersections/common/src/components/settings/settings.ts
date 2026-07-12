@@ -5,14 +5,15 @@ import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
 import { Checkbox } from 'primeng/checkbox';
 import { InputNumber } from 'primeng/inputnumber';
-import { Select } from 'primeng/select';
+import { Listbox } from 'primeng/listbox';
 
 import { SettingGroup } from '../../lib/common/interfaces';
+
 
 @Component({
     selector: 'intersection-settings',
     standalone: true,
-    imports: [FormsModule, AccordionModule, ButtonModule, Checkbox, InputNumber, Select],
+    imports: [FormsModule, AccordionModule, ButtonModule, Checkbox, InputNumber, Listbox],
     templateUrl: './settings.html'
 })
 export class SettingsComponent {

@@ -26,6 +26,8 @@ export class HeatmapChartComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
+    isLargeMode = signal<boolean>(false);
+
 	protected propertyChart = linkedSignal(() => this.config().defaultProperty2);
     protected readonly labelPropertyChart = computed(() => {
 		for (const el of this.config().selectableProperties) {
@@ -47,6 +49,8 @@ export class HeatmapChartComponent<T> {
     protected minViewY = signal<number | null>(null);
     protected maxViewY = signal<number | null>(null);
     protected maxViewCount = signal<number | null>(null);
+
+    protected normalize = signal<boolean>(false);
 
     chartSettings = computed<SettingGroup[]>(() => [
         {
@@ -70,6 +74,7 @@ export class HeatmapChartComponent<T> {
                 { label: 'Minimum Value Y', props: { type: "number", value: this.minViewY }},
                 { label: 'Maximum Value Y', props: { type: "number", value: this.maxViewY }},
                 { label: 'Maximum Count', props: { type: "number", value: this.maxViewCount, min:2 }},
+                { label: 'Normalize', props: { type: "boolean", value: this.normalize }},
             ]
         }
     ]);
@@ -82,7 +87,6 @@ export class HeatmapChartComponent<T> {
             options: d.options
         }
     });
-    protected isExporting = signal<boolean>(false); 
 
     protected chartData = computed(() => {
         return createHeatmapBinning(
@@ -100,7 +104,8 @@ export class HeatmapChartComponent<T> {
             this.maxViewX() ?? undefined,
             this.minViewY() ?? undefined,
             this.maxViewY() ?? undefined,
-            this.maxViewCount() ?? undefined
+            this.maxViewCount() ?? undefined,
+            this.normalize()
 		)
     });
 

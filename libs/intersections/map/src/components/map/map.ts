@@ -7,7 +7,7 @@ import { TableModule } from 'primeng/table';
 import { ProgressSpinner} from 'primeng/progressspinner'
 import { FeatureCollection, LineString, Polygon } from 'geojson';
 import * as maplibregl from 'maplibre-gl';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { IntersectionsRideRequestService, TrafficSignalRequestService } from '@simra/intersections-domain';
 import {
 	addedOnMap,
 	colorToStops,
@@ -45,17 +45,19 @@ import {
 } from '@simra/intersections-common';
 import { MapLegendComponent } from '../map-legend/map-legend';
 import { MapSettingsComponent } from '../map-settings/map-settings';
+import { FullscreenDirective } from '@simra/common-components'
 
 
 @Component({
 	selector: 'intersection-map',
-	imports: [MapPage, TableModule, MapLegendComponent, MapSettingsComponent, ProgressSpinner],
+	imports: [MapPage, TableModule, MapLegendComponent, MapSettingsComponent, ProgressSpinner, FullscreenDirective],
 	templateUrl: './map.html',
 	styleUrl: './map.scss',
 	encapsulation: ViewEncapsulation.None,
 })
 export class BaseIntersectionMapComponent {
-	private readonly _requestService = inject(IntersectionsRequestService);
+	private readonly _rideRequestService = inject(IntersectionsRideRequestService);
+	private readonly _trafficSignalRequestService = inject(TrafficSignalRequestService);
 	private readonly _router = inject(Router);
 	private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
@@ -215,10 +217,10 @@ export class BaseIntersectionMapComponent {
 			if (!map || trafficSignalClusterId === undefined || alreadyLoaded) return;
 
 			if (!isNaN(trafficSignalClusterId)) {
-				const trafficSignalClusters = await this._requestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
+				const trafficSignalClusters = await this._trafficSignalRequestService.getTrafficSignalClustersByTrafficSignalClusterId(trafficSignalClusterId);
 				displayTrafficSignalClusters(map, trafficSignalClusters);
 
-				const trafficSignals = await this._requestService.getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId);
+				const trafficSignals = await this._trafficSignalRequestService.getTrafficSignalsByTrafficSignalClusterId(trafficSignalClusterId);
 				displayTrafficSignals(map, trafficSignals);
 			}
 
@@ -325,10 +327,9 @@ export class BaseIntersectionMapComponent {
 
 	async displayRidePointsAndMatchedPoints(map: maplibregl.Map, intersectionId: number) {
    		this.ridePointsMatchedPointsAdded.forEach(el => deleteDisplay(map, el));
-		const ridePoints = displayRidePoints(
-			map, await this._requestService.getRidePointsIntersectionBase({id: intersectionId}), `ridePoints-${intersectionId}`);
-		const matchedPoints = displayMatchedPoints(
-			map, await this._requestService.getMatchedPointsIntersectionBase({id: intersectionId}), `matchedPoints-${intersectionId}`);
+		const data = await this._rideRequestService.getMatchedPointsAndRidePointsIntersectionBase({id: intersectionId});
+		const ridePoints = displayRidePoints(map, data.ridePoints, `ridePoints-${intersectionId}`);
+		const matchedPoints = displayMatchedPoints(map, data.matchedPoints, `matchedPoints-${intersectionId}`);
 		this.ridePointsMatchedPointsAdded = [ridePoints, matchedPoints];
 	}
 }

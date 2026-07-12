@@ -568,7 +568,7 @@ export function displayTrafficSignalsVectorTiles(map: maplibregl.Map, apiUrlVect
 }
 
 function AGGREGATE_SEGMENT_CONFIG(_router: Router, sourceId: string, startMarker: boolean, 
-    colorProperty: keyof BaseMetric, colorMax: number, widthMax: number, apiUrlVectorTile?: string,
+    colorProperty: keyof BaseMetric, colorMax: number, widthMax: number,
 ): displayOptionsLineString {
     return {
         sourceId: sourceId,
@@ -588,11 +588,7 @@ function AGGREGATE_SEGMENT_CONFIG(_router: Router, sourceId: string, startMarker
             widthMax, 5.0
         ]),
         popupFunc: popUpIntersectionMetrics,
-        minzoom: ZOOM_LEVELS.lines.minzoom,
-        ...(apiUrlVectorTile && { vectorTileOptions: {
-            apiUrl: apiUrlVectorTile,
-            endPoint: "intersections"
-        }})
+        minzoom: ZOOM_LEVELS.lines.minzoom
     }
 }
 export function getAggrageteSegmentDefaults() {
@@ -605,9 +601,9 @@ export function getAggrageteSegmentDefaults() {
         widthMax: widthMax
     }
 }
-export function styleAggregateSegment(map: maplibregl.Map, data: addedOnMap, _router: Router, colorProperty: keyof BaseMetric, colorMax: number, widthMax: number, startMarker: boolean, apiUrlVectorTile?: string) {
+export function styleAggregateSegment(map: maplibregl.Map, data: addedOnMap, _router: Router, colorProperty: keyof BaseMetric, colorMax: number, widthMax: number, startMarker: boolean) {
     deleteLayers(map, data);
-    const options = AGGREGATE_SEGMENT_CONFIG(_router, data.name, startMarker, colorProperty, colorMax, widthMax, apiUrlVectorTile);
+    const options = AGGREGATE_SEGMENT_CONFIG(_router, data.name, startMarker, colorProperty, colorMax, widthMax);
     displayLineString(map, options, data);
 }
 export function displayAggregateSegment (
@@ -622,12 +618,16 @@ export function displayAggregateSegment (
     return data;
 }
 export function displayAggregateSegmentVectorTiles (
-    _router: Router, map: maplibregl.Map, apiUrlVectorTile: string, sourceId: string, request: MetricRequest, 
+    _router: Router, map: maplibregl.Map, apiUrlVectorTile: string, endPoint: string, sourceId: string, request: MetricRequest, 
     startMarker= true
 ): addedOnMap {
     const data = addedOnMapDefault(sourceId);
     const defaults = getAggrageteSegmentDefaults();
-    const options = AGGREGATE_SEGMENT_CONFIG(_router, sourceId, startMarker, defaults.colorProperty, defaults.colorMax, defaults.widthMax, apiUrlVectorTile);
+    const options = AGGREGATE_SEGMENT_CONFIG(_router, sourceId, startMarker, defaults.colorProperty, defaults.colorMax, defaults.widthMax);
+    options.vectorTileOptions = {
+        apiUrl: apiUrlVectorTile,
+        endPoint: endPoint
+    };
     setSourceVectorTiles(map, options, data, request);
     displayLineString(map, options, data);
     return data;

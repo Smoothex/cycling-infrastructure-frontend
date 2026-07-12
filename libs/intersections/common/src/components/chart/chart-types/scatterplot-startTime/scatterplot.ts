@@ -24,6 +24,8 @@ export class ScatterPlotStartTimeComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
+    isLargeMode = signal<boolean>(false);
+
     protected readonly showAvgLine = signal<boolean>(true);
     protected readonly showMedianLine = signal<boolean>(false);
     protected readonly windowSize = signal(12);
@@ -52,7 +54,6 @@ export class ScatterPlotStartTimeComponent<T> {
             options: d.options
         }
     });
-    protected isExporting = signal<boolean>(false); 
 
     protected chartData = computed(() => {
         return createScatterPlotDate(

@@ -7,7 +7,7 @@ import { Card } from 'primeng/card';
 import { Divider } from 'primeng/divider';
 import { TableModule, TableLazyLoadEvent, TableFilterEvent } from 'primeng/table';
 import { LineString } from 'geojson';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { IntersectionsEdgeRequestService, IntersectionsNodeRequestService } from '@simra/intersections-domain';
 import { EYear, ETrafficTimes, EWeekDays } from '@simra/common-models';
 import {
 	BaseMetric,
@@ -26,10 +26,8 @@ import {
 	onFilterChangeHelper,
 	PagedGeoResponse,
 	BASE_CHART_CONFIG,
-	NodePageableRequestPrecomputed,
-	NodePageableRequestStartEndDate,
-	EdgePageableRequestPrecomputed,
-	EdgePageableRequestStartEndDate,
+	NodePageableRequest,
+	EdgePageableRequest,
 	NodePageableMetricRequest,
 	EdgePageableMetricRequest,
 	BASE_METRIC_CHART_CONFIG,
@@ -37,7 +35,11 @@ import {
 	PageableRequest,
 	PagedProperties,
 	mapFeaturesToNodeMetricRows,
-	mapFeaturesToEdgeMetricRows
+	mapFeaturesToEdgeMetricRows,
+	EdgeMetricRequest,
+	NodeMetricRequest,
+	EdgeRequest,
+	NodeRequest
 } from '@simra/intersections-common';
 import { BaseIntersectionMapComponent } from '@simra/intersections-map';
 import { scrollToElementId } from '@simra/helpers';
@@ -54,12 +56,13 @@ import { HIGHWAY_TYPES_TO_TRANSLATION } from '@simra/streets-explorer';
 })
 export class IntersectionsAggregatePageComponent {
 	private readonly _router = inject(Router);
-	private readonly _requestService = inject(IntersectionsRequestService);
+	private readonly _edgeRequestService = inject(IntersectionsEdgeRequestService);
+	private readonly _nodeRequestService = inject(IntersectionsNodeRequestService);
 	private readonly _streetRequestService = inject(StreetsRequestService);
 
 
-	protected nodeRequest = signal<NodePageableRequestPrecomputed | null>(null);
-	protected edgeRequest = signal<EdgePageableRequestPrecomputed | null>(null);
+	protected nodeRequest = signal<NodePageableRequest | null>(null);
+	protected edgeRequest = signal<EdgePageableRequest | null>(null);
 	protected pagedRequest = signal<PageableRequest>({
 		page: 0,
 		size: 20,
@@ -175,13 +178,13 @@ export class IntersectionsAggregatePageComponent {
 				year: this._selectedYear()
 			}
 			this.nodeRequest.set(nodeRequest);
-			this.firstBase.set(await this._requestService.getIntersectionNodeProperties(nodeRequest));
+			this.firstBase.set(await this._nodeRequestService.getIntersectionNodeProperties(nodeRequest));
 		});
 		effect(async () => {
 			const request = this.nodeMetricRequest();
 			if (!request) return;
 			this.tableDataIsLoading.set(true);
-			const data = await this._requestService.getIntersectionNodeMetricsPageable(request);
+			const data = await this._nodeRequestService.getIntersectionNodeMetricsPageable(request);
 			this.pagedGeoResponse.set(data);
 			this.nodeRows.set(mapFeaturesToNodeMetricRows(data.geoData));
 			this.tableDataIsLoading.set(false);
@@ -199,13 +202,13 @@ export class IntersectionsAggregatePageComponent {
 				year: this._selectedYear()
 			};
 			this.edgeRequest.set(edgeRequest);
-			this.firstBase.set(await this._requestService.getIntersectionNodeProperties(edgeRequest));
+			this.firstBase.set(await this._nodeRequestService.getIntersectionNodeProperties(edgeRequest));
 		});
 		effect(async () => {
 			const request = this.edgeMetricRequest();
 			if (!request) return;
 			this.tableDataIsLoading.set(true);
-			const data = await this._requestService.getIntersectionEdgeMetricsPageable(request);
+			const data = await this._edgeRequestService.getIntersectionEdgeMetricsPageable(request);
 			this.pagedGeoResponse.set(data);
 			this.edgeRows.set(mapFeaturesToEdgeMetricRows(data.geoData));
 			this.tableDataIsLoading.set(false);
@@ -236,16 +239,32 @@ export class IntersectionsAggregatePageComponent {
 	protected readonly NODE_METRIC_CHART_CONFIG = NODE_METRIC_CHART_CONFIG;
 	protected readonly BASE_CHART_CONFIG = BASE_CHART_CONFIG;
 	protected readonly HIGHWAY_TYPES_TO_TRANSLATION = HIGHWAY_TYPES_TO_TRANSLATION;
-	protected loadEdges = (req: EdgePageableRequestPrecomputed | EdgePageableRequestStartEndDate, page: number, size: number) => {
-		return this._requestService.getIntersectionEdgeProperties({ ...req, page, size });
+	
+	protected loadEdgeMetric = (req: EdgeMetricRequest, lastId: number | undefined, pageSize: number) => {
+		return this._edgeRequestService.getIntersectionEdgeMetricsPropertiesScroll({ ...req, lastId, pageSize });
 	};
-	protected loadNodes = (req: NodePageableRequestPrecomputed | NodePageableRequestStartEndDate, page: number, size: number) => {
-		return this._requestService.getIntersectionNodeProperties({ ...req, page, size });
+	protected loadEdgeMetricCount = (req: EdgeMetricRequest) => {
+		return this._edgeRequestService.getIntersectionEdgeMetricsPropertiesCount({ ...req });
 	};
-	protected loadEdgeMetric = (req: EdgePageableMetricRequest, page: number, size: number) => {
-		return this._requestService.getIntersectionEdgeMetricsPageableProperties({ ...req, page, size });
+	
+	protected loadNodeMetric = (req: NodeMetricRequest, lastId: number | undefined, pageSize: number) => {
+		return this._nodeRequestService.getIntersectionNodeMetricsPropertiesScroll({ ...req, lastId, pageSize });
 	};
-	protected loadNodeMetric = (req: NodePageableMetricRequest, page: number, size: number) => {
-		return this._requestService.getIntersectionNodeMetricsPageableProperties({ ...req, page, size });
+	protected loadNodeMetricCount = (req: NodeMetricRequest) => {
+		return this._nodeRequestService.getIntersectionNodeMetricsPropertiesCount({ ...req });
+	};
+
+	protected loadEdges = (req: EdgeRequest, lastId: number | undefined, pageSize: number) => {
+		return this._edgeRequestService.getIntersectionEdgePropertiesScroll({ ...req, lastId, pageSize });
+	};
+	protected loadEdgesCount = (req: EdgeRequest) => {
+		return this._edgeRequestService.getIntersectionEdgePropertiesCount({ ...req });
+	};
+
+	protected loadNodes = (req: NodeRequest, lastId: number | undefined, pageSize: number) => {
+		return this._nodeRequestService.getIntersectionNodePropertiesScroll({ ...req, lastId, pageSize });
+	};
+	protected loadNodesCount = (req: NodeRequest) => {
+		return this._nodeRequestService.getIntersectionNodePropertiesCount({ ...req });
 	};
 }

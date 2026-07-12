@@ -1,41 +1,42 @@
-<p-popover #popoverSettings (onShow)="setSettingVisibility(true)" (onHide)="setSettingVisibility(false)">
-	<div class="flex flex-col gap-4 w-80 p-2">
-		<div class="flex flex-row">
-			<span class="flex-1 font-bold text-m mb-2 block">Settings</span>
-			<p-button icon="ph ph-camera" (onClick)="screenshotMode.set(!screenshotMode())" size="small"/>
-		</div>
-
-		<intersection-settings [isSettingsVisible]="isSettingsVisible()" [settings]="settings()" />
-	</div>
-	<div class="popover-container flex flex-col gap-2">
-		@if (extendedSettings()) {
+<intersection-settings-drawer
+        [(visible)]="sidebarVisible"
+        [settings]="settings()"
+		[(fullscreenMode)]="fullscreenMode"
+		[(screenshotMode)]="screenshotMode"
+    >
+	
+	@if (extendedSettings()) {
+		<ng-container more-content>
+			<p-divider />
 			<div class="flex flex-col">
 				<label class="font-bold text-xs" for="rideSelection">Select Ride ID</label>
-				<p-select 
-				[options]="selectableRideIds()"
-				[(ngModel)]="selectedRideId"
-				optionLabel="label"
-				optionValue="id"
-				
-				[filter]="true"
-				filterBy="id"
-				(onFilter)="filterRides($event)"
-				[showClear]="true"
-				
-				[virtualScroll]="true" 
-				[virtualScrollItemSize]="38"
-				scrollHeight="250px"
+				@if (sidebarVisible()) {
+				<p-list-box 
+					[options]="selectableRideIds()"
+					[(ngModel)]="selectedRideId"
+					optionLabel="label"
+					optionValue="id"
+					
+					[filter]="true"
+					filterBy="id"
+					(onFilter)="filterRides($event)"
+					
+					[virtualScroll]="true" 
+					[virtualScrollItemSize]="38"
+					scrollHeight="250px"
 
-				[lazy]="true"
-				(onLazyLoad)="loadRides($event)"
-				[loading]="loadingRideIds()"
-				size="small"
-				inputId="rideSelection"
-			/>
+					[lazy]="true"
+					(onLazyLoad)="updatePage($event)"
+					size="small"
+					inputId="rideSelection"
+					appendTo="self"
+				/>
+				}
 			</div>
-		}
-	</div>
-</p-popover>
+		</ng-container>
+	}
+</intersection-settings-drawer>
+
 <p-popover #popoverInfo >
 	<div>
 		Info about map. TODO: Write info text.
@@ -53,7 +54,7 @@
 				severity="secondary"
 				[rounded]="true"
 				[outlined]="true"
-				(click)="popoverSettings.toggle($event)"
+				(click)="sidebarVisible.set(!sidebarVisible())"
 			></p-button>
 			<p-button 
 				icon="pi pi-question"

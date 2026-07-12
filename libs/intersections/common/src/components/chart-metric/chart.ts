@@ -45,6 +45,7 @@ export class IntersectionChartMetricComponent<T extends AggregatedResult, R exte
 	public readonly fetchFn = input.required<(req: R) => Promise<T | null>>();
     protected readonly loading = signal(true);
 
+	isLargeMode = signal<boolean>(false);
 
 	protected propertyChart = linkedSignal(() => this.config().defaultProperty);
 	protected readonly label = computed(() => {
@@ -117,7 +118,6 @@ export class IntersectionChartMetricComponent<T extends AggregatedResult, R exte
 			options: d.options
 		}
 	});
-	protected isExporting = signal<boolean>(false);
 
 	protected chartData = computed(() => {
 		const groupKey = this.groupBy();

@@ -6,3 +6,5 @@ export * from './enum-select/public-api';
 export * from './enum-select-button/public-api';
 export * from './number-filter/public-api';
 export * from './safety-metrics-digit-panel/public-api';
+export * from './fullscreen/fullscreen';
+export * from './fullscreen/fullscreen-helper';

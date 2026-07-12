@@ -26,12 +26,15 @@ export class HeatmapStartTimeChartComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
-    
+    isLargeMode = signal<boolean>(false);
+
     protected yBucketSize = signal<number>(10);
     protected yOffset = signal<number>(5);
     protected minViewY = signal<number | null>(null);
     protected maxViewY = signal<number | null>(null);
     protected maxViewCount = signal<number | null>(null);
+
+    protected normalize = signal<boolean>(false);
 
     protected weeks = signal<number>(6);
 
@@ -54,6 +57,7 @@ export class HeatmapStartTimeChartComponent<T> {
                 { label: 'Minimum Value Y', props: { type: "number", value: this.minViewY }},
                 { label: 'Maximum Value Y', props: { type: "number", value: this.maxViewY }},
                 { label: 'Maximum Count', props: { type: "number", value: this.maxViewCount, min:2 }},
+                { label: 'Normalize', props: { type: "boolean", value: this.normalize }},
             ]
         }
     ]);
@@ -66,7 +70,6 @@ export class HeatmapStartTimeChartComponent<T> {
             options: d.options
         }
     });
-    protected isExporting = signal<boolean>(false); 
 
     protected chartData = computed(() => {
         return createHeatmapBinning(
@@ -84,7 +87,8 @@ export class HeatmapStartTimeChartComponent<T> {
             undefined,
             this.minViewY() ?? undefined,
             this.maxViewY() ?? undefined,
-            this.maxViewCount() ?? undefined
+            this.maxViewCount() ?? undefined,
+            this.normalize()
 		)
     });
 

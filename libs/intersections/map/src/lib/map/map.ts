@@ -12,7 +12,12 @@ import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MapPage } from '@simra/common-components';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
+import { 
+  IntersectionsEdgeRequestService,
+  IntersectionsNodeRequestService,
+  IntersectionsRegionRequestService,
+  IntersectionsRideRequestService 
+} from '@simra/intersections-domain';
 import * as maplibregl from 'maplibre-gl';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -62,6 +67,7 @@ import {
 } from '@simra/common-components';
 import { APP_CONFIG, ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { TranslateService } from '@ngx-translate/core';
+import { FullscreenDirective } from '@simra/common-components';
 
 const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
   trafficTime: TRAFFIC_TIMES_TO_TRANSLATION,
@@ -72,13 +78,16 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 
 @Component({
 	selector: 'intersection-map',
-	imports: [MapPage, FormsModule, CheckboxModule, SelectModule, MapSettingsComponent, MapLegendComponent],
+	imports: [MapPage, FormsModule, CheckboxModule, SelectModule, MapSettingsComponent, MapLegendComponent, FullscreenDirective],
 	templateUrl: './map.html',
   styleUrl: './map.scss',
   encapsulation: ViewEncapsulation.None,
 })
 export class IntersectionMapComponent {
-  private readonly _requestService = inject(IntersectionsRequestService);
+  private readonly _edgeRequestService = inject(IntersectionsEdgeRequestService);
+  private readonly _nodeRequestService = inject(IntersectionsNodeRequestService);
+  private readonly _regionRequestService = inject(IntersectionsRegionRequestService);
+  private readonly _rideRequestService = inject(IntersectionsRideRequestService);
   private readonly _router = inject(Router);
   private readonly _activatedRoute = inject(ActivatedRoute);
 	private readonly queryParams = toSignal(this._activatedRoute.queryParams);
@@ -210,44 +219,50 @@ export class IntersectionMapComponent {
     return labelMap;
   }
 
-  MapSettingsComponent = computed<SettingGroup[]>(() => [
-    {
-      group: 'Display', items: [
-        { label: 'Show Traffic Signals', props: { type: "boolean", value: this.showTrafficSignals }},
-        { label: 'Show Metric Segments', props: { type: "boolean", value: this.showIntersectionMetrics }},
-      ]
-    },
-    {
-      group: 'Metric Segments', items: [
-        { label: 'Show Metric Segments', props: { type: "boolean", value: this.showIntersectionMetrics }},
-        { label: 'Minimum Number of Rides', props: { type: "number", value: this.aggregatedSegmentNumberOfRides, min: 0 }},
-        { label: 'Maximum Color', props: { type: "number", value: this.aggregatedSegmentColorMax }},
-        { label: 'Maximum Width', props: { type: "number", value: this.aggregatedSegmentWidthMax }},
-        { label: 'Property', props: { type: "select", value: this.aggregatedSegmentProperty, options: BASE_METRIC_SELECTABLE_PROPERTIES }},
-      ]
-    },
-    {
-      group: 'Region', items: [
-        { label: 'Minimum Number of Rides', props: { type: "number", value: this.regionNumberOfRides, min: 0 }},
-        { label: 'Maximum Color', props: { type: "number", value: this.regionColorMax }},
-        { label: 'Maximum Width', props: { type: "number", value: this.regionWidthMax }},
-        { label: 'Property', props: { type: "select", value: this.regionProperty, options: REGION_SELECTABLE_PROPERTIES }},
-      ]
-    },
-    {
-      group: 'Ride Segments', items: [
-        { label: 'Maximum Color', props: { type: "number", value: this.rideSegmentColorMax }},
-        { label: 'Property', props: { type: "select", value: this.rideSegmentProperty, options: BASE_SELECTABLE_PROPERTIES }},
-      ]
-    },
-    {
-      group: 'Time', items: [
-        { label: 'Traffic Time', props: { type: "select", value: this.selectedTrafficTime, options: recordToOptions(this.getTimeCategoryOptions("trafficTime")) }},
-        { label: 'Week Day', props: { type: "select", value: this.selectedWeekDay, options: recordToOptions(this.getTimeCategoryOptions("weekDay")) }},
-        { label: 'Year', props: { type: "select", value: this.selectedYear, options: recordToOptions(this.getTimeCategoryOptions("year")) }},
-      ]
+  MapSettingsComponent = computed<SettingGroup[]>(() => {
+    const settingGroups: SettingGroup[] = [
+      {
+        group: 'Display', items: [
+          { label: 'Show Traffic Signals', props: { type: "boolean", value: this.showTrafficSignals }},
+          { label: 'Show Metric Segments', props: { type: "boolean", value: this.showIntersectionMetrics }},
+        ]
+      },
+      {
+        group: 'Metric Segments', items: [
+          { label: 'Show Metric Segments', props: { type: "boolean", value: this.showIntersectionMetrics }},
+          { label: 'Minimum Number of Rides', props: { type: "number", value: this.aggregatedSegmentNumberOfRides, min: 0 }},
+          { label: 'Maximum Color', props: { type: "number", value: this.aggregatedSegmentColorMax }},
+          { label: 'Maximum Width', props: { type: "number", value: this.aggregatedSegmentWidthMax }},
+          { label: 'Property', props: { type: "select", value: this.aggregatedSegmentProperty, options: BASE_METRIC_SELECTABLE_PROPERTIES }},
+        ]
+      },
+      {
+        group: 'Region', items: [
+          { label: 'Minimum Number of Rides', props: { type: "number", value: this.regionNumberOfRides, min: 0 }},
+          { label: 'Maximum Color', props: { type: "number", value: this.regionColorMax }},
+          { label: 'Maximum Width', props: { type: "number", value: this.regionWidthMax }},
+          { label: 'Property', props: { type: "select", value: this.regionProperty, options: REGION_SELECTABLE_PROPERTIES }},
+        ]
+      },
+      {
+        group: 'Time', items: [
+          { label: 'Traffic Time', props: { type: "select", value: this.selectedTrafficTime, options: recordToOptions(this.getTimeCategoryOptions("trafficTime")) }},
+          { label: 'Week Day', props: { type: "select", value: this.selectedWeekDay, options: recordToOptions(this.getTimeCategoryOptions("weekDay")) }},
+          { label: 'Year', props: { type: "select", value: this.selectedYear, options: recordToOptions(this.getTimeCategoryOptions("year")) }},
+        ]
+      }
+    ]
+    if (this.selectedRideId()) {
+      settingGroups.push({
+        group: 'Ride Segments', items: [
+          { label: 'Maximum Color', props: { type: "number", value: this.rideSegmentColorMax }},
+          { label: 'Property', props: { type: "select", value: this.rideSegmentProperty, options: BASE_SELECTABLE_PROPERTIES }},
+        ]
+      })
     }
-  ]);
+
+    return settingGroups
+  });
 
   private config = inject(APP_CONFIG);
   private translate = inject(TranslateService);
@@ -412,18 +427,18 @@ export class IntersectionMapComponent {
     const edgeMetricsAdded = this.edgeMetricsAdded;
     if (edgeMetricsAdded) deleteDisplay(map, edgeMetricsAdded);
     // The name  "edge-metrics" must match the layer spacified in the backend or else nothing is visible !
-    this.edgeMetricsAdded = displayAggregateSegmentVectorTiles(this._router, map, this.config.apiUrl, "edge-metrics", request, false);
+    this.edgeMetricsAdded = displayAggregateSegmentVectorTiles(this._router, map, this.config.apiUrl, "intersections/intersection_edges", "edge-metrics", request, false);
 
     const nodeMetricsAdded = this.nodeMetricsAdded;
     if (nodeMetricsAdded) deleteDisplay(map, nodeMetricsAdded);
-    this.nodeMetricsAdded = displayAggregateSegmentVectorTiles(this._router, map, this.config.apiUrl, "node-metrics", request, true);
+    this.nodeMetricsAdded = displayAggregateSegmentVectorTiles(this._router, map, this.config.apiUrl, "intersections/intersection_nodes", "node-metrics", request, true);
   }
   applyAggregateStyle(map: maplibregl.Map, colorProperty: keyof BaseMetric, colorMax: number, widthMax: number) {
     const edgeMetricsAdded = this.edgeMetricsAdded;
-    if (edgeMetricsAdded) styleAggregateSegment(map, edgeMetricsAdded, this._router, colorProperty, colorMax, widthMax, false, this.config.apiUrl);
+    if (edgeMetricsAdded) styleAggregateSegment(map, edgeMetricsAdded, this._router, colorProperty, colorMax, widthMax, false);
 
     const nodeMetricsAdded = this.nodeMetricsAdded;
-    if (nodeMetricsAdded) styleAggregateSegment(map, nodeMetricsAdded, this._router, colorProperty, colorMax, widthMax, true, this.config.apiUrl);
+    if (nodeMetricsAdded) styleAggregateSegment(map, nodeMetricsAdded, this._router, colorProperty, colorMax, widthMax, true);
   }
 
   private readonly regionZoom = {
@@ -435,9 +450,9 @@ export class IntersectionMapComponent {
     smallMax: 11,
   }
   async applyRegionData(map: maplibregl.Map, request: MetricRequest) {
-    const bigRegions = this._requestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 4});
-    const middleRegions = this._requestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 6});
-    const smallRegions = this._requestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 9});
+    const bigRegions = this._regionRequestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 4});
+    const middleRegions = this._regionRequestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 6});
+    const smallRegions = this._regionRequestService.getIntersectionRegionMetricsComplete({...request, adminLevel: 9});
     const regionsAdded = this.regionsAdded;
     regionsAdded.forEach(r => deleteDisplay(map, r));
     const bigAdded = displayRegions(await bigRegions, map, "regionBig", this.regionZoom.bigMin, this.regionZoom.bigMax);
@@ -463,17 +478,17 @@ export class IntersectionMapComponent {
       return;
     }
     
-    const edges = await this._requestService.getIntersectionEdge(selectedRideId);
+    const edges = await this._edgeRequestService.getIntersectionEdge(selectedRideId);
     if (edges.features.length === 0) return;
     if (flyToRide) {
       const coordiante = edges.features[0].geometry.coordinates[0];
       map.flyTo({ center: [coordiante[0], coordiante[1]], zoom: 18 });
     }
-    const addedNodes = displayRideSegment(this._router, await this._requestService.getIntersectionNode(selectedRideId),
+    const addedNodes = displayRideSegment(this._router, await this._nodeRequestService.getIntersectionNode(selectedRideId),
       map, `rideNodes-${selectedRideId}`, true);
     const addedEdges = displayRideSegment(this._router, edges, map, `rideEdges-${selectedRideId}`, true);
-    const addedMatchedPoints = displayRidePoints(map, await this._requestService.getRidePoints(selectedRideId), `ridePoints-${selectedRideId}`);
-    const addedRidePoints = displayMatchedPoints(map, await this._requestService.getMatchedPoints(selectedRideId), `matchedPoints-${selectedRideId}`);
+    const addedMatchedPoints = displayRidePoints(map, await this._rideRequestService.getRidePoints(selectedRideId), `ridePoints-${selectedRideId}`);
+    const addedRidePoints = displayMatchedPoints(map, await this._rideRequestService.getMatchedPoints(selectedRideId), `matchedPoints-${selectedRideId}`);
     
     this.rideAdded.set([addedNodes, addedEdges, addedMatchedPoints, addedRidePoints]);
   }

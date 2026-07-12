@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostBinding, input, model, Output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, EventEmitter, HostBinding, input, model, Output, ViewEncapsulation } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -30,8 +30,8 @@ export class AutocompleteComponent {
 	public readonly selected = model();
 	public readonly fetchFunction = input.required<(query: string) => Observable<string[]>>();
 	protected readonly filteredOptions = model<string[]>([]);
-	@Output()
-	public selectionChange = new EventEmitter<Record<string, string>>();
+	@Output() public selectionChange = new EventEmitter<Record<string, string>>();
+	@Output() public valueChange = new EventEmitter<Record<string, unknown>>();
 
 	isFloating = false;
 
@@ -60,7 +60,7 @@ export class AutocompleteComponent {
 
 		const options = await firstValueFrom(
 			of(query).pipe(
-				debounceTime(300),
+				debounceTime(500),
 				switchMap(fetchFunction)
 			)
 		);
@@ -70,5 +70,15 @@ export class AutocompleteComponent {
 	@HostBinding('class.placeholder-label')
 	get applyMinWidth() {
 		return !this.isFloating;
+	}
+
+	constructor() {
+		effect(() => {
+			const selected = this.selected();
+			const field = this.field();
+			if (!field) return;
+			
+			this.valueChange.emit({ [field]: selected })
+		})
 	}
 }
