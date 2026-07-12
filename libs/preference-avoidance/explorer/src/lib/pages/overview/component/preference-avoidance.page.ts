@@ -19,6 +19,7 @@ import {
 	SegmentsGeoJson,
 	SegmentSummary,
 	NearMissIncident,
+	RoadClosure,
 	SegmentTileProperties,
 	TileStatus,
 	TrafficDetector,
@@ -66,6 +67,25 @@ const nearMissIncidentTypeLabels: Record<string, string> = {
 	OTHER: 'Other',
 	NOTHING: 'Unspecified',
 	DUMMY: 'Unspecified',
+};
+const roadClosuresSource = 'preference-avoidance-road-closures-source';
+const roadClosuresLineLayer = 'preference-avoidance-road-closures-line-layer';
+const roadClosuresPointLayer = 'preference-avoidance-road-closures-point-layer';
+const roadClosuresSymbolLayer = 'preference-avoidance-road-closures-symbol-layer';
+const roadClosureColor = '#b91c1c';
+const roadClosureWarningImageId = 'preference-avoidance-road-closure-warning';
+const roadClosureTypeLabels: Record<string, string> = {
+	CONSTRUCTION: 'Construction site',
+	ROAD_CLOSURE: 'Road closure',
+	EVENT: 'Disruption',
+	HAZARD: 'Hazard',
+	INCIDENT: 'Accident',
+};
+const roadClosureSeverityLabels: Record<string, string> = {
+	NO_CLOSURE: 'No closure',
+	FULL_CLOSURE: 'Full closure',
+	DIRECTIONAL_CLOSURE: 'One direction closed',
+	UNKNOWN: '',
 };
 const berlinMapCenter: [number, number] = [13.413, 52.522];
 const berlinMapZoom = 14;
@@ -314,10 +334,13 @@ export class PreferenceAvoidancePage {
 	private _trafficDetectorPopup?: maplibregl.Popup;
 	private _nearMissIncidentFeatures: GeoJSON.Feature<Point>[] = [];
 	private _nearMissIncidentPopup?: maplibregl.Popup;
+	private _roadClosureFeatures: GeoJSON.Feature<Point | MultiLineString>[] = [];
+	private _roadClosurePopup?: maplibregl.Popup;
 
 	protected readonly selectedMapBaseStyle = signal<MapBaseStyle>('MAP');
 	protected readonly showTrafficSensors = signal(false);
 	protected readonly showNearMissIncidents = signal(false);
+	protected readonly showRoadClosures = signal(false);
 	protected readonly showSegmentEvents = signal(true);
 	protected readonly selectedDetectorKey = signal<string | undefined>(undefined);
 	protected readonly expandedConditionGroup = signal<string | undefined>(undefined);
@@ -442,6 +465,46 @@ export class PreferenceAvoidancePage {
 				participants: (incident.involvedParticipants ?? []).join(','),
 			},
 		})));
+
+	protected readonly roadClosures = resource<RoadClosure[] | undefined, string | undefined>({
+		params: () => (this.showRoadClosures() ? `${this.selectedYear() ?? ''}` : undefined),
+		loader: async ({ params }) =>
+			firstValueFrom(this._facade.getRoadClosures(
+				this.yearRange(params ? Number(params) : undefined),
+			)).catch(() => undefined),
+	});
+
+	private readonly roadClosureFeatures = computed<GeoJSON.Feature<Point | MultiLineString>[]>(() =>
+		(this.roadClosures.value() ?? []).flatMap((closure) => {
+			const properties = {
+				id: closure.id,
+				factorType: closure.factorType ?? '',
+				severity: closure.severity ?? '',
+				direction: closure.direction ?? '',
+				street: closure.street ?? '',
+				section: closure.section ?? '',
+				content: closure.content ?? '',
+				validFrom: closure.validFrom ?? 0,
+				validTo: closure.validTo ?? 0,
+				marker: closure.factorType === 'ROAD_CLOSURE' || closure.severity === 'FULL_CLOSURE'
+					? 'warning'
+					: 'circle',
+			};
+			const features: GeoJSON.Feature<Point | MultiLineString>[] = [];
+			if (closure.lines?.length) {
+				features.push({
+					type: 'Feature' as const,
+					geometry: { type: 'MultiLineString' as const, coordinates: closure.lines },
+					properties,
+				});
+			}
+			features.push({
+				type: 'Feature' as const,
+				geometry: { type: 'Point' as const, coordinates: [closure.lon, closure.lat] },
+				properties,
+			});
+			return features;
+		}));
 
 	protected readonly selectedSegmentDetails = resource<SegmentSummary | undefined, number | undefined>({
 		params: () => this.selectedSegmentId(),
@@ -852,6 +915,15 @@ export class PreferenceAvoidancePage {
 			this.closeNearMissIncidentPopup();
 			if (map) {
 				this.syncNearMissIncidentSource(map);
+			}
+		});
+
+		effect(() => {
+			const map = this._map();
+			this._roadClosureFeatures = this.showRoadClosures() ? this.roadClosureFeatures() : [];
+			this.closeRoadClosurePopup();
+			if (map) {
+				this.syncRoadClosureSource(map);
 			}
 		});
 
@@ -1361,6 +1433,48 @@ export class PreferenceAvoidancePage {
 				'circle-opacity': 0.9,
 			},
 		});
+		this.ensureRoadClosureWarningImage(map);
+		map.addSource(roadClosuresSource, {
+			type: 'geojson',
+			data: { type: 'FeatureCollection', features: [] },
+		});
+		map.addLayer({
+			id: roadClosuresLineLayer,
+			type: 'line',
+			source: roadClosuresSource,
+			filter: ['==', ['geometry-type'], 'LineString'],
+			layout: {
+				'line-cap': 'round',
+			},
+			paint: {
+				'line-color': roadClosureColor,
+				'line-width': 2.5,
+				'line-dasharray': [0.1, 1.8],
+			},
+		});
+		map.addLayer({
+			id: roadClosuresPointLayer,
+			type: 'circle',
+			source: roadClosuresSource,
+			filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'marker'], 'circle']],
+			paint: {
+				'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
+				'circle-color': '#ffffff',
+				'circle-stroke-color': roadClosureColor,
+				'circle-stroke-width': 2,
+			},
+		});
+		map.addLayer({
+			id: roadClosuresSymbolLayer,
+			type: 'symbol',
+			source: roadClosuresSource,
+			filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'marker'], 'warning']],
+			layout: {
+				'icon-image': roadClosureWarningImageId,
+				'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 1],
+				'icon-allow-overlap': true,
+			},
+		});
 
 		this.applyMapFilters(map);
 		this.syncHighlightSource(map);
@@ -1368,6 +1482,7 @@ export class PreferenceAvoidancePage {
 		this.syncTrafficDetectorSource(map);
 		this.syncTrafficDetectorRadiusSource(map);
 		this.syncNearMissIncidentSource(map);
+		this.syncRoadClosureSource(map);
 
 		if (!this._mapHandlersRegistered) {
 			this.registerMapHandlers(map);
@@ -1382,6 +1497,9 @@ export class PreferenceAvoidancePage {
 			preferenceAvoidanceMatchedLayer,
 			trafficDetectorsLayer,
 			nearMissIncidentsLayer,
+			roadClosuresLineLayer,
+			roadClosuresPointLayer,
+			roadClosuresSymbolLayer,
 		];
 		for (const layerId of interactiveLayers) {
 			map.on('mouseenter', layerId, () => {
@@ -1439,6 +1557,15 @@ export class PreferenceAvoidancePage {
 			}
 		});
 
+		for (const layerId of [roadClosuresLineLayer, roadClosuresPointLayer, roadClosuresSymbolLayer]) {
+			map.on('click', layerId, (event) => {
+				const feature = event.features?.[0];
+				if (feature) {
+					this.openRoadClosurePopup(map, feature, event.lngLat);
+				}
+			});
+		}
+
 		map.on('click', (event) => {
 			const clickableLayers = interactiveLayers
 				.filter((layerId) => map.getLayer(layerId));
@@ -1452,6 +1579,7 @@ export class PreferenceAvoidancePage {
 				this.clearHighlight(map);
 				this.clearTrafficDetectorSelection(map);
 				this.closeNearMissIncidentPopup();
+				this.closeRoadClosurePopup();
 			}
 		});
 	}
@@ -1594,6 +1722,14 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
+	protected onRoadClosuresToggle(): void {
+		const enabled = !this.showRoadClosures();
+		this.showRoadClosures.set(enabled);
+		if (!enabled) {
+			this.closeRoadClosurePopup();
+		}
+	}
+
 	private selectTrafficDetector(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
 		const properties = feature.properties ?? {};
 		const key = String(properties['key'] ?? '');
@@ -1714,6 +1850,56 @@ export class PreferenceAvoidancePage {
 		popup?.remove();
 	}
 
+	private openRoadClosurePopup(
+		map: maplibregl.Map,
+		feature: maplibregl.MapGeoJSONFeature,
+		lngLat: maplibregl.LngLat,
+	): void {
+		this._roadClosurePopup?.remove();
+
+		const properties = feature.properties ?? {};
+		const text = (key: string) => String(properties[key] ?? '');
+		const typeLabel = roadClosureTypeLabels[text('factorType')] ?? 'Road closure';
+		const severityLabel = roadClosureSeverityLabels[text('severity')] ?? '';
+		const validFrom = Number(properties['validFrom'] ?? 0);
+		const validTo = Number(properties['validTo'] ?? 0);
+		const period = validFrom
+			? `${this.formatDateTime(validFrom)} – ${validTo ? this.formatDateTime(validTo) : 'open-ended'}`
+			: '';
+		const rows = [
+			['Type', this.escapeHtml(typeLabel)],
+			['Severity', this.escapeHtml(severityLabel)],
+			['Direction', this.escapeHtml(text('direction'))],
+			['Period', this.escapeHtml(period)],
+		].filter(([, value]) => value);
+
+		const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '320px' })
+			.setLngLat(lngLat)
+			.setHTML(`
+				<div class="detector-popup">
+					<h4>${this.escapeHtml(text('street') || typeLabel)}</h4>
+					${properties['section'] ? `<p>${this.escapeHtml(text('section'))}</p>` : ''}
+					<dl>
+						${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}
+					</dl>
+					${properties['content'] ? `<p>${this.escapeHtml(text('content'))}</p>` : ''}
+				</div>
+			`)
+			.addTo(map);
+		popup.on('close', () => {
+			if (this._roadClosurePopup === popup) {
+				this._roadClosurePopup = undefined;
+			}
+		});
+		this._roadClosurePopup = popup;
+	}
+
+	private closeRoadClosurePopup(): void {
+		const popup = this._roadClosurePopup;
+		this._roadClosurePopup = undefined;
+		popup?.remove();
+	}
+
 	private escapeHtml(value: string): string {
 		const replacements: Record<string, string> = {
 			'&': '&amp;',
@@ -1748,6 +1934,54 @@ export class PreferenceAvoidancePage {
 			return;
 		}
 		source.setData({ type: 'FeatureCollection', features: this._nearMissIncidentFeatures });
+	}
+
+	private syncRoadClosureSource(map: maplibregl.Map): void {
+		const source = map.getSource(roadClosuresSource) as maplibregl.GeoJSONSource | undefined;
+		if (!source) {
+			return;
+		}
+		source.setData({ type: 'FeatureCollection', features: this._roadClosureFeatures });
+	}
+
+	/**
+	 * Registers the red warning-triangle marker for closure points. Base style
+	 * switches wipe all images, so ensureMapLayers re-invokes this after every
+	 * style reload; the hasImage guard makes that idempotent.
+	 */
+	private ensureRoadClosureWarningImage(map: maplibregl.Map): void {
+		if (map.hasImage(roadClosureWarningImageId)) {
+			return;
+		}
+
+		const size = 44;
+		const canvas = document.createElement('canvas');
+		canvas.width = size;
+		canvas.height = size;
+		const context = canvas.getContext('2d');
+		if (!context) {
+			return;
+		}
+
+		context.beginPath();
+		context.moveTo(size / 2, 3);
+		context.lineTo(size - 3, size - 5);
+		context.lineTo(3, size - 5);
+		context.closePath();
+		context.fillStyle = roadClosureColor;
+		context.fill();
+		context.lineWidth = 3;
+		context.strokeStyle = '#ffffff';
+		context.lineJoin = 'round';
+		context.stroke();
+
+		context.fillStyle = '#ffffff';
+		context.font = `bold ${size * 0.5}px sans-serif`;
+		context.textAlign = 'center';
+		context.textBaseline = 'middle';
+		context.fillText('!', size / 2, size * 0.62);
+
+		map.addImage(roadClosureWarningImageId, context.getImageData(0, 0, size, size), { pixelRatio: 2 });
 	}
 
 	private syncMatchedSource(map: maplibregl.Map): void {

@@ -3,12 +3,14 @@ import {
 	AnalyticsDistributionParams,
 	AnalyticsTimeSeriesParams,
 	NearMissIncidentsParams,
+	RoadClosuresParams,
 	SegmentEventsParams,
 	SegmentListParams,
 	SegmentsGeoJsonParams,
 } from '@simra/preference-avoidance-common';
 import { AnalyticsRequestService } from '../infrastructure/analytics-request.service';
 import { IncidentRequestService } from '../infrastructure/incident-request.service';
+import { RoadClosureRequestService } from '../infrastructure/road-closure-request.service';
 import { SegmentsRequestService } from '../infrastructure/segments-request.service';
 import { TrafficRequestService } from '../infrastructure/traffic-request.service';
 
@@ -16,6 +18,7 @@ import { TrafficRequestService } from '../infrastructure/traffic-request.service
 export class PreferenceAvoidanceAnalysisFacade {
 	private readonly _analyticsRequestService = inject(AnalyticsRequestService);
 	private readonly _incidentRequestService = inject(IncidentRequestService);
+	private readonly _roadClosureRequestService = inject(RoadClosureRequestService);
 	private readonly _segmentsRequestService = inject(SegmentsRequestService);
 	private readonly _trafficRequestService = inject(TrafficRequestService);
 
@@ -57,5 +60,9 @@ export class PreferenceAvoidanceAnalysisFacade {
 
 	public getNearMissIncidents(params: NearMissIncidentsParams) {
 		return this._incidentRequestService.getNearMissIncidents(params);
+	}
+
+	public getRoadClosures(params: RoadClosuresParams) {
+		return this._roadClosureRequestService.getRoadClosures(params);
 	}
 }
