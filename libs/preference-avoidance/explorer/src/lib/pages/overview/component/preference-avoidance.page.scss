@@ -463,6 +463,7 @@
 			display: block;
 			min-width: 0;
 			border: 0;
+			background: var(--risk-bucket-color);
 			cursor: pointer;
 			padding: 0;
 			position: relative;
@@ -486,42 +487,6 @@
 				box-shadow:
 					inset 0 0 0 2px #fff,
 					0 0 0 2px #111827;
-			}
-
-			&--preference-extreme {
-				background: #052e16;
-			}
-
-			&--preference-strong {
-				background: #166534;
-			}
-
-			&--preference {
-				background: #16a34a;
-			}
-
-			&--preference-light {
-				background: #86efac;
-			}
-
-			&--baseline {
-				background: #6b7280;
-			}
-
-			&--avoidance-light {
-				background: #fca5a5;
-			}
-
-			&--avoidance {
-				background: #dc2626;
-			}
-
-			&--avoidance-strong {
-				background: #991b1b;
-			}
-
-			&--avoidance-extreme {
-				background: #450a0a;
 			}
 		}
 	}
@@ -1008,7 +973,6 @@
 			font-size: 0.82rem;
 		}
 	}
-
 }
 
 @media (max-width: 75rem) {

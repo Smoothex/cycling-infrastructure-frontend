@@ -184,7 +184,7 @@
 										<button
 											type="button"
 											class="risk-legend__segment"
-											[class]="'risk-legend__segment risk-legend__segment--' + item.classModifier"
+											[style.--risk-bucket-color]="item.color"
 											[class.risk-legend__segment--selected]="isRiskLegendSelected(item.bucket)"
 											[attr.aria-label]="item.label"
 											[attr.aria-pressed]="isRiskLegendSelected(item.bucket)"

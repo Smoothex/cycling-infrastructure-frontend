@@ -23,6 +23,7 @@ import {
 	SegmentSummary,
 	NearMissIncident,
 	RoadClosure,
+	RiskBucket,
 	SegmentTileProperties,
 	TileStatus,
 	TrafficDetector,
@@ -41,6 +42,13 @@ import { Popover } from 'primeng/popover';
 import { Skeleton } from 'primeng/skeleton';
 import { AnalyticsDashboardComponent } from '../../../components/analytics-dashboard/component/analytics-dashboard.component';
 import { SegmentsTableComponent } from '../../../components/segments-table/component/segments-table.component';
+import {
+	calculateEventBalance,
+	classifyRiskBucket,
+	RISK_BUCKET_COLORS,
+	RISK_LEGEND_ITEMS,
+	RiskLegendBucket,
+} from '../../../models/risk-buckets';
 
 const preferenceAvoidanceSegmentsSource = 'preference-avoidance-segments-source';
 const preferenceAvoidanceCorridorStreetsLayer = 'preference-avoidance-corridor-streets-layer';
@@ -165,49 +173,6 @@ class MapBaseStyleControl implements maplibregl.IControl {
 		}
 	}
 }
-type RiskLegendBucket =
-	'PREFERENCE_EXTREME'
-	| 'PREFERENCE_STRONG'
-	| 'PREFERENCE'
-	| 'PREFERENCE_LIGHT'
-	| 'BASELINE'
-	| 'AVOIDANCE_LIGHT'
-	| 'AVOIDANCE'
-	| 'AVOIDANCE_STRONG'
-	| 'AVOIDANCE_EXTREME'
-	| 'NO_EVENTS';
-
-interface RiskLegendItem {
-	bucket: Exclude<RiskLegendBucket, 'NO_EVENTS'>;
-	label: string;
-	classModifier: string;
-}
-
-const riskLegendItems: RiskLegendItem[] = [
-	{ bucket: 'PREFERENCE_EXTREME', label: 'Extremely preferred segments', classModifier: 'preference-extreme' },
-	{ bucket: 'PREFERENCE_STRONG', label: 'Strongly preferred segments', classModifier: 'preference-strong' },
-	{ bucket: 'PREFERENCE', label: 'Preferred segments', classModifier: 'preference' },
-	{ bucket: 'PREFERENCE_LIGHT', label: 'Slightly preferred segments', classModifier: 'preference-light' },
-	{ bucket: 'BASELINE', label: 'Balanced segments', classModifier: 'baseline' },
-	{ bucket: 'AVOIDANCE_LIGHT', label: 'Slightly avoided segments', classModifier: 'avoidance-light' },
-	{ bucket: 'AVOIDANCE', label: 'Avoided segments', classModifier: 'avoidance' },
-	{ bucket: 'AVOIDANCE_STRONG', label: 'Strongly avoided segments', classModifier: 'avoidance-strong' },
-	{ bucket: 'AVOIDANCE_EXTREME', label: 'Extremely avoided segments', classModifier: 'avoidance-extreme' },
-];
-
-const riskLegendColors: Record<RiskLegendBucket, string> = {
-	PREFERENCE_EXTREME: '#052e16',
-	PREFERENCE_STRONG: '#166534',
-	PREFERENCE: '#16a34a',
-	PREFERENCE_LIGHT: '#86efac',
-	BASELINE: '#6b7280',
-	AVOIDANCE_LIGHT: '#fca5a5',
-	AVOIDANCE: '#dc2626',
-	AVOIDANCE_STRONG: '#991b1b',
-	AVOIDANCE_EXTREME: '#450a0a',
-	NO_EVENTS: '#d1d5db',
-};
-
 // map to the per-segment enrichment event counts baked into the tile properties
 const enrichmentFilterCountProperty: Record<SegmentEnrichmentFilter, keyof SegmentTileProperties> = {
 	TRAFFIC_ENRICHED: 'trafficEnrichedEventCount',
@@ -219,19 +184,15 @@ const enrichmentFilterCountProperty: Record<SegmentEnrichmentFilter, keyof Segme
 // the tiles carry all-time properties (bucket/eventCount) plus per-year variants
 // (bucket_<year>/eventCount_<year>), so year views restyle the same tile layers
 function bucketColorExpression(bucketProperty: string): maplibregl.ExpressionSpecification {
+	const [firstItem, ...remainingItems] = RISK_LEGEND_ITEMS;
+
 	return [
 		'match',
 		['get', bucketProperty],
-		'PREFERENCE_EXTREME', riskLegendColors.PREFERENCE_EXTREME,
-		'PREFERENCE_STRONG', riskLegendColors.PREFERENCE_STRONG,
-		'PREFERENCE', riskLegendColors.PREFERENCE,
-		'PREFERENCE_LIGHT', riskLegendColors.PREFERENCE_LIGHT,
-		'BASELINE', riskLegendColors.BASELINE,
-		'AVOIDANCE_LIGHT', riskLegendColors.AVOIDANCE_LIGHT,
-		'AVOIDANCE', riskLegendColors.AVOIDANCE,
-		'AVOIDANCE_STRONG', riskLegendColors.AVOIDANCE_STRONG,
-		'AVOIDANCE_EXTREME', riskLegendColors.AVOIDANCE_EXTREME,
-		riskLegendColors.NO_EVENTS,
+		firstItem.bucket,
+		firstItem.color,
+		...remainingItems.flatMap(({ bucket, color }) => [bucket, color]),
+		RISK_BUCKET_COLORS.NO_EVENTS,
 	];
 }
 
@@ -367,7 +328,7 @@ export class PreferenceAvoidancePage {
 	protected readonly hoveredSegmentId = signal<number | undefined>(undefined);
 	protected readonly selectedEventFilter = signal<EventFilter>('ALL');
 	protected readonly selectedPanelView = signal<PanelViewMode>('INFO');
-	protected readonly selectedRiskLegendBuckets = signal<RiskLegendItem['bucket'][]>([]);
+	protected readonly selectedRiskLegendBuckets = signal<RiskLegendBucket[]>([]);
 	protected readonly selectedEnrichmentFilters = signal<SegmentEnrichmentFilter[]>([]);
 	// undefined = "All time"
 	protected readonly selectedYear = signal<number | undefined>(undefined);
@@ -375,7 +336,7 @@ export class PreferenceAvoidancePage {
 	protected readonly selectedTrafficCondition = signal<string | undefined>(undefined);
 	protected readonly selectedCorridorSegmentIds = signal<number[]>([]);
 	protected readonly selectedTab = signal<ExplorerTab>('MAP');
-	protected readonly riskLegendItems = riskLegendItems;
+	protected readonly riskLegendItems = RISK_LEGEND_ITEMS;
 	protected readonly tabOptions: { label: string; value: ExplorerTab; icon: string }[] = [
 		{ label: 'Map Explorer', value: 'MAP', icon: 'ph-map-trifold' },
 		{ label: 'Analytics', value: 'ANALYTICS', icon: 'ph-chart-bar' },
@@ -1098,7 +1059,7 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
-	protected onRiskLegendToggle(bucket: RiskLegendItem['bucket']): void {
+	protected onRiskLegendToggle(bucket: RiskLegendBucket): void {
 		this.selectedRiskLegendBuckets.update((selectedBuckets) => {
 			if (selectedBuckets.includes(bucket)) {
 				return selectedBuckets.filter((selectedBucket) => selectedBucket !== bucket);
@@ -1112,7 +1073,7 @@ export class PreferenceAvoidancePage {
 		this.selectedRiskLegendBuckets.set([]);
 	}
 
-	protected isRiskLegendSelected(bucket: RiskLegendItem['bucket']): boolean {
+	protected isRiskLegendSelected(bucket: RiskLegendBucket): boolean {
 		return this.selectedRiskLegendBuckets().includes(bucket);
 	}
 
@@ -1716,7 +1677,7 @@ export class PreferenceAvoidancePage {
 				highlightKind,
 				eventSignalColor: this.eventSignalColor(segment),
 				eventLineWidth: this.eventLineWidth(segment),
-				eventBalance: this.eventBalance(segment),
+				eventBalance: calculateEventBalance(segment.avoidanceCount, segment.preferenceCount),
 				eventSignalBucket: this.eventSignalBucket(segment),
 			},
 		};
@@ -2248,58 +2209,21 @@ export class PreferenceAvoidancePage {
 	}
 
 	private eventSignalColor(segment?: HighlightableSegment): string {
-		return riskLegendColors[this.eventSignalBucket(segment)];
+		return RISK_BUCKET_COLORS[this.eventSignalBucket(segment)];
 	}
 
-	private eventSignalBucket(segment?: HighlightableSegment): RiskLegendBucket {
-		const balance = this.eventBalance(segment);
+	private eventSignalBucket(segment?: HighlightableSegment): RiskBucket {
+		const avoidanceCount = segment?.avoidanceCount ?? 0;
+		const preferenceCount = segment?.preferenceCount ?? 0;
+		const balance = calculateEventBalance(avoidanceCount, preferenceCount);
 		const eventCount = (segment?.avoidanceCount ?? 0) + (segment?.preferenceCount ?? 0);
-		if (eventCount === 0) {
-			return 'NO_EVENTS';
-		}
-		if (balance <= -0.9) {
-			return 'AVOIDANCE_EXTREME';
-		}
-		if (balance <= -0.6) {
-			return 'AVOIDANCE_STRONG';
-		}
-		if (balance <= -0.3) {
-			return 'AVOIDANCE';
-		}
-		if (balance <= -0.1) {
-			return 'AVOIDANCE_LIGHT';
-		}
-		if (balance >= 0.9) {
-			return 'PREFERENCE_EXTREME';
-		}
-		if (balance >= 0.6) {
-			return 'PREFERENCE_STRONG';
-		}
-		if (balance >= 0.3) {
-			return 'PREFERENCE';
-		}
-		if (balance >= 0.1) {
-			return 'PREFERENCE_LIGHT';
-		}
-		return 'BASELINE';
+
+		return classifyRiskBucket(balance, eventCount);
 	}
 
 	private eventLineWidth(segment?: Pick<SegmentSummary, 'avoidanceCount' | 'preferenceCount'>): number {
 		const events = (segment?.avoidanceCount ?? 0) + (segment?.preferenceCount ?? 0);
 		return Math.min(8, Math.max(1.5, 1.5 + Math.log10(events + 1) * 2.2));
-	}
-
-	// Mirrors the backend's balanceExpression(): additive smoothing with five
-	// phantom neutral events, so the score grows with both the one-sidedness and
-	// the amount of evidence and approaches (but never reaches) +-1.
-	private eventBalance(segment?: HighlightableSegment): number {
-		const avoidance = segment?.avoidanceCount ?? 0;
-		const preference = segment?.preferenceCount ?? 0;
-		const total = avoidance + preference;
-		if (total === 0) {
-			return 0;
-		}
-		return (preference - avoidance) / (total + 5);
 	}
 
 	private selectSegment(segmentId: number | undefined): void {

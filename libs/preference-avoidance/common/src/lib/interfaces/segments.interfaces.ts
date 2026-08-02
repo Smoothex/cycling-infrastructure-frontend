@@ -50,6 +50,18 @@ export interface TileStatus {
 	lastError?: string;
 }
 
+export type RiskBucket =
+	| 'PREFERENCE_EXTREME'
+	| 'PREFERENCE_STRONG'
+	| 'PREFERENCE'
+	| 'PREFERENCE_LIGHT'
+	| 'BASELINE'
+	| 'AVOIDANCE_LIGHT'
+	| 'AVOIDANCE'
+	| 'AVOIDANCE_STRONG'
+	| 'AVOIDANCE_EXTREME'
+	| 'NO_EVENTS';
+
 /**
  * Feature properties baked into the 'segments' layer of the PMTiles tileset.
  * The 'streets' overview layer carries the same properties minus id,
@@ -69,7 +81,7 @@ export interface SegmentTileProperties {
 	gradientPercent?: number;
 	eventCount: number;
 	balance: number;
-	bucket: string;
+	bucket: RiskBucket;
 	trafficEnrichedEventCount: number;
 	weatherEnrichedEventCount: number;
 	ohsomeEnrichedEventCount: number;
