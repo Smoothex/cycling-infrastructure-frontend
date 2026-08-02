@@ -1,0 +1,266 @@
+.t-preference-avoidance-page {
+	.pa-analytics {
+		display: flex;
+		flex-direction: column;
+		gap: 1.1rem;
+
+		&__corridor-grid {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 1rem;
+			align-items: start;
+		}
+
+		&__card {
+			min-width: 0;
+			overflow: hidden;
+
+			.p-card-content {
+				padding: 1rem;
+			}
+		}
+
+		&__message {
+			border: 1px dashed var(--pa-card-border);
+			border-radius: var(--pa-radius-control);
+			background: var(--pa-card-bg);
+			color: var(--pa-label);
+			padding: 1rem;
+			font-size: 0.86rem;
+
+			&--error {
+				border-color: #fecaca;
+				background: #fef2f2;
+				color: #991b1b;
+			}
+		}
+
+		&__caption {
+			margin: 0.7rem 0 0;
+			color: var(--pa-label);
+			font-size: 0.78rem;
+			line-height: 1.5;
+		}
+
+		.sr-only {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+	}
+
+	.pa-evidence {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(10rem, auto)) minmax(15rem, 1fr);
+		align-items: center;
+		gap: 1rem;
+		border: 1px solid var(--pa-card-border);
+		border-radius: var(--pa-radius-card);
+		background: var(--pa-card-bg);
+		box-shadow: var(--pa-shadow-card);
+		padding: 0.9rem 1rem;
+
+		&__metric {
+			display: flex;
+			flex-direction: column;
+			gap: 0.2rem;
+			padding-right: 1rem;
+			border-right: 1px solid var(--pa-card-border);
+
+			strong {
+				color: var(--pa-heading);
+				font-size: 1.15rem;
+				line-height: 1.2;
+			}
+
+			span {
+				color: var(--pa-label);
+				font-size: 0.74rem;
+			}
+		}
+
+		p {
+			margin: 0;
+			color: var(--pa-label);
+			font-size: 0.78rem;
+			line-height: 1.5;
+		}
+	}
+
+	.pa-insight-header {
+		align-items: flex-start;
+
+		h3 {
+			margin-bottom: 0.25rem;
+		}
+
+		p {
+			max-width: 42rem;
+		}
+	}
+
+	.corridor-ranking-table {
+		.p-datatable-table-container {
+			overflow-x: auto;
+		}
+
+		table {
+			min-width: 39rem;
+		}
+
+		th {
+			white-space: nowrap;
+			color: var(--pa-label);
+			font-size: 0.68rem;
+			font-weight: 700;
+			letter-spacing: 0.025em;
+			text-transform: uppercase;
+		}
+
+		td {
+			vertical-align: middle;
+			font-size: 0.82rem;
+
+			strong {
+				display: inline-block;
+				max-width: 13rem;
+				color: var(--pa-heading);
+				line-height: 1.3;
+			}
+
+			small {
+				display: block;
+				margin-top: 0.22rem;
+				color: var(--pa-label);
+				font-size: 0.68rem;
+			}
+		}
+	}
+
+	.signal-balance {
+		display: flex;
+		width: 5rem;
+		height: 0.48rem;
+		overflow: hidden;
+		border-radius: 999px;
+		background: var(--pa-page-bg);
+
+		&__avoidance {
+			background: #dc2626;
+		}
+
+		&__preference {
+			background: #16a34a;
+		}
+	}
+
+	.corridor-map-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.9rem;
+		height: 1.9rem;
+		border: 1px solid var(--pa-card-border);
+		border-radius: 8px;
+		background: transparent;
+		color: var(--pa-accent);
+		cursor: pointer;
+		font-size: 1rem;
+
+		&:hover,
+		&:focus-visible {
+			border-color: var(--pa-accent);
+			background: color-mix(in srgb, var(--pa-accent) 8%, transparent);
+		}
+	}
+
+	.pa-infrastructure-chart {
+		min-height: 20rem;
+	}
+
+	.pa-infrastructure-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.25rem;
+		margin-top: 0.6rem;
+		color: var(--pa-label);
+		font-size: 0.74rem;
+
+		span {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.35rem;
+		}
+	}
+
+	.pa-dot {
+		display: inline-block;
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+
+		&--avoidance {
+			background: #dc2626;
+		}
+
+		&--preference {
+			background: #16a34a;
+		}
+	}
+
+	@media (max-width: 78rem) {
+		.pa-analytics__corridor-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.pa-evidence {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+
+			p {
+				grid-column: 1 / -1;
+			}
+		}
+	}
+
+	@media (max-width: 48rem) {
+		.pa-evidence {
+			grid-template-columns: 1fr;
+
+			&__metric {
+				padding: 0 0 0.65rem;
+				border-right: 0;
+				border-bottom: 1px solid var(--pa-card-border);
+			}
+
+			p {
+				grid-column: auto;
+			}
+		}
+
+		.pa-insight-header {
+			flex-direction: column;
+			align-items: stretch;
+
+			.panel-toggle {
+				display: flex;
+				overflow-x: auto;
+			}
+		}
+
+		.corridor-ranking-table {
+			table {
+				min-width: 31rem;
+			}
+
+			.pa-secondary-column {
+				display: none;
+			}
+		}
+	}
+}

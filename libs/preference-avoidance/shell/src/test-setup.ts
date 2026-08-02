@@ -1,8 +1,7 @@
-globalThis.ngJest = {
-	testEnvironmentOptions: {
-		errorOnUnknownElements: true,
-		errorOnUnknownProperties: true,
-	},
-};
+import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 import 'reflect-metadata';
-import 'jest-preset-angular/setup-jest';
+
+setupZoneTestEnv({
+	errorOnUnknownElements: true,
+	errorOnUnknownProperties: true,
+});

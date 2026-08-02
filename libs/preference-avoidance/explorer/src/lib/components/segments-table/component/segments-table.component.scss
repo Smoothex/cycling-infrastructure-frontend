@@ -1,0 +1,53 @@
+// ViewEncapsulation.None: keep everything nested under the page host class so
+// the PrimeNG overrides only apply inside the preference-avoidance page.
+.t-preference-avoidance-page {
+	.segments-list-table {
+		th {
+			color: var(--pa-label);
+			font-size: 0.72rem;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			text-transform: uppercase;
+		}
+
+		td {
+			vertical-align: middle;
+			cursor: pointer;
+
+			strong,
+			span {
+				display: block;
+			}
+
+			strong {
+				color: var(--pa-heading);
+			}
+
+			span {
+				color: var(--pa-label);
+				font-size: 0.78rem;
+			}
+		}
+	}
+
+	.segment-row {
+		transition: background 0.12s ease;
+
+		&:hover {
+			background: var(--surface-hover) !important;
+		}
+
+		&--selected,
+		&--selected:hover {
+			background: color-mix(in srgb, var(--pa-accent) 18%, var(--pa-card-bg)) !important;
+		}
+
+		&--selected td {
+			font-weight: 600;
+		}
+
+		&--selected td:first-child {
+			box-shadow: inset 4px 0 0 0 var(--pa-accent);
+		}
+	}
+}

@@ -1,3 +1,6 @@
+import { SegmentEnrichmentFilter } from './segments.interfaces';
+import { MultiLineString } from 'geojson';
+
 export type AnalysisDimension =
 	| 'EVENT_TYPE'
 	| 'HOUR_OF_DAY'
@@ -19,9 +22,9 @@ export type AnalysisDimension =
 	| 'TRAFFIC_VOLUME_BUCKET'
 	| 'TRAFFIC_SPEED_BUCKET';
 
-export type TimeBucket = 'DAY' | 'WEEK' | 'MONTH';
-
 export type SegmentEventType = 'AVOIDANCE' | 'PREFERENCE';
+
+export type InfrastructureDimension = 'SURFACE' | 'SMOOTHNESS' | 'CYCLEWAY_TYPE' | 'HIGHWAY';
 
 export interface ProcessingSummary {
 	totalRides: number;
@@ -56,27 +59,88 @@ export interface DimensionBucket {
 	averageTrafficSpeedKfz?: number;
 }
 
-export interface TimeSeriesBucket {
-	bucketStartEpochMillis: number;
-	label: string;
-	totalCount: number;
-	avoidanceCount: number;
-	preferenceCount: number;
-	avoidanceShare?: number;
-	preferenceShare?: number;
+export interface AnalyticsContext {
+	matchingRideCount: number;
+	matchingEventCount: number;
+	avoidanceEventCount: number;
+	preferenceEventCount: number;
+	earliestEventTimestamp?: number;
+	latestEventTimestamp?: number;
 }
 
-export interface AnalyticsDistributionParams {
-	dimension?: AnalysisDimension;
+export interface CorridorRanking {
+	streetName: string;
+	avoidanceRideCount: number;
+	preferenceRideCount: number;
+	avoidanceEventCount: number;
+	preferenceEventCount: number;
+	segmentCount: number;
+	scaryIncidentCount: number;
+	minLon?: number;
+	minLat?: number;
+	maxLon?: number;
+	maxLat?: number;
+	topSegmentId?: number;
+	segmentIds: number[];
+}
+
+export interface CorridorGeometry {
+	streetName: string;
+	segmentIds: number[];
+	geometry: MultiLineString;
+}
+
+export interface InfrastructureSignalBucket {
+	value: string;
+	avoidanceRideCount: number;
+	preferenceRideCount: number;
+	totalRideSignals: number;
+	avoidanceShare?: number;
+	percentagePointDifference?: number;
+}
+
+export interface InfrastructureSignals {
+	dimension: InfrastructureDimension;
+	matchingEventCount: number;
+	knownAttributeEventCount: number;
+	coverageShare?: number;
+	baselineAvoidanceShare?: number;
+	buckets: InfrastructureSignalBucket[];
+}
+
+/** Filters whose semantics are supported by every analytics insight. */
+export interface AnalyticsFilters {
 	from?: number;
 	to?: number;
+	rideIntent?: string;
+}
+
+export interface AnalyticsDistributionParams extends AnalyticsFilters {
+	trafficCondition?: string;
+	enrichmentFilters?: SegmentEnrichmentFilter[];
+	dimension?: AnalysisDimension;
 	eventType?: SegmentEventType;
 	limit?: number;
 }
 
-export interface AnalyticsTimeSeriesParams {
-	bucket?: TimeBucket;
-	from?: number;
-	to?: number;
-	eventType?: SegmentEventType;
+export type AnalyticsContextParams = AnalyticsFilters;
+
+export interface AnalyticsCorridorsParams extends AnalyticsFilters {
+	rank?: SegmentEventType;
+	limit?: number;
+	minRideCount?: number;
+}
+
+export interface AnalyticsCorridorGeometryParams {
+	streetName: string;
+	minLon: number;
+	minLat: number;
+	maxLon: number;
+	maxLat: number;
+}
+
+export interface AnalyticsInfrastructureSignalsParams extends AnalyticsFilters {
+	dimension?: InfrastructureDimension;
+	limit?: number;
+	minRideCount?: number;
 }

@@ -27,10 +27,40 @@ describe('SegmentsRequestService', () => {
 	});
 
 	it('should call the segments endpoint with params', () => {
-		service.getSegments({ limit: 50, minSampleSize: 1, enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'] });
+		service.getSegments({
+			limit: 50,
+			minSampleSize: 1,
+			rideIntent: 'COMMUTE',
+			trafficCondition: 'HEAVY',
+			enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'],
+		});
 
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments', {
-			params: { limit: 50, minSampleSize: 1, enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'] },
+			params: {
+				limit: 50,
+				minSampleSize: 1,
+				rideIntent: 'COMMUTE',
+				trafficCondition: 'HEAVY',
+				enrichmentFilters: ['TRAFFIC_ENRICHED', 'WEATHER_ENRICHED'],
+			},
+		});
+	});
+
+	it('should call the geojson endpoint with server-side filters', () => {
+		service.getSegmentsGeoJson({
+			from: 100,
+			to: 200,
+			rideIntent: 'LEISURE',
+			trafficCondition: 'LIGHT',
+		});
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments/geojson', {
+			params: {
+				from: 100,
+				to: 200,
+				rideIntent: 'LEISURE',
+				trafficCondition: 'LIGHT',
+			},
 		});
 	});
 
@@ -41,10 +71,21 @@ describe('SegmentsRequestService', () => {
 	});
 
 	it('should call the segment events endpoint with params', () => {
-		service.getSegmentEvents(42, { limit: 100, eventType: 'AVOIDANCE', enrichmentFilters: [] });
+		service.getSegmentEvents(42, {
+			limit: 100,
+			eventType: 'AVOIDANCE',
+			rideIntent: 'COMMUTE',
+			trafficCondition: 'CONGESTED',
+			enrichmentFilters: [],
+		});
 
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/segments/42/events', {
-			params: { limit: 100, eventType: 'AVOIDANCE' },
+			params: {
+				limit: 100,
+				eventType: 'AVOIDANCE',
+				rideIntent: 'COMMUTE',
+				trafficCondition: 'CONGESTED',
+			},
 		});
 	});
 });
