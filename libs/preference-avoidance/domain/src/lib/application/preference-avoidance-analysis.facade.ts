@@ -1,7 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import {
+	AnalyticsContextParams,
+	AnalyticsCorridorGeometryParams,
+	AnalyticsCorridorsParams,
 	AnalyticsDistributionParams,
-	AnalyticsTimeSeriesParams,
+	AnalyticsInfrastructureSignalsParams,
 	NearMissIncidentsParams,
 	RoadClosuresParams,
 	SegmentEventsParams,
@@ -30,8 +33,20 @@ export class PreferenceAvoidanceAnalysisFacade {
 		return this._analyticsRequestService.getDistribution(params);
 	}
 
-	public getTimeSeries(params: AnalyticsTimeSeriesParams) {
-		return this._analyticsRequestService.getTimeSeries(params);
+	public getAnalyticsContext(params: AnalyticsContextParams) {
+		return this._analyticsRequestService.getContext(params);
+	}
+
+	public getCorridors(params: AnalyticsCorridorsParams) {
+		return this._analyticsRequestService.getCorridors(params);
+	}
+
+	public getCorridorGeometry(params: AnalyticsCorridorGeometryParams) {
+		return this._analyticsRequestService.getCorridorGeometry(params);
+	}
+
+	public getInfrastructureSignals(params: AnalyticsInfrastructureSignalsParams) {
+		return this._analyticsRequestService.getInfrastructureSignals(params);
 	}
 
 	public getTileStatus() {

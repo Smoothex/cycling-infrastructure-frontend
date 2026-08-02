@@ -1,0 +1,202 @@
+<div class="pa-analytics">
+	@if (context.isLoading()) {
+		<p-skeleton height="5.5rem" />
+	} @else if (context.error()) {
+		<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+			Analytics evidence could not be loaded. Try changing the filters or reload the page.
+		</div>
+	} @else if (context.value(); as evidence) {
+		@if (evidence.matchingEventCount > 0) {
+			<section class="pa-evidence" aria-label="Evidence represented by the current filters">
+				<div class="pa-evidence__metric">
+					<strong>{{ evidence.matchingRideCount | number }}</strong>
+					<span>rides with route-choice signals</span>
+				</div>
+				<div class="pa-evidence__metric">
+					<strong>{{ evidence.matchingEventCount | number }}</strong>
+					<span>segment observations</span>
+				</div>
+				<div class="pa-evidence__metric">
+					<strong>
+						{{ evidence.earliestEventTimestamp | date: 'MMM y' }}–{{ evidence.latestEventTimestamp | date: 'MMM y' }}
+					</strong>
+					<span>observation period</span>
+				</div>
+				<p>
+					Signals compare local detours with the distance-shortest route. Counts describe rides, not unique cyclists.
+				</p>
+			</section>
+		} @else {
+			<div class="pa-analytics__message">
+				No route-choice signals match the selected year and ride type.
+			</div>
+		}
+	}
+
+	<div class="pa-analytics__corridor-grid">
+		<p-card class="pa-analytics__card">
+			<ng-template pTemplate="header">
+				<div class="card-header pa-insight-header">
+					<div>
+						<h3>Top avoided streets</h3>
+						<p>Corridors bypassed by the largest number of distinct rides.</p>
+					</div>
+				</div>
+			</ng-template>
+			@if (topAvoidedCorridors.error()) {
+				<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+					Avoided streets could not be loaded.
+				</div>
+			} @else {
+			<p-table
+				[value]="topAvoidedCorridors.value()"
+				[loading]="topAvoidedCorridors.isLoading()"
+				[paginator]="true"
+				[rows]="corridorPageSize"
+				styleClass="corridor-ranking-table"
+			>
+				<ng-template pTemplate="header">
+					<tr>
+						<th>Street</th>
+						<th>Rides avoiding</th>
+						<th>Signal balance</th>
+						<th>Near misses</th>
+						<th class="pa-secondary-column">Segments</th>
+						<th><span class="sr-only">Map</span></th>
+					</tr>
+				</ng-template>
+				<ng-template pTemplate="body" let-corridor>
+					<tr>
+						<td><strong>{{ corridor.streetName }}</strong></td>
+						<td>{{ corridor.avoidanceRideCount | number }}</td>
+						<td>
+							<span
+								class="signal-balance"
+								[attr.aria-label]="corridor.avoidanceRideCount + ' avoidance rides and ' + corridor.preferenceRideCount + ' preference rides'"
+							>
+								<span class="signal-balance__avoidance" [style.width.%]="signalShare(corridor, 'AVOIDANCE')"></span>
+								<span class="signal-balance__preference" [style.width.%]="signalShare(corridor, 'PREFERENCE')"></span>
+							</span>
+							<small>{{ corridor.avoidanceRideCount | number }} / {{ corridor.preferenceRideCount | number }}</small>
+						</td>
+						<td>{{ corridor.scaryIncidentCount | number }}</td>
+						<td class="pa-secondary-column">{{ corridor.segmentCount | number }}</td>
+						<td>
+							<button type="button" class="corridor-map-link" (click)="viewCorridorOnMap.emit(corridor)" [attr.aria-label]="'View ' + corridor.streetName + ' on map'">
+								<i class="ph-bold ph-map-pin-area"></i>
+							</button>
+						</td>
+					</tr>
+				</ng-template>
+				<ng-template pTemplate="emptymessage">
+					<tr><td colspan="6">No avoided street has enough rides for the current filters.</td></tr>
+				</ng-template>
+			</p-table>
+			}
+		</p-card>
+
+		<p-card class="pa-analytics__card">
+			<ng-template pTemplate="header">
+				<div class="card-header pa-insight-header">
+					<div>
+						<h3>Top preferred streets</h3>
+						<p>Corridors chosen by the largest number of distinct rides despite being longer.</p>
+					</div>
+				</div>
+			</ng-template>
+			@if (topPreferredCorridors.error()) {
+				<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+					Preferred streets could not be loaded.
+				</div>
+			} @else {
+			<p-table
+				[value]="topPreferredCorridors.value()"
+				[loading]="topPreferredCorridors.isLoading()"
+				[paginator]="true"
+				[rows]="corridorPageSize"
+				styleClass="corridor-ranking-table"
+			>
+				<ng-template pTemplate="header">
+					<tr>
+						<th>Street</th>
+						<th>Rides choosing</th>
+						<th>Signal balance</th>
+						<th class="pa-secondary-column">Segments</th>
+						<th><span class="sr-only">Map</span></th>
+					</tr>
+				</ng-template>
+				<ng-template pTemplate="body" let-corridor>
+					<tr>
+						<td><strong>{{ corridor.streetName }}</strong></td>
+						<td>{{ corridor.preferenceRideCount | number }}</td>
+						<td>
+							<span
+								class="signal-balance"
+								[attr.aria-label]="corridor.avoidanceRideCount + ' avoidance rides and ' + corridor.preferenceRideCount + ' preference rides'"
+							>
+								<span class="signal-balance__avoidance" [style.width.%]="signalShare(corridor, 'AVOIDANCE')"></span>
+								<span class="signal-balance__preference" [style.width.%]="signalShare(corridor, 'PREFERENCE')"></span>
+							</span>
+							<small>{{ corridor.avoidanceRideCount | number }} / {{ corridor.preferenceRideCount | number }}</small>
+						</td>
+						<td class="pa-secondary-column">{{ corridor.segmentCount | number }}</td>
+						<td>
+							<button type="button" class="corridor-map-link" (click)="viewCorridorOnMap.emit(corridor)" [attr.aria-label]="'View ' + corridor.streetName + ' on map'">
+								<i class="ph-bold ph-map-pin-area"></i>
+							</button>
+						</td>
+					</tr>
+				</ng-template>
+				<ng-template pTemplate="emptymessage">
+					<tr><td colspan="5">No preferred street has enough rides for the current filters.</td></tr>
+				</ng-template>
+			</p-table>
+			}
+		</p-card>
+	</div>
+
+	<p-card class="pa-analytics__card pa-analytics__infrastructure-card">
+		<ng-template pTemplate="header">
+			<div class="card-header pa-insight-header">
+				<div>
+					<h3>Infrastructure signals</h3>
+					<p>Difference from the avoidance-signal baseline among events with historical OSM data.</p>
+				</div>
+				<div class="panel-toggle" role="group" aria-label="Infrastructure dimension">
+					@for (option of infrastructureDimensionOptions; track option.value) {
+						<button
+							type="button"
+							[class.panel-toggle__button--active]="selectedInfrastructureDimension() === option.value"
+							[attr.aria-pressed]="selectedInfrastructureDimension() === option.value"
+							(click)="onInfrastructureDimensionChange(option.value)"
+						>
+							{{ option.label }}
+						</button>
+					}
+				</div>
+			</div>
+		</ng-template>
+		@if (infrastructureSignals.isLoading()) {
+			<p-skeleton height="20rem" />
+		} @else if (infrastructureSignals.error()) {
+			<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+				Infrastructure signals could not be loaded.
+			</div>
+		} @else if (infrastructureSignals.value()?.buckets?.length) {
+			<div class="pa-infrastructure-chart">
+				<p-chart type="bar" [data]="infrastructureChartData()" [options]="infrastructureChartOptions" height="20rem" />
+			</div>
+			<div class="pa-infrastructure-legend" aria-label="Chart interpretation">
+				<span><i class="pa-dot pa-dot--avoidance"></i> More avoidance signals than baseline</span>
+				<span><i class="pa-dot pa-dot--preference"></i> Fewer avoidance signals than baseline</span>
+			</div>
+			@if (coverageNote(); as note) {
+				<p class="pa-analytics__caption">{{ note }} Association does not establish causation.</p>
+			}
+		} @else {
+			<div class="pa-analytics__message">
+				No infrastructure category has at least 20 ride signals for the current filters.
+			</div>
+		}
+	</p-card>
+</div>

@@ -76,34 +76,33 @@ export interface SegmentTileProperties {
 	trafficMeasuredEventCount: number;
 }
 
-export interface SegmentListParams {
-	minAvoidanceRatio?: number;
-	minSampleSize?: number;
-	limit?: number;
+export interface SegmentEventFilters {
 	/** epoch millis; with from/to only segments with an event in the window are returned */
 	from?: number;
 	to?: number;
 	enrichmentFilters?: SegmentEnrichmentFilter[];
+	rideIntent?: string;
+	trafficCondition?: string;
 }
 
-export interface SegmentEventsParams {
-	eventType?: SegmentEventType;
-	from?: number;
-	to?: number;
+export interface SegmentListParams extends SegmentEventFilters {
+	minAvoidanceRatio?: number;
+	minSampleSize?: number;
 	limit?: number;
-	enrichmentFilters?: SegmentEnrichmentFilter[];
 }
 
-export interface SegmentsGeoJsonParams {
+export interface SegmentEventsParams extends SegmentEventFilters {
+	eventType?: SegmentEventType;
+	limit?: number;
+}
+
+export interface SegmentsGeoJsonParams extends SegmentEventFilters {
 	minAvoidanceRatio?: number;
 	minPreferenceRatio?: number;
 	minSampleSize?: number;
 	/** "minLon,minLat,maxLon,maxLat" */
 	bbox?: string;
 	limit?: number;
-	from?: number;
-	to?: number;
-	enrichmentFilters?: SegmentEnrichmentFilter[];
 }
 
 /** Feature properties emitted by GET /api/segments/geojson. */

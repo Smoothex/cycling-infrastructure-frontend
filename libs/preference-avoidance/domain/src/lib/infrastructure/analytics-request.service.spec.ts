@@ -34,11 +34,55 @@ describe('AnalyticsRequestService', () => {
 		});
 	});
 
-	it('should call the time-series endpoint with params', () => {
-		service.getTimeSeries({ bucket: 'MONTH' });
+	it('should call the filter-aware context endpoint', () => {
+		service.getContext({ from: 1000, rideIntent: 'COMMUTE' });
 
-		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/time-series', {
-			params: { bucket: 'MONTH' },
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/context', {
+			params: { from: 1000, rideIntent: 'COMMUTE' },
+		});
+	});
+
+	it('should call the corridors endpoint with ranking params', () => {
+		service.getCorridors({ rank: 'AVOIDANCE', limit: 8, minRideCount: 5 });
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/corridors', {
+			params: { rank: 'AVOIDANCE', limit: 8, minRideCount: 5 },
+		});
+	});
+
+	it('should call the corridor geometry endpoint with the selected bounds', () => {
+		service.getCorridorGeometry({
+			streetName: 'Schönhauser Allee',
+			minLon: 13.4,
+			minLat: 52.52,
+			maxLon: 13.43,
+			maxLat: 52.55,
+		});
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/corridor-geometry', {
+			params: {
+				streetName: 'Schönhauser Allee',
+				minLon: 13.4,
+				minLat: 52.52,
+				maxLon: 13.43,
+				maxLat: 52.55,
+			},
+		});
+	});
+
+	it('should call the infrastructure-signals endpoint', () => {
+		service.getInfrastructureSignals({ dimension: 'SMOOTHNESS', minRideCount: 20 });
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/infrastructure-signals', {
+			params: { dimension: 'SMOOTHNESS', minRideCount: 20 },
+		});
+	});
+
+	it('should strip empty array params from generic distributions', () => {
+		service.getDistribution({ dimension: 'SURFACE', enrichmentFilters: [] });
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/distribution', {
+			params: { dimension: 'SURFACE' },
 		});
 	});
 });

@@ -1,11 +1,11 @@
-globalThis.ngJest = {
-	testEnvironmentOptions: {
-		errorOnUnknownElements: true,
-		errorOnUnknownProperties: true,
-	},
-};
+import 'jest-canvas-mock';
+import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 import 'reflect-metadata';
-import 'jest-preset-angular/setup-jest';
+
+setupZoneTestEnv({
+	errorOnUnknownElements: true,
+	errorOnUnknownProperties: true,
+});
 
 /* eslint-disable @typescript-eslint/no-empty-function */
 global.ResizeObserver = class {
@@ -13,3 +13,8 @@ global.ResizeObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
+
+Object.defineProperty(global.URL, 'createObjectURL', {
+	writable: true,
+	value: jest.fn(() => 'mocked-url'),
+});

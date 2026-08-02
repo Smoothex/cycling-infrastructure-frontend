@@ -1,0 +1,60 @@
+<p-card>
+	<ng-template pTemplate="header">
+		<div class="card-header">
+			<div>
+				<h3>Segments</h3>
+				<p>{{ sortedSegments().length | number }} segments loaded · click a row to inspect it on the map</p>
+			</div>
+		</div>
+	</ng-template>
+	<p-table
+		[value]="sortedSegments()"
+		[loading]="loading()"
+		[paginator]="true"
+		[rows]="15"
+		[rowsPerPageOptions]="[15, 25, 50]"
+		[tableStyle]="{ 'min-width': '60rem' }"
+		[sortField]="sortField()"
+		[sortOrder]="sortOrder()"
+		(sortFunction)="onSort($event)"
+		[customSort]="true"
+		styleClass="segments-list-table"
+	>
+		<ng-template pTemplate="header">
+			<tr>
+				<th pSortableColumn="streetName">Street <p-sortIcon field="streetName"></p-sortIcon></th>
+				<th pSortableColumn="avoidanceCount">Avoidances <p-sortIcon field="avoidanceCount"></p-sortIcon></th>
+				<th pSortableColumn="avoidanceRatio">Avoid % <p-sortIcon field="avoidanceRatio"></p-sortIcon></th>
+				<th pSortableColumn="preferenceCount">Preferences <p-sortIcon field="preferenceCount"></p-sortIcon></th>
+				<th pSortableColumn="preferenceRatio">Prefer % <p-sortIcon field="preferenceRatio"></p-sortIcon></th>
+				<th pSortableColumn="totalObservationCount">Observations <p-sortIcon field="totalObservationCount"></p-sortIcon></th>
+				<th pSortableColumn="gradientPercent">Gradient <p-sortIcon field="gradientPercent"></p-sortIcon></th>
+			</tr>
+		</ng-template>
+		<ng-template pTemplate="body" let-segment>
+			<tr
+				class="segment-row"
+				[class.segment-row--selected]="selectedSegmentId() === segment.id"
+				(mouseenter)="rowHovered.emit(segment.id)"
+				(mouseleave)="rowHovered.emit(undefined)"
+				(click)="rowSelected.emit(segment.id)"
+			>
+				<td>
+					<strong>{{ segment.streetName || 'Unknown street' }}</strong>
+					<span>{{ segment.id }}</span>
+				</td>
+				<td>{{ segment.avoidanceCount | number }}</td>
+				<td>{{ formatPercent(segment.avoidanceRatio) }}</td>
+				<td>{{ segment.preferenceCount | number }}</td>
+				<td>{{ formatPercent(segment.preferenceRatio) }}</td>
+				<td>{{ segment.totalObservationCount | number }}</td>
+				<td>{{ segment.gradientPercent != null ? (segment.gradientPercent | number: '1.1-1') + '%' : '-' }}</td>
+			</tr>
+		</ng-template>
+		<ng-template pTemplate="emptymessage">
+			<tr>
+				<td colspan="7">No segments available.</td>
+			</tr>
+		</ng-template>
+	</p-table>
+</p-card>

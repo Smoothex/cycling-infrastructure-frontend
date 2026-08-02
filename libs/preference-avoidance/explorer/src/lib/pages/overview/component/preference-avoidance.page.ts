@@ -13,6 +13,9 @@ import { FormsModule } from '@angular/forms';
 import { MapPage } from '@simra/common-components';
 import { APP_CONFIG } from '@simra/common-models';
 import {
+	AnalyticsFilters,
+	CorridorGeometry,
+	CorridorRanking,
 	SegmentEnrichmentFilter,
 	SegmentEvent,
 	SegmentEventType,
@@ -31,13 +34,19 @@ import { LineString, MultiLineString, Point, Polygon } from 'geojson';
 import * as maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
 import { firstValueFrom } from 'rxjs';
+import { PrimeTemplate } from 'primeng/api';
 import { Card } from 'primeng/card';
 import { Checkbox } from 'primeng/checkbox';
+import { Popover } from 'primeng/popover';
 import { Skeleton } from 'primeng/skeleton';
-import { TableModule } from 'primeng/table';
-import { SortEvent } from 'primeng/api';
+import { AnalyticsDashboardComponent } from '../../../components/analytics-dashboard/component/analytics-dashboard.component';
+import { SegmentsTableComponent } from '../../../components/segments-table/component/segments-table.component';
 
 const preferenceAvoidanceSegmentsSource = 'preference-avoidance-segments-source';
+const preferenceAvoidanceCorridorStreetsLayer = 'preference-avoidance-corridor-streets-layer';
+const preferenceAvoidanceCorridorSegmentsLayer = 'preference-avoidance-corridor-segments-layer';
+const preferenceAvoidanceCorridorGeometrySource = 'preference-avoidance-corridor-geometry-source';
+const preferenceAvoidanceCorridorGeometryLayer = 'preference-avoidance-corridor-geometry-layer';
 const preferenceAvoidanceStreetsLayer = 'preference-avoidance-streets-layer';
 const preferenceAvoidanceSegmentsLayer = 'preference-avoidance-segments-layer';
 const preferenceAvoidanceMatchedSource = 'preference-avoidance-matched-source';
@@ -108,6 +117,7 @@ function registerPmtilesProtocol(): void {
 type EventFilter = 'ALL' | SegmentEventType;
 type PanelViewMode = 'INFO' | 'EVENTS';
 type MapBaseStyle = 'MAP' | 'SATELLITE';
+type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS';
 
 /**
  * Map/Satellite switch rendered as a native MapLibre control so it sits on the
@@ -156,13 +166,15 @@ class MapBaseStyleControl implements maplibregl.IControl {
 	}
 }
 type RiskLegendBucket =
-	'PREFERENCE_STRONG'
+	'PREFERENCE_EXTREME'
+	| 'PREFERENCE_STRONG'
 	| 'PREFERENCE'
 	| 'PREFERENCE_LIGHT'
 	| 'BASELINE'
 	| 'AVOIDANCE_LIGHT'
 	| 'AVOIDANCE'
 	| 'AVOIDANCE_STRONG'
+	| 'AVOIDANCE_EXTREME'
 	| 'NO_EVENTS';
 
 interface RiskLegendItem {
@@ -172,6 +184,7 @@ interface RiskLegendItem {
 }
 
 const riskLegendItems: RiskLegendItem[] = [
+	{ bucket: 'PREFERENCE_EXTREME', label: 'Extremely preferred segments', classModifier: 'preference-extreme' },
 	{ bucket: 'PREFERENCE_STRONG', label: 'Strongly preferred segments', classModifier: 'preference-strong' },
 	{ bucket: 'PREFERENCE', label: 'Preferred segments', classModifier: 'preference' },
 	{ bucket: 'PREFERENCE_LIGHT', label: 'Slightly preferred segments', classModifier: 'preference-light' },
@@ -179,9 +192,11 @@ const riskLegendItems: RiskLegendItem[] = [
 	{ bucket: 'AVOIDANCE_LIGHT', label: 'Slightly avoided segments', classModifier: 'avoidance-light' },
 	{ bucket: 'AVOIDANCE', label: 'Avoided segments', classModifier: 'avoidance' },
 	{ bucket: 'AVOIDANCE_STRONG', label: 'Strongly avoided segments', classModifier: 'avoidance-strong' },
+	{ bucket: 'AVOIDANCE_EXTREME', label: 'Extremely avoided segments', classModifier: 'avoidance-extreme' },
 ];
 
 const riskLegendColors: Record<RiskLegendBucket, string> = {
+	PREFERENCE_EXTREME: '#052e16',
 	PREFERENCE_STRONG: '#166534',
 	PREFERENCE: '#16a34a',
 	PREFERENCE_LIGHT: '#86efac',
@@ -189,6 +204,7 @@ const riskLegendColors: Record<RiskLegendBucket, string> = {
 	AVOIDANCE_LIGHT: '#fca5a5',
 	AVOIDANCE: '#dc2626',
 	AVOIDANCE_STRONG: '#991b1b',
+	AVOIDANCE_EXTREME: '#450a0a',
 	NO_EVENTS: '#d1d5db',
 };
 
@@ -206,6 +222,7 @@ function bucketColorExpression(bucketProperty: string): maplibregl.ExpressionSpe
 	return [
 		'match',
 		['get', bucketProperty],
+		'PREFERENCE_EXTREME', riskLegendColors.PREFERENCE_EXTREME,
 		'PREFERENCE_STRONG', riskLegendColors.PREFERENCE_STRONG,
 		'PREFERENCE', riskLegendColors.PREFERENCE,
 		'PREFERENCE_LIGHT', riskLegendColors.PREFERENCE_LIGHT,
@@ -213,6 +230,7 @@ function bucketColorExpression(bucketProperty: string): maplibregl.ExpressionSpe
 		'AVOIDANCE_LIGHT', riskLegendColors.AVOIDANCE_LIGHT,
 		'AVOIDANCE', riskLegendColors.AVOIDANCE,
 		'AVOIDANCE_STRONG', riskLegendColors.AVOIDANCE_STRONG,
+		'AVOIDANCE_EXTREME', riskLegendColors.AVOIDANCE_EXTREME,
 		riskLegendColors.NO_EVENTS,
 	];
 }
@@ -278,24 +296,16 @@ interface ConditionRow {
 	items: EventDetailItem[];
 }
 
-interface EventQualificationCriteria {
-	enrichmentFilters: SegmentEnrichmentFilter[];
-	year?: number;
-	rideIntent?: string;
-	trafficCondition?: string;
-}
-
-interface SegmentQualificationParams extends EventQualificationCriteria {
-	segmentIds: number[];
-}
-
-interface SummaryCard {
+/** One tile of the data-processing summary strip shown on the Map Explorer tab. */
+interface SummaryKpi {
 	label: string;
 	value: number;
 	icon: string;
 	tone: IconTone;
-	enrichmentFilter?: SegmentEnrichmentFilter;
 }
+
+/** Status recorded successfully once detour analysis has finished for a ride. */
+const processedRideStatus = 'PROCESSED';
 
 @Component({
 	selector: 't-preference-avoidance-page',
@@ -305,9 +315,12 @@ interface SummaryCard {
 		MapPage,
 		Card,
 		Checkbox,
+		Popover,
 		Skeleton,
-		TableModule,
 		DecimalPipe,
+		PrimeTemplate,
+		AnalyticsDashboardComponent,
+		SegmentsTableComponent,
 	],
 	templateUrl: './preference-avoidance.page.html',
 	styleUrl: './preference-avoidance.page.scss',
@@ -323,11 +336,14 @@ export class PreferenceAvoidancePage {
 	private readonly _mapTilerToken = this._appConfig.mapTilerToken;
 	private readonly _map = signal<maplibregl.Map | undefined>(undefined);
 	private readonly _selectedSegmentTileProperties = signal<SegmentTileProperties | undefined>(undefined);
+	private readonly _selectionPinned = signal(false);
 	private readonly _segmentDetailCache = new Map<number, SegmentSummary>();
 	private readonly _addressCache = new Map<number, string | undefined>();
 	private _mapHandlersRegistered = false;
 	private _selectedHighlightFeature?: GeoJSON.Feature<LineString | MultiLineString>;
 	private _hoverHighlightFeature?: GeoJSON.Feature<LineString | MultiLineString>;
+	private _corridorGeometryFeature?: GeoJSON.Feature<MultiLineString>;
+	private _corridorRequestVersion = 0;
 	private _matchedOverlayFeatures: GeoJSON.Feature<LineString>[] = [];
 	private _trafficDetectorFeatures: GeoJSON.Feature<Point>[] = [];
 	private _trafficDetectorRadiusFeature?: GeoJSON.Feature<Polygon>;
@@ -355,12 +371,21 @@ export class PreferenceAvoidancePage {
 	protected readonly selectedEnrichmentFilters = signal<SegmentEnrichmentFilter[]>([]);
 	// undefined = "All time"
 	protected readonly selectedYear = signal<number | undefined>(undefined);
-	protected readonly minIncidents = signal<number | null>(null);
 	protected readonly selectedRideIntent = signal<string | undefined>(undefined);
 	protected readonly selectedTrafficCondition = signal<string | undefined>(undefined);
-	protected readonly segmentSortField = signal<string>('avoidanceCount');
-	protected readonly segmentSortOrder = signal<1 | -1>(-1);
+	protected readonly selectedCorridorSegmentIds = signal<number[]>([]);
+	protected readonly selectedTab = signal<ExplorerTab>('MAP');
 	protected readonly riskLegendItems = riskLegendItems;
+	protected readonly tabOptions: { label: string; value: ExplorerTab; icon: string }[] = [
+		{ label: 'Map Explorer', value: 'MAP', icon: 'ph-map-trifold' },
+		{ label: 'Analytics', value: 'ANALYTICS', icon: 'ph-chart-bar' },
+		{ label: 'Segments', value: 'SEGMENTS', icon: 'ph-table' },
+	];
+	protected readonly enrichmentChipOptions: { label: string; value: SegmentEnrichmentFilter }[] = [
+		{ label: 'Weather enriched', value: 'WEATHER_ENRICHED' },
+		{ label: 'OSM history', value: 'OHSOME_ENRICHED' },
+		{ label: 'Traffic measured', value: 'TRAFFIC_MEASURED' },
+	];
 	protected readonly eventFilterOptions: { label: string; value: EventFilter }[] = [
 		{ label: 'All events', value: 'ALL' },
 		{ label: 'Avoidance', value: 'AVOIDANCE' },
@@ -379,11 +404,43 @@ export class PreferenceAvoidancePage {
 		loader: async () => firstValueFrom(this._facade.getSummary()),
 	});
 
+	protected readonly summaryKpis = computed<SummaryKpi[]>(() => {
+		const summary = this.summaryStats.value();
+		if (!summary) {
+			return [];
+		}
+		return [
+			{ label: 'Total rides', value: summary.totalRides, icon: 'ph-bicycle', tone: 'blue' },
+			{
+				label: 'Processed rides',
+				value: summary.rideStatusCounts[processedRideStatus] ?? 0,
+				icon: 'ph-check-circle',
+				tone: 'green',
+			},
+			{ label: 'Segment events', value: summary.totalSegmentEvents, icon: 'ph-share-network', tone: 'purple' },
+			{ label: 'Observed segments', value: summary.observedSegments, icon: 'ph-path', tone: 'orange' },
+			{ label: 'Weather enriched', value: summary.weatherEnrichedEvents, icon: 'ph-cloud-rain', tone: 'blue' },
+			{
+				label: 'Historical OSM data enriched',
+				value: summary.ohsomeEnrichedEvents,
+				icon: 'ph-clock-counter-clockwise',
+				tone: 'green',
+			},
+			{ label: 'Traffic measured', value: summary.trafficMeasuredEvents, icon: 'ph-traffic-signal', tone: 'orange' },
+		];
+	});
+
 	protected readonly segmentPool = resource<SegmentSummary[], string>({
-		params: () => `${this.segmentPoolLimit()}|${[...this.selectedEnrichmentFilters()].sort().join(',')}|${this.selectedYear() ?? ''}`,
+		params: () => [
+			this.segmentPoolLimit(),
+			[...this.selectedEnrichmentFilters()].sort().join(','),
+			this.selectedYear() ?? '',
+			this.selectedRideIntent() ?? '',
+			this.selectedTrafficCondition() ?? '',
+		].join('|'),
 		defaultValue: [],
 		loader: async ({ params }) => {
-			const [limit, filters, year] = params.split('|');
+			const [limit, filters, year, rideIntent, trafficCondition] = params.split('|');
 			return firstValueFrom(this._facade.getSegments({
 				minAvoidanceRatio: 0,
 				minSampleSize: 1,
@@ -392,6 +449,8 @@ export class PreferenceAvoidancePage {
 				enrichmentFilters: this.enrichmentFiltersParam(
 					filters ? filters.split(',') as SegmentEnrichmentFilter[] : [],
 				),
+				rideIntent: rideIntent || undefined,
+				trafficCondition: trafficCondition || undefined,
 			}));
 		},
 	});
@@ -533,6 +592,9 @@ export class PreferenceAvoidancePage {
 		segmentId: number;
 		eventFilter: EventFilter;
 		year?: number;
+		enrichmentFilters: SegmentEnrichmentFilter[];
+		rideIntent?: string;
+		trafficCondition?: string;
 	} | undefined>({
 		params: () => {
 			const segmentId = this.selectedSegmentId();
@@ -544,6 +606,9 @@ export class PreferenceAvoidancePage {
 				segmentId,
 				eventFilter: this.selectedEventFilter(),
 				year: this.selectedYear(),
+				enrichmentFilters: this.selectedEnrichmentFilters(),
+				rideIntent: this.selectedRideIntent(),
+				trafficCondition: this.selectedTrafficCondition(),
 			};
 		},
 		defaultValue: [],
@@ -551,80 +616,34 @@ export class PreferenceAvoidancePage {
 			return firstValueFrom(this._facade.getSegmentEvents(params.segmentId, {
 				eventType: params.eventFilter === 'ALL' ? undefined : params.eventFilter,
 				...this.yearRange(params.year),
+				enrichmentFilters: this.enrichmentFiltersParam(params.enrichmentFilters),
+				rideIntent: params.rideIntent,
+				trafficCondition: params.trafficCondition,
 				limit: 1000,
 			}));
 		},
 	});
 
-	protected readonly filteredSelectedSegmentEvents = computed(() => {
-		const events = this.selectedSegmentEvents.value() ?? [];
-		const criteria: EventQualificationCriteria = {
-			enrichmentFilters: this.selectedEnrichmentFilters(),
-			rideIntent: this.selectedRideIntent(),
-			trafficCondition: this.selectedTrafficCondition(),
-		};
-		return events.filter((event) => this.eventMatchesQualificationCriteria(event, criteria));
-	});
-
-	protected readonly qualifiedSegmentIds = resource<Set<number>, SegmentQualificationParams | undefined>({
-		params: () => {
-			const criteria: EventQualificationCriteria = {
-				enrichmentFilters: this.selectedEnrichmentFilters(),
-				year: this.selectedYear(),
-				rideIntent: this.selectedRideIntent(),
-				trafficCondition: this.selectedTrafficCondition(),
-			};
-			if (!this.eventQualificationActive()) {
-				return undefined;
-			}
-
-			const listSegmentIds = (this.segmentPool.value() ?? [])
-				.filter((segment) => this.segmentMatchesPropertyFilters(segment))
-				.map((segment) => segment.id);
-
-			return {
-				segmentIds: [...new Set(listSegmentIds)],
-				...criteria,
-			};
-		},
-		defaultValue: new Set<number>(),
-		loader: async ({ params }) => {
-			if (!params?.segmentIds.length) {
-				return new Set<number>();
-			}
-
-			return this.loadQualifiedSegmentIds(params.segmentIds, params);
-		},
-	});
-
-	private readonly normalizedMinIncidents = computed<number | null>(() => {
-		const value = this.minIncidents();
-		return typeof value === 'number' && value > 0 ? value : null;
-	});
+	protected readonly filteredSelectedSegmentEvents = computed(() => this.selectedSegmentEvents.value() ?? []);
 
 	private readonly segmentPoolLimit = computed<number>(() => {
-		if (this.normalizedMinIncidents() !== null) {
-			return 5000;
-		}
-		return this.eventQualificationActive() || this.selectedYear() !== undefined ? 250 : 50;
+		return this.segmentFiltersActive() ? 250 : 50;
 	});
 
-	protected readonly eventQualificationActive = computed(() => {
+	protected readonly segmentFiltersActive = computed(() => {
 		return this.selectedRideIntent() !== undefined
-			|| this.selectedTrafficCondition() !== undefined;
+			|| this.selectedTrafficCondition() !== undefined
+			|| this.selectedYear() !== undefined
+			|| this.selectedEnrichmentFilters().length > 0;
 	});
 
 	protected readonly matchedOverlayActive = computed(() => {
 		return this.selectedRideIntent() !== undefined
-			|| this.selectedTrafficCondition() !== undefined
-			|| this.normalizedMinIncidents() !== null;
-	});
-
-	protected readonly hasPropertyFilters = computed(() => {
-		return this.normalizedMinIncidents() !== null
-			|| this.selectedRideIntent() !== undefined
 			|| this.selectedTrafficCondition() !== undefined;
 	});
+
+	protected readonly globalFiltersActive = computed(() => this.segmentFiltersActive()
+		|| this.selectedRiskLegendBuckets().length > 0);
 
 	protected readonly rideIntentOptions = resource<string[], unknown>({
 		defaultValue: [],
@@ -647,10 +666,15 @@ export class PreferenceAvoidancePage {
 			if (!this.matchedOverlayActive()) {
 				return undefined;
 			}
-			return `${this.selectedYear() ?? ''}|${[...this.selectedEnrichmentFilters()].sort().join(',')}`;
+			return [
+				this.selectedYear() ?? '',
+				[...this.selectedEnrichmentFilters()].sort().join(','),
+				this.selectedRideIntent() ?? '',
+				this.selectedTrafficCondition() ?? '',
+			].join('|');
 		},
 		loader: async ({ params }) => {
-			const [year, filters] = params.split('|');
+			const [year, filters, rideIntent, trafficCondition] = params.split('|');
 			return firstValueFrom(this._facade.getSegmentsGeoJson({
 				minAvoidanceRatio: 0,
 				minPreferenceRatio: 0,
@@ -660,6 +684,8 @@ export class PreferenceAvoidancePage {
 				enrichmentFilters: this.enrichmentFiltersParam(
 					filters ? filters.split(',') as SegmentEnrichmentFilter[] : [],
 				),
+				rideIntent: rideIntent || undefined,
+				trafficCondition: trafficCondition || undefined,
 			}));
 		},
 	});
@@ -670,11 +696,7 @@ export class PreferenceAvoidancePage {
 			return [];
 		}
 
-		const allowedIds = this.eventQualificationActive() || this.hasPropertyFilters()
-			? new Set(this.sortedSegments().map((segment) => segment.id))
-			: undefined;
 		return collection.features
-			.filter((feature) => !allowedIds || allowedIds.has(feature.properties.id))
 			.map((feature): GeoJSON.Feature<LineString> => ({
 				type: 'Feature',
 				geometry: feature.geometry,
@@ -689,66 +711,12 @@ export class PreferenceAvoidancePage {
 			}));
 	});
 
-	protected readonly sortedSegments = computed(() => {
-		const qualificationActive = this.eventQualificationActive();
-		const qualifiedIds = this.qualifiedSegmentIds.value();
-		const segments = (this.segmentPool.value() ?? []).filter((segment) => {
-			if (qualificationActive && !qualifiedIds.has(segment.id)) {
-				return false;
-			}
-			return this.segmentMatchesPropertyFilters(segment);
-		});
-		const field = this.segmentSortField();
-		const order = this.segmentSortOrder();
-		return [...segments].sort((a, b) => {
-			const aVal = (a as unknown as Record<string, unknown>)[field] ?? 0;
-			const bVal = (b as unknown as Record<string, unknown>)[field] ?? 0;
-			if (typeof aVal === 'number' && typeof bVal === 'number') {
-				return (aVal - bVal) * order;
-			}
-			return String(aVal).localeCompare(String(bVal)) * order;
-		});
-	});
+	protected readonly filteredSegments = computed(() => this.segmentPool.value() ?? []);
 
-	protected readonly summaryCards = computed<SummaryCard[]>(() => {
-		const summary = this.summaryStats.value();
-		if (!summary) {
-			return [];
-		}
-
-		return [
-			{ label: 'Total rides', value: summary.totalRides, icon: 'ph-bicycle', tone: 'blue' as const },
-			{
-				label: 'Processed rides',
-				value: summary.rideStatusCounts?.['PROCESSED'] ?? 0,
-				icon: 'ph-check-circle',
-				tone: 'green' as const,
-			},
-			{ label: 'Segment events', value: summary.totalSegmentEvents, icon: 'ph-path', tone: 'purple' as const },
-			{ label: 'Observed segments', value: summary.observedSegments, icon: 'ph-road-horizon', tone: 'blue' as const },
-			{
-				label: 'Weather enriched',
-				value: summary.weatherEnrichedEvents,
-				icon: 'ph-cloud-rain',
-				tone: 'blue' as const,
-				enrichmentFilter: 'WEATHER_ENRICHED' as const,
-			},
-			{
-				label: 'Historical OSM data enriched',
-				value: summary.ohsomeEnrichedEvents,
-				icon: 'ph-map-trifold',
-				tone: 'green' as const,
-				enrichmentFilter: 'OHSOME_ENRICHED' as const,
-			},
-			{
-				label: 'Traffic measured',
-				value: summary.trafficMeasuredEvents,
-				icon: 'ph-traffic-signal',
-				tone: 'orange' as const,
-				enrichmentFilter: 'TRAFFIC_MEASURED' as const,
-			},
-		];
-	});
+	protected readonly analyticsFilters = computed<AnalyticsFilters>(() => ({
+		...this.yearRange(this.selectedYear()),
+		rideIntent: this.selectedRideIntent(),
+	}));
 
 	protected readonly yearOptions = computed<number[]>(() => {
 		const summary = this.summaryStats.value();
@@ -779,15 +747,18 @@ export class PreferenceAvoidancePage {
 		return segments.find((currentSegment) => currentSegment.id === segmentId);
 	});
 
-	protected readonly inspectorSubtitle = computed<string | undefined>(() => {
+	protected readonly inspectorIdentity = computed<{ primary: string; secondary: string } | undefined>(() => {
 		const segment = this.selectedSegment();
 		if (!segment) {
 			return undefined;
 		}
 
-		const street = segment.streetName || 'Unknown street';
+		const streetName = segment.streetName || 'Unknown street';
 		const address = this.selectedSegmentAddress.value();
-		return `${street}${address ? `, ${address}` : ''} · ${segment.id}`;
+		return {
+			primary: address ? `${streetName}, ${address}` : streetName,
+			secondary: `Segment ${segment.id}`,
+		};
 	});
 
 	protected readonly segmentInfoMetrics = computed<DetailMetric[]>(() => {
@@ -797,8 +768,6 @@ export class PreferenceAvoidancePage {
 		}
 
 		return [
-			{ label: 'Street', value: this.formatPlainValue(segment.streetName || 'Unknown street') },
-			{ label: 'Segment id', value: String(segment.id) },
 			{ label: 'Avoidance events', value: this.formatNumber(segment.avoidanceCount) },
 			{ label: 'Preference events', value: this.formatNumber(segment.preferenceCount) },
 			{ label: 'Observations', value: this.formatNumber(segment.totalObservationCount) },
@@ -855,6 +824,15 @@ export class PreferenceAvoidancePage {
 			this.ensureMapLayers(map, generatedAt);
 		});
 
+		// the map panel is hidden (not destroyed) on other tabs; resize on return
+		// in case the hidden absolute panel tracked a different sibling height
+		effect(() => {
+			if (this.selectedTab() === 'MAP') {
+				const map = this._map();
+				requestAnimationFrame(() => map?.resize());
+			}
+		});
+
 		effect(() => {
 			const map = this._map();
 			this.selectedRiskLegendBuckets();
@@ -881,16 +859,14 @@ export class PreferenceAvoidancePage {
 		effect(() => {
 			const selectedId = this.selectedSegmentId();
 			const filters = this.selectedEnrichmentFilters();
-			const segmentFilteringActive = this.eventQualificationActive()
-				|| this.selectedYear() !== undefined
-				|| filters.length > 0;
-			if (!selectedId || !segmentFilteringActive
-				|| this.qualifiedSegmentIds.isLoading() || this.segmentPool.isLoading()) {
+			const segmentFilteringActive = this.segmentFiltersActive();
+			if (!selectedId || !segmentFilteringActive || this._selectionPinned()
+				|| this.segmentPool.isLoading()) {
 				return;
 			}
 
 			const tileProperties = this._selectedSegmentTileProperties();
-			const selectedSegmentVisible = this.sortedSegments().some((segment) => segment.id === selectedId)
+			const selectedSegmentVisible = this.filteredSegments().some((segment) => segment.id === selectedId)
 				|| this.matchedOverlayFeatures().some((feature) => feature.properties?.['id'] === selectedId)
 				|| (!this.matchedOverlayActive()
 					&& tileProperties !== undefined
@@ -982,9 +958,11 @@ export class PreferenceAvoidancePage {
 	}
 
 	protected onClearAllFilters(): void {
+		this.selectedYear.set(undefined);
 		this.onPropertyFiltersClear();
 		this.onEnrichmentFiltersClear();
 		this.onRiskLegendClear();
+		this.clearSelectedCorridor(this._map());
 	}
 
 	protected onResetMapView(): void {
@@ -999,19 +977,54 @@ export class PreferenceAvoidancePage {
 		this.showTechnicalDetails.update((shown) => !shown);
 	}
 
-	protected onSegmentRowHover(segmentId: number): void {
-		this.hoveredSegmentId.set(segmentId);
+	protected onTabChange(tab: ExplorerTab): void {
+		this.selectedTab.set(tab);
 	}
 
-	protected onSegmentRowLeave(): void {
-		this.hoveredSegmentId.set(undefined);
+	protected onTableRowSelected(segmentId: number): void {
+		this.clearCorridorUnlessMember(segmentId, this._map());
+		this.selectedTab.set('MAP');
+		// wait a frame so the map panel has left its hidden state before flying
+		requestAnimationFrame(() => {
+			this._map()?.resize();
+			void this.flyToSegment(segmentId);
+		});
 	}
 
-	protected onSegmentSort(event: SortEvent): void {
-		if (event.field) {
-			this.segmentSortField.set(event.field);
+	protected onViewCorridorOnMap(street: CorridorRanking): void {
+		this.selectedTab.set('MAP');
+		const requestVersion = ++this._corridorRequestVersion;
+		this._corridorGeometryFeature = undefined;
+		this.selectedCorridorSegmentIds.set(street.segmentIds ?? []);
+		const map = this._map();
+		if (map) {
+			this.syncCorridorHighlight(map);
 		}
-		this.segmentSortOrder.set((event.order ?? -1) as 1 | -1);
+		if (street.topSegmentId != null) {
+			this.selectSegment(street.topSegmentId);
+			// the street's top segment came from the analytics filters, not the
+			// segment pool, so keep it selected even if it is outside the pool
+			this._selectionPinned.set(true);
+		}
+
+		if (street.minLon == null || street.minLat == null
+			|| street.maxLon == null || street.maxLat == null) {
+			return;
+		}
+		void this.loadCorridorGeometry(street, requestVersion);
+
+		if (!map) {
+			return;
+		}
+
+		const bounds: [[number, number], [number, number]] = [
+			[street.minLon, street.minLat],
+			[street.maxLon, street.maxLat],
+		];
+		requestAnimationFrame(() => {
+			map.resize();
+			map.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 800 });
+		});
 	}
 
 	protected async flyToSegment(segmentId: number): Promise<void> {
@@ -1037,11 +1050,16 @@ export class PreferenceAvoidancePage {
 	}
 
 	protected onYearChange(year: number | undefined): void {
+		this.clearSelectedCorridor(this._map());
 		this.selectedYear.set(year);
 	}
 
+	protected onRideIntentChange(rideIntent: string | undefined): void {
+		this.clearSelectedCorridor(this._map());
+		this.selectedRideIntent.set(rideIntent);
+	}
+
 	protected onPropertyFiltersClear(): void {
-		this.minIncidents.set(null);
 		this.selectedRideIntent.set(undefined);
 		this.selectedTrafficCondition.set(undefined);
 	}
@@ -1052,13 +1070,8 @@ export class PreferenceAvoidancePage {
 		this.selectedEventFilter.set(value as EventFilter);
 	}
 
-	protected onSummaryCardClick(card: SummaryCard): void {
-		if (!card.enrichmentFilter) {
-			return;
-		}
-
+	protected onEnrichmentChipToggle(filter: SegmentEnrichmentFilter): void {
 		this.selectedEnrichmentFilters.update((selectedFilters) => {
-			const filter = card.enrichmentFilter as SegmentEnrichmentFilter;
 			if (selectedFilters.includes(filter)) {
 				return selectedFilters.filter((selectedFilter) => selectedFilter !== filter);
 			}
@@ -1072,12 +1085,8 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
-	protected isSummaryCardSelected(card: SummaryCard): boolean {
-		return card.enrichmentFilter !== undefined && this.selectedEnrichmentFilters().includes(card.enrichmentFilter);
-	}
-
-	protected isSummaryCardClickable(card: SummaryCard): boolean {
-		return card.enrichmentFilter !== undefined;
+	protected isEnrichmentChipSelected(filter: SegmentEnrichmentFilter): boolean {
+		return this.selectedEnrichmentFilters().includes(filter);
 	}
 
 	protected onEnrichmentFiltersClear(): void {
@@ -1307,6 +1316,42 @@ export class PreferenceAvoidancePage {
 			url: this.tileUrl(generatedAt),
 		});
 
+		const corridorPaint: maplibregl.LineLayerSpecification['paint'] = {
+			'line-color': '#2563eb',
+			'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6, 12, 10, 16, 14],
+			'line-opacity': 0.58,
+			'line-blur': 0.8,
+		};
+		map.addLayer({
+			id: preferenceAvoidanceCorridorStreetsLayer,
+			type: 'line',
+			source: preferenceAvoidanceSegmentsSource,
+			'source-layer': 'streets',
+			maxzoom: segmentDetailMinZoom + segmentLayerTransitionZoom,
+			layout: { visibility: 'none' },
+			paint: corridorPaint,
+		});
+		map.addLayer({
+			id: preferenceAvoidanceCorridorSegmentsLayer,
+			type: 'line',
+			source: preferenceAvoidanceSegmentsSource,
+			'source-layer': 'segments',
+			minzoom: segmentDetailMinZoom - segmentLayerTransitionZoom,
+			layout: { visibility: 'none' },
+			paint: corridorPaint,
+		});
+		map.addSource(preferenceAvoidanceCorridorGeometrySource, {
+			type: 'geojson',
+			data: { type: 'FeatureCollection', features: [] },
+		});
+		map.addLayer({
+			id: preferenceAvoidanceCorridorGeometryLayer,
+			type: 'line',
+			source: preferenceAvoidanceCorridorGeometrySource,
+			layout: { visibility: 'none' },
+			paint: corridorPaint,
+		});
+
 		map.addLayer({
 			id: preferenceAvoidanceStreetsLayer,
 			type: 'line',
@@ -1477,6 +1522,7 @@ export class PreferenceAvoidancePage {
 		});
 
 		this.applyMapFilters(map);
+		this.syncCorridorHighlight(map);
 		this.syncHighlightSource(map);
 		this.syncMatchedSource(map);
 		this.syncTrafficDetectorSource(map);
@@ -1522,6 +1568,7 @@ export class PreferenceAvoidancePage {
 				return;
 			}
 
+			this.clearCorridorUnlessMember(segmentId, map);
 			this.selectSegment(segmentId);
 			this._selectedSegmentTileProperties.set(properties);
 			this.setSelectedHighlight(map, feature.geometry as LineString | MultiLineString, properties);
@@ -1536,6 +1583,7 @@ export class PreferenceAvoidancePage {
 				return;
 			}
 
+			this.clearCorridorUnlessMember(segmentId, map);
 			this.selectSegment(segmentId);
 			this.setSelectedHighlight(map, feature.geometry as LineString | MultiLineString, {
 				avoidanceCount: Number(feature.properties?.['avoidanceCount'] ?? 0),
@@ -1574,6 +1622,15 @@ export class PreferenceAvoidancePage {
 			}
 
 			const features = map.queryRenderedFeatures(event.point, { layers: clickableLayers });
+			const segmentFeature = features.find((feature) =>
+				feature.layer.id === preferenceAvoidanceStreetsLayer
+				|| feature.layer.id === preferenceAvoidanceSegmentsLayer
+				|| feature.layer.id === preferenceAvoidanceMatchedLayer);
+			const clickedSegmentId = Number(segmentFeature?.properties?.['id']);
+			if (this.selectedCorridorSegmentIds().length
+				&& (!Number.isFinite(clickedSegmentId) || !this.isSelectedCorridorSegment(clickedSegmentId))) {
+				this.clearSelectedCorridor(map);
+			}
 			if (features.length === 0) {
 				this.selectSegment(undefined);
 				this.clearHighlight(map);
@@ -1747,7 +1804,12 @@ export class PreferenceAvoidancePage {
 			units: 'kilometers',
 		});
 		this.syncTrafficDetectorRadiusSource(map);
-		this.openTrafficDetectorPopup(map, lon, lat, properties, radiusMeters);
+		const popupCoordinate = this.trafficDetectorPopupCoordinate(
+			map,
+			this._trafficDetectorRadiusFeature.geometry,
+			[lon, lat],
+		);
+		this.openTrafficDetectorPopup(map, popupCoordinate, properties, radiusMeters);
 	}
 
 	private clearTrafficDetectorSelection(map: maplibregl.Map): void {
@@ -1761,8 +1823,7 @@ export class PreferenceAvoidancePage {
 
 	private openTrafficDetectorPopup(
 		map: maplibregl.Map,
-		lon: number,
-		lat: number,
+		popupCoordinate: [number, number],
 		properties: Record<string, unknown>,
 		radiusMeters: number,
 	): void {
@@ -1784,8 +1845,14 @@ export class PreferenceAvoidancePage {
 			['Detectors', text('detectorNames')],
 		].filter(([, value]) => value);
 
-		const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '320px' })
-			.setLngLat([lon, lat])
+		const popup = new maplibregl.Popup({
+			anchor: 'top',
+			closeButton: true,
+			closeOnClick: false,
+			maxWidth: '320px',
+			offset: [0, 12],
+		})
+			.setLngLat(popupCoordinate)
 			.setHTML(`
 				<div class="detector-popup">
 					<h4>${text('street') || 'Traffic sensor'}</h4>
@@ -1803,6 +1870,24 @@ export class PreferenceAvoidancePage {
 			}
 		});
 		this._trafficDetectorPopup = popup;
+	}
+
+	private trafficDetectorPopupCoordinate(
+		map: maplibregl.Map,
+		geometry: Polygon,
+		fallback: [number, number],
+	): [number, number] {
+		const boundary = geometry.coordinates[0];
+		if (!boundary?.length) {
+			return fallback;
+		}
+
+		return boundary.reduce<[number, number]>((lowestCoordinate, coordinate) => {
+			const candidate = coordinate as [number, number];
+			return map.project(candidate).y > map.project(lowestCoordinate).y
+				? candidate
+				: lowestCoordinate;
+		}, boundary[0] as [number, number]);
 	}
 
 	private openNearMissIncidentPopup(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
@@ -1992,6 +2077,95 @@ export class PreferenceAvoidancePage {
 		source.setData({ type: 'FeatureCollection', features: this._matchedOverlayFeatures });
 	}
 
+	private syncCorridorHighlight(map: maplibregl.Map): void {
+		const segmentIds = this.selectedCorridorSegmentIds();
+		const completeGeometryVisible = this._corridorGeometryFeature !== undefined;
+		const filter: maplibregl.FilterSpecification = segmentIds.length
+			? ['in', ['get', 'id'], ['literal', segmentIds]]
+			: ['==', ['get', 'id'], -1];
+		for (const layerId of [preferenceAvoidanceCorridorStreetsLayer, preferenceAvoidanceCorridorSegmentsLayer]) {
+			if (map.getLayer(layerId)) {
+				map.setFilter(layerId, filter);
+				map.setLayoutProperty(
+					layerId,
+					'visibility',
+					segmentIds.length && !completeGeometryVisible ? 'visible' : 'none',
+				);
+			}
+		}
+
+		const source = map.getSource(preferenceAvoidanceCorridorGeometrySource) as maplibregl.GeoJSONSource | undefined;
+		source?.setData({
+			type: 'FeatureCollection',
+			features: this._corridorGeometryFeature ? [this._corridorGeometryFeature] : [],
+		});
+		if (map.getLayer(preferenceAvoidanceCorridorGeometryLayer)) {
+			map.setLayoutProperty(
+				preferenceAvoidanceCorridorGeometryLayer,
+				'visibility',
+				completeGeometryVisible ? 'visible' : 'none',
+			);
+		}
+	}
+
+	private async loadCorridorGeometry(street: CorridorRanking, requestVersion: number): Promise<void> {
+		try {
+			const corridor = await firstValueFrom(this._facade.getCorridorGeometry({
+				streetName: street.streetName,
+				minLon: street.minLon as number,
+				minLat: street.minLat as number,
+				maxLon: street.maxLon as number,
+				maxLat: street.maxLat as number,
+			}));
+			if (requestVersion !== this._corridorRequestVersion
+				|| !this.selectedCorridorSegmentIds().length
+				|| !corridor.geometry.coordinates.length) {
+				return;
+			}
+
+			this._corridorGeometryFeature = this.corridorGeometryFeature(corridor);
+			this.selectedCorridorSegmentIds.set([
+				...new Set([...(street.segmentIds ?? []), ...corridor.segmentIds]),
+			]);
+			const map = this._map();
+			if (map) {
+				this.syncCorridorHighlight(map);
+			}
+		} catch {
+			// Keep the existing observed-segment highlight as the failure fallback.
+		}
+	}
+
+	private corridorGeometryFeature(corridor: CorridorGeometry): GeoJSON.Feature<MultiLineString> {
+		return {
+			type: 'Feature',
+			geometry: corridor.geometry,
+			properties: { streetName: corridor.streetName },
+		};
+	}
+
+	private isSelectedCorridorSegment(segmentId: number): boolean {
+		return this.selectedCorridorSegmentIds().includes(segmentId);
+	}
+
+	private clearCorridorUnlessMember(segmentId: number, map: maplibregl.Map | undefined): void {
+		if (this.selectedCorridorSegmentIds().length && !this.isSelectedCorridorSegment(segmentId)) {
+			this.clearSelectedCorridor(map);
+		}
+	}
+
+	private clearSelectedCorridor(map: maplibregl.Map | undefined): void {
+		this._corridorRequestVersion++;
+		if (!this.selectedCorridorSegmentIds().length && !this._corridorGeometryFeature) {
+			return;
+		}
+		this.selectedCorridorSegmentIds.set([]);
+		this._corridorGeometryFeature = undefined;
+		if (map) {
+			this.syncCorridorHighlight(map);
+		}
+	}
+
 	private syncHighlightSource(map: maplibregl.Map): void {
 		const source = map.getSource(preferenceAvoidanceHighlightSource) as maplibregl.GeoJSONSource | undefined;
 		if (!source) {
@@ -2083,6 +2257,9 @@ export class PreferenceAvoidancePage {
 		if (eventCount === 0) {
 			return 'NO_EVENTS';
 		}
+		if (balance <= -0.9) {
+			return 'AVOIDANCE_EXTREME';
+		}
 		if (balance <= -0.6) {
 			return 'AVOIDANCE_STRONG';
 		}
@@ -2091,6 +2268,9 @@ export class PreferenceAvoidancePage {
 		}
 		if (balance <= -0.1) {
 			return 'AVOIDANCE_LIGHT';
+		}
+		if (balance >= 0.9) {
+			return 'PREFERENCE_EXTREME';
 		}
 		if (balance >= 0.6) {
 			return 'PREFERENCE_STRONG';
@@ -2109,6 +2289,9 @@ export class PreferenceAvoidancePage {
 		return Math.min(8, Math.max(1.5, 1.5 + Math.log10(events + 1) * 2.2));
 	}
 
+	// Mirrors the backend's balanceExpression(): additive smoothing with five
+	// phantom neutral events, so the score grows with both the one-sidedness and
+	// the amount of evidence and approaches (but never reaches) +-1.
 	private eventBalance(segment?: HighlightableSegment): number {
 		const avoidance = segment?.avoidanceCount ?? 0;
 		const preference = segment?.preferenceCount ?? 0;
@@ -2116,7 +2299,7 @@ export class PreferenceAvoidancePage {
 		if (total === 0) {
 			return 0;
 		}
-		return ((preference - avoidance) / total) * Math.min(1, Math.log10(total + 1));
+		return (preference - avoidance) / (total + 5);
 	}
 
 	private selectSegment(segmentId: number | undefined): void {
@@ -2124,36 +2307,9 @@ export class PreferenceAvoidancePage {
 			this.selectedEventId.set(undefined);
 			this.selectedInfoPopoverId.set(undefined);
 			this._selectedSegmentTileProperties.set(undefined);
+			this._selectionPinned.set(false);
 		}
 		this.selectedSegmentId.set(segmentId);
-	}
-
-	private async loadQualifiedSegmentIds(
-		segmentIds: number[],
-		criteria: EventQualificationCriteria,
-	): Promise<Set<number>> {
-		const qualifiedIds = new Set<number>();
-		const batchSize = 16;
-
-		for (let index = 0; index < segmentIds.length; index += batchSize) {
-			const batch = segmentIds.slice(index, index + batchSize);
-			const batchResults = await Promise.all(batch.map(async (segmentId) => {
-				const events = await firstValueFrom(this._facade.getSegmentEvents(segmentId, {
-					enrichmentFilters: this.enrichmentFiltersParam(criteria.enrichmentFilters),
-					...this.yearRange(criteria.year),
-					limit: 1000,
-				}));
-				return events.some((event) => this.eventMatchesQualificationCriteria(event, criteria))
-					? segmentId
-					: undefined;
-			}));
-
-			batchResults
-				.filter((segmentId): segmentId is number => segmentId !== undefined)
-				.forEach((segmentId) => qualifiedIds.add(segmentId));
-		}
-
-		return qualifiedIds;
 	}
 
 	private enrichmentFiltersParam(filters: SegmentEnrichmentFilter[]): SegmentEnrichmentFilter[] | undefined {
@@ -2165,35 +2321,6 @@ export class PreferenceAvoidancePage {
 			return {};
 		}
 		return { from: Date.UTC(year, 0, 1), to: Date.UTC(year + 1, 0, 1) - 1 };
-	}
-
-	private segmentMatchesPropertyFilters(segment: SegmentSummary): boolean {
-		const minIncidents = this.normalizedMinIncidents();
-		return minIncidents === null || (segment.incidentCount ?? 0) >= minIncidents;
-	}
-
-	private eventMatchesAllEnrichmentFilters(event: SegmentEvent, filters: SegmentEnrichmentFilter[]): boolean {
-		return filters.every((filter) => this.eventMatchesEnrichmentFilter(event, filter));
-	}
-
-	private eventMatchesQualificationCriteria(event: SegmentEvent, criteria: EventQualificationCriteria): boolean {
-		return this.eventMatchesAllEnrichmentFilters(event, criteria.enrichmentFilters)
-			&& (!criteria.rideIntent || event.rideIntent === criteria.rideIntent)
-			&& (!criteria.trafficCondition || event.trafficCondition === criteria.trafficCondition);
-	}
-
-	private eventMatchesEnrichmentFilter(event: SegmentEvent, filter: SegmentEnrichmentFilter): boolean {
-		if (filter === 'WEATHER_ENRICHED') {
-			return event.weatherEnriched;
-		}
-		if (filter === 'OHSOME_ENRICHED') {
-			return event.ohsomeEnriched;
-		}
-		// Mirrors the backend's trafficMeasuredEventCount: an event is "measured" when a
-		// detector measurement was attached (status ENRICHED, e.g. source OLD_DETECTOR),
-		// as opposed to NO_DETECTOR_MATCH / NO_MEASUREMENT.
-		return event.trafficEnriched
-			&& String(event.trafficEnrichmentStatus ?? '').toUpperCase() === 'ENRICHED';
 	}
 
 	private topContext<T extends keyof SegmentEvent>(
