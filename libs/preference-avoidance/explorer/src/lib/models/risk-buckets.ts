@@ -5,15 +5,15 @@ export type RiskLegendBucket = Exclude<RiskBucket, 'NO_EVENTS'>;
 // Shared risk-bucket presentation and frontend classification used by map tile
 // rendering, matched-segment overlays, highlights, filters, and the legend.
 export const RISK_BUCKET_COLORS: Record<RiskBucket, string> = {
-	PREFERENCE_EXTREME: '#052e16',
-	PREFERENCE_STRONG: '#166534',
+	PREFERENCE_EXTREME: '#166534',
+	PREFERENCE_STRONG: '#15803d',
 	PREFERENCE: '#16a34a',
 	PREFERENCE_LIGHT: '#86efac',
 	BASELINE: '#6b7280',
 	AVOIDANCE_LIGHT: '#fca5a5',
 	AVOIDANCE: '#dc2626',
-	AVOIDANCE_STRONG: '#991b1b',
-	AVOIDANCE_EXTREME: '#450a0a',
+	AVOIDANCE_STRONG: '#b91c1c',
+	AVOIDANCE_EXTREME: '#991b1b',
 	NO_EVENTS: '#d1d5db',
 };
 

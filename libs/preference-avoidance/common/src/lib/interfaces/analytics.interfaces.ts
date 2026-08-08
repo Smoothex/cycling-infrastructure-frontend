@@ -24,6 +24,10 @@ export type AnalysisDimension =
 
 export type SegmentEventType = 'AVOIDANCE' | 'PREFERENCE';
 
+export type RouteComparisonType = 'EQUIVALENT_ROUTE' | 'LOCAL_DETOUR' | 'CORRIDOR_ALTERNATIVE';
+
+export type DetourImpactRouteComparisonType = Exclude<RouteComparisonType, 'EQUIVALENT_ROUTE'>;
+
 export type InfrastructureDimension = 'SURFACE' | 'SMOOTHNESS' | 'CYCLEWAY_TYPE' | 'HIGHWAY';
 
 export interface ProcessingSummary {
@@ -66,6 +70,20 @@ export interface AnalyticsContext {
 	preferenceEventCount: number;
 	earliestEventTimestamp?: number;
 	latestEventTimestamp?: number;
+}
+
+export interface RouteComparisonSummary {
+	classifiedRideCount: number;
+	routeComparisonTypeCounts: Record<RouteComparisonType, number>;
+	detourImpact: RouteComparisonDetourImpact[];
+}
+
+export interface RouteComparisonDetourImpact {
+	routeComparisonType: DetourImpactRouteComparisonType;
+	eligibleRideCount: number;
+	lowerQuartilePercent: number;
+	medianPercent: number;
+	upperQuartilePercent: number;
 }
 
 export interface CorridorRanking {
@@ -124,6 +142,8 @@ export interface AnalyticsDistributionParams extends AnalyticsFilters {
 }
 
 export type AnalyticsContextParams = AnalyticsFilters;
+
+export type AnalyticsRouteComparisonParams = AnalyticsFilters;
 
 export interface AnalyticsCorridorsParams extends AnalyticsFilters {
 	rank?: SegmentEventType;

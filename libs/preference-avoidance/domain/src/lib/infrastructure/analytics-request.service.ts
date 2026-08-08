@@ -7,11 +7,13 @@ import {
 	AnalyticsCorridorsParams,
 	AnalyticsDistributionParams,
 	AnalyticsInfrastructureSignalsParams,
+	AnalyticsRouteComparisonParams,
 	CorridorRanking,
 	CorridorGeometry,
 	DimensionBucket,
 	InfrastructureSignals,
 	ProcessingSummary,
+	RouteComparisonSummary,
 } from '@simra/preference-avoidance-common';
 import { Observable } from 'rxjs';
 
@@ -22,7 +24,8 @@ type AnalyticsRequestParams =
 	| AnalyticsContextParams
 	| AnalyticsCorridorGeometryParams
 	| AnalyticsCorridorsParams
-	| AnalyticsInfrastructureSignalsParams;
+	| AnalyticsInfrastructureSignalsParams
+	| AnalyticsRouteComparisonParams;
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsRequestService {
@@ -32,7 +35,9 @@ export class AnalyticsRequestService {
 		return this._http.get<ProcessingSummary>('/api/analytics/summary');
 	}
 
-	public getDistribution(params: AnalyticsDistributionParams = {}): Observable<DimensionBucket[]> {
+	public getDistribution(
+		params: AnalyticsDistributionParams = {},
+	): Observable<DimensionBucket[]> {
 		return this._http.get<DimensionBucket[]>('/api/analytics/distribution', {
 			params: this.cleanParams(params),
 		});
@@ -44,13 +49,23 @@ export class AnalyticsRequestService {
 		});
 	}
 
+	public getRouteComparisons(
+		params: AnalyticsRouteComparisonParams = {},
+	): Observable<RouteComparisonSummary> {
+		return this._http.get<RouteComparisonSummary>('/api/analytics/route-comparisons', {
+			params: this.cleanParams(params),
+		});
+	}
+
 	public getCorridors(params: AnalyticsCorridorsParams = {}): Observable<CorridorRanking[]> {
 		return this._http.get<CorridorRanking[]>('/api/analytics/corridors', {
 			params: this.cleanParams(params),
 		});
 	}
 
-	public getCorridorGeometry(params: AnalyticsCorridorGeometryParams): Observable<CorridorGeometry> {
+	public getCorridorGeometry(
+		params: AnalyticsCorridorGeometryParams,
+	): Observable<CorridorGeometry> {
 		return this._http.get<CorridorGeometry>('/api/analytics/corridor-geometry', {
 			params: this.cleanParams(params),
 		});
@@ -66,7 +81,11 @@ export class AnalyticsRequestService {
 
 	private cleanParams(params: AnalyticsRequestParams): RequestParams {
 		return Object.entries(params).reduce<RequestParams>((cleanedParams, [key, value]) => {
-			if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+			if (
+				value === null ||
+				value === undefined ||
+				(Array.isArray(value) && value.length === 0)
+			) {
 				return cleanedParams;
 			}
 

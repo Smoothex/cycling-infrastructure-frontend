@@ -18,12 +18,15 @@
 				</div>
 				<div class="pa-evidence__metric">
 					<strong>
-						{{ evidence.earliestEventTimestamp | date: 'MMM y' }}–{{ evidence.latestEventTimestamp | date: 'MMM y' }}
+						{{ evidence.earliestEventTimestamp | date: 'MMM y' }}–{{
+							evidence.latestEventTimestamp | date: 'MMM y'
+						}}
 					</strong>
 					<span>observation period</span>
 				</div>
 				<p>
-					Signals compare local detours with the distance-shortest route. Counts describe rides, not unique cyclists.
+					Signals compare local detours with the distance-shortest route. Counts describe
+					rides, not unique cyclists.
 				</p>
 			</section>
 		} @else {
@@ -32,6 +35,113 @@
 			</div>
 		}
 	}
+
+	<div class="pa-analytics__comparison-grid">
+		<p-card class="pa-analytics__card pa-route-comparison-card">
+			<ng-template pTemplate="header">
+				<div class="card-header pa-insight-header">
+					<div>
+						<h3>Route comparison types</h3>
+						<p>How analyzed rides compare with the distance-shortest route.</p>
+					</div>
+				</div>
+			</ng-template>
+			@if (routeComparisons.isLoading()) {
+				<p-skeleton height="13rem" />
+			} @else if (routeComparisons.error()) {
+				<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+					Route comparison counts could not be loaded.
+				</div>
+			} @else if (routeComparisons.value(); as comparisons) {
+				@if (comparisons.classifiedRideCount > 0) {
+					<div class="pa-route-comparison">
+						<div class="pa-route-comparison__chart" aria-hidden="true">
+							<p-chart
+								type="doughnut"
+								[data]="routeComparisonChartData()"
+								[options]="routeComparisonChartOptions"
+								height="13rem"
+							/>
+						</div>
+						<div class="pa-route-comparison__summary">
+							<div class="pa-route-comparison__total">
+								<strong>{{ comparisons.classifiedRideCount | number }}</strong>
+								<span>classified rides</span>
+							</div>
+							<ul aria-label="Route comparison counts">
+								@for (item of routeComparisonLegendItems(); track item.type) {
+									<li>
+										<i [style.--route-comparison-color]="item.color"></i>
+										<span>{{ item.label }}</span>
+										<strong>{{ item.count | number }}</strong>
+									</li>
+								}
+							</ul>
+						</div>
+					</div>
+				} @else {
+					<div class="pa-analytics__message">
+						No classified rides match the selected year and ride type.
+					</div>
+				}
+			}
+		</p-card>
+
+		<p-card class="pa-analytics__card pa-detour-impact-card">
+			<ng-template pTemplate="header">
+				<div class="card-header pa-insight-header">
+					<div>
+						<h3>Detour impact</h3>
+						<p>Typical extra route length and the middle 50% of eligible rides.</p>
+					</div>
+				</div>
+			</ng-template>
+			@if (routeComparisons.isLoading()) {
+				<p-skeleton height="13rem" />
+			} @else if (routeComparisons.error()) {
+				<div class="pa-analytics__message pa-analytics__message--error" role="alert">
+					Detour impact could not be loaded.
+				</div>
+			} @else if (routeComparisons.value()) {
+				@if (eligibleDetourImpact().length) {
+				<div class="pa-detour-impact__chart" aria-hidden="true">
+					<p-chart
+						[type]="detourImpactChartType"
+							[data]="detourImpactChartData()"
+							[options]="detourImpactChartOptions"
+							height="13rem"
+						/>
+					</div>
+					<ul class="sr-only" aria-label="Detour impact statistics">
+						@for (item of eligibleDetourImpact(); track item.routeComparisonType) {
+							<li>
+								{{ item.label }}: median
+								{{ formatSignedPercent(item.medianPercent) }}; middle 50% from
+								{{ formatSignedPercent(item.lowerQuartilePercent) }} to
+								{{ formatSignedPercent(item.upperQuartilePercent) }};
+								{{ item.eligibleRideCount | number }} eligible rides.
+							</li>
+						}
+					</ul>
+					@if (omittedDetourImpactLabel(); as omittedLabel) {
+						<p class="pa-detour-impact__omission">
+							{{ omittedLabel }} is not shown because fewer than 10 eligible rides are
+							available.
+						</p>
+					}
+				} @else {
+					<div class="pa-analytics__message">
+						At least 10 rides with usable distance measurements are required to show
+						detour impact.
+					</div>
+				}
+				<p class="pa-analytics__caption">
+					Values compare route length, not travel time, and include only rides with usable
+					distance measurements. The 10% line is the detour-classification boundary.
+				</p>
+			}
+		</p-card>
+	</div>
 
 	<div class="pa-analytics__corridor-grid">
 		<p-card class="pa-analytics__card">
@@ -48,50 +158,77 @@
 					Avoided streets could not be loaded.
 				</div>
 			} @else {
-			<p-table
-				[value]="topAvoidedCorridors.value()"
-				[loading]="topAvoidedCorridors.isLoading()"
-				[paginator]="true"
-				[rows]="corridorPageSize"
-				styleClass="corridor-ranking-table"
-			>
-				<ng-template pTemplate="header">
-					<tr>
-						<th>Street</th>
-						<th>Rides avoiding</th>
-						<th>Signal balance</th>
-						<th>Near misses</th>
-						<th class="pa-secondary-column">Segments</th>
-						<th><span class="sr-only">Map</span></th>
-					</tr>
-				</ng-template>
-				<ng-template pTemplate="body" let-corridor>
-					<tr>
-						<td><strong>{{ corridor.streetName }}</strong></td>
-						<td>{{ corridor.avoidanceRideCount | number }}</td>
-						<td>
-							<span
-								class="signal-balance"
-								[attr.aria-label]="corridor.avoidanceRideCount + ' avoidance rides and ' + corridor.preferenceRideCount + ' preference rides'"
-							>
-								<span class="signal-balance__avoidance" [style.width.%]="signalShare(corridor, 'AVOIDANCE')"></span>
-								<span class="signal-balance__preference" [style.width.%]="signalShare(corridor, 'PREFERENCE')"></span>
-							</span>
-							<small>{{ corridor.avoidanceRideCount | number }} / {{ corridor.preferenceRideCount | number }}</small>
-						</td>
-						<td>{{ corridor.scaryIncidentCount | number }}</td>
-						<td class="pa-secondary-column">{{ corridor.segmentCount | number }}</td>
-						<td>
-							<button type="button" class="corridor-map-link" (click)="viewCorridorOnMap.emit(corridor)" [attr.aria-label]="'View ' + corridor.streetName + ' on map'">
-								<i class="ph-bold ph-map-pin-area"></i>
-							</button>
-						</td>
-					</tr>
-				</ng-template>
-				<ng-template pTemplate="emptymessage">
-					<tr><td colspan="6">No avoided street has enough rides for the current filters.</td></tr>
-				</ng-template>
-			</p-table>
+				<p-table
+					[value]="topAvoidedCorridors.value()"
+					[loading]="topAvoidedCorridors.isLoading()"
+					[paginator]="true"
+					[rows]="corridorPageSize"
+					styleClass="corridor-ranking-table"
+				>
+					<ng-template pTemplate="header">
+						<tr>
+							<th>Street</th>
+							<th>Rides avoiding</th>
+							<th>Signal balance</th>
+							<th>Near misses</th>
+							<th class="pa-secondary-column">Segments</th>
+							<th><span class="sr-only">Map</span></th>
+						</tr>
+					</ng-template>
+					<ng-template pTemplate="body" let-corridor>
+						<tr>
+							<td>
+								<strong>{{ corridor.streetName }}</strong>
+							</td>
+							<td>{{ corridor.avoidanceRideCount | number }}</td>
+							<td>
+								<span
+									class="signal-balance"
+									[attr.aria-label]="
+										corridor.avoidanceRideCount +
+										' avoidance rides and ' +
+										corridor.preferenceRideCount +
+										' preference rides'
+									"
+								>
+									<span
+										class="signal-balance__avoidance"
+										[style.width.%]="signalShare(corridor, 'AVOIDANCE')"
+									></span>
+									<span
+										class="signal-balance__preference"
+										[style.width.%]="signalShare(corridor, 'PREFERENCE')"
+									></span>
+								</span>
+								<small
+									>{{ corridor.avoidanceRideCount | number }} /
+									{{ corridor.preferenceRideCount | number }}</small
+								>
+							</td>
+							<td>{{ corridor.scaryIncidentCount | number }}</td>
+							<td class="pa-secondary-column">
+								{{ corridor.segmentCount | number }}
+							</td>
+							<td>
+								<button
+									type="button"
+									class="corridor-map-link"
+									(click)="viewCorridorOnMap.emit(corridor)"
+									[attr.aria-label]="'View ' + corridor.streetName + ' on map'"
+								>
+									<i class="ph-bold ph-map-pin-area"></i>
+								</button>
+							</td>
+						</tr>
+					</ng-template>
+					<ng-template pTemplate="emptymessage">
+						<tr>
+							<td colspan="6">
+								No avoided street has enough rides for the current filters.
+							</td>
+						</tr>
+					</ng-template>
+				</p-table>
 			}
 		</p-card>
 
@@ -100,7 +237,10 @@
 				<div class="card-header pa-insight-header">
 					<div>
 						<h3>Top preferred streets</h3>
-						<p>Corridors chosen by the largest number of distinct rides despite being longer.</p>
+						<p>
+							Corridors chosen by the largest number of distinct rides despite being
+							longer.
+						</p>
 					</div>
 				</div>
 			</ng-template>
@@ -109,48 +249,75 @@
 					Preferred streets could not be loaded.
 				</div>
 			} @else {
-			<p-table
-				[value]="topPreferredCorridors.value()"
-				[loading]="topPreferredCorridors.isLoading()"
-				[paginator]="true"
-				[rows]="corridorPageSize"
-				styleClass="corridor-ranking-table"
-			>
-				<ng-template pTemplate="header">
-					<tr>
-						<th>Street</th>
-						<th>Rides choosing</th>
-						<th>Signal balance</th>
-						<th class="pa-secondary-column">Segments</th>
-						<th><span class="sr-only">Map</span></th>
-					</tr>
-				</ng-template>
-				<ng-template pTemplate="body" let-corridor>
-					<tr>
-						<td><strong>{{ corridor.streetName }}</strong></td>
-						<td>{{ corridor.preferenceRideCount | number }}</td>
-						<td>
-							<span
-								class="signal-balance"
-								[attr.aria-label]="corridor.avoidanceRideCount + ' avoidance rides and ' + corridor.preferenceRideCount + ' preference rides'"
-							>
-								<span class="signal-balance__avoidance" [style.width.%]="signalShare(corridor, 'AVOIDANCE')"></span>
-								<span class="signal-balance__preference" [style.width.%]="signalShare(corridor, 'PREFERENCE')"></span>
-							</span>
-							<small>{{ corridor.avoidanceRideCount | number }} / {{ corridor.preferenceRideCount | number }}</small>
-						</td>
-						<td class="pa-secondary-column">{{ corridor.segmentCount | number }}</td>
-						<td>
-							<button type="button" class="corridor-map-link" (click)="viewCorridorOnMap.emit(corridor)" [attr.aria-label]="'View ' + corridor.streetName + ' on map'">
-								<i class="ph-bold ph-map-pin-area"></i>
-							</button>
-						</td>
-					</tr>
-				</ng-template>
-				<ng-template pTemplate="emptymessage">
-					<tr><td colspan="5">No preferred street has enough rides for the current filters.</td></tr>
-				</ng-template>
-			</p-table>
+				<p-table
+					[value]="topPreferredCorridors.value()"
+					[loading]="topPreferredCorridors.isLoading()"
+					[paginator]="true"
+					[rows]="corridorPageSize"
+					styleClass="corridor-ranking-table"
+				>
+					<ng-template pTemplate="header">
+						<tr>
+							<th>Street</th>
+							<th>Rides choosing</th>
+							<th>Signal balance</th>
+							<th class="pa-secondary-column">Segments</th>
+							<th><span class="sr-only">Map</span></th>
+						</tr>
+					</ng-template>
+					<ng-template pTemplate="body" let-corridor>
+						<tr>
+							<td>
+								<strong>{{ corridor.streetName }}</strong>
+							</td>
+							<td>{{ corridor.preferenceRideCount | number }}</td>
+							<td>
+								<span
+									class="signal-balance"
+									[attr.aria-label]="
+										corridor.avoidanceRideCount +
+										' avoidance rides and ' +
+										corridor.preferenceRideCount +
+										' preference rides'
+									"
+								>
+									<span
+										class="signal-balance__avoidance"
+										[style.width.%]="signalShare(corridor, 'AVOIDANCE')"
+									></span>
+									<span
+										class="signal-balance__preference"
+										[style.width.%]="signalShare(corridor, 'PREFERENCE')"
+									></span>
+								</span>
+								<small
+									>{{ corridor.avoidanceRideCount | number }} /
+									{{ corridor.preferenceRideCount | number }}</small
+								>
+							</td>
+							<td class="pa-secondary-column">
+								{{ corridor.segmentCount | number }}
+							</td>
+							<td>
+								<button
+									type="button"
+									class="corridor-map-link"
+									(click)="viewCorridorOnMap.emit(corridor)"
+									[attr.aria-label]="'View ' + corridor.streetName + ' on map'"
+								>
+									<i class="ph-bold ph-map-pin-area"></i>
+								</button>
+							</td>
+						</tr>
+					</ng-template>
+					<ng-template pTemplate="emptymessage">
+						<tr>
+							<td colspan="5">
+								No preferred street has enough rides for the current filters.
+							</td>
+						</tr>
+					</ng-template>
+				</p-table>
 			}
 		</p-card>
 	</div>
@@ -160,13 +327,18 @@
 			<div class="card-header pa-insight-header">
 				<div>
 					<h3>Infrastructure signals</h3>
-					<p>Difference from the avoidance-signal baseline among events with historical OSM data.</p>
+					<p>
+						Difference from the avoidance-signal baseline among events with historical
+						OSM data.
+					</p>
 				</div>
 				<div class="panel-toggle" role="group" aria-label="Infrastructure dimension">
 					@for (option of infrastructureDimensionOptions; track option.value) {
 						<button
 							type="button"
-							[class.panel-toggle__button--active]="selectedInfrastructureDimension() === option.value"
+							[class.panel-toggle__button--active]="
+								selectedInfrastructureDimension() === option.value
+							"
 							[attr.aria-pressed]="selectedInfrastructureDimension() === option.value"
 							(click)="onInfrastructureDimensionChange(option.value)"
 						>
@@ -184,14 +356,27 @@
 			</div>
 		} @else if (infrastructureSignals.value()?.buckets?.length) {
 			<div class="pa-infrastructure-chart">
-				<p-chart type="bar" [data]="infrastructureChartData()" [options]="infrastructureChartOptions" height="20rem" />
+				<p-chart
+					type="bar"
+					[data]="infrastructureChartData()"
+					[options]="infrastructureChartOptions"
+					height="20rem"
+				/>
 			</div>
 			<div class="pa-infrastructure-legend" aria-label="Chart interpretation">
-				<span><i class="pa-dot pa-dot--avoidance"></i> More avoidance signals than baseline</span>
-				<span><i class="pa-dot pa-dot--preference"></i> Fewer avoidance signals than baseline</span>
+				<span
+					><i class="pa-dot pa-dot--avoidance"></i> More avoidance signals than
+					baseline</span
+				>
+				<span
+					><i class="pa-dot pa-dot--preference"></i> Fewer avoidance signals than
+					baseline</span
+				>
 			</div>
 			@if (coverageNote(); as note) {
-				<p class="pa-analytics__caption">{{ note }} Association does not establish causation.</p>
+				<p class="pa-analytics__caption">
+					{{ note }} Association does not establish causation.
+				</p>
 			}
 		} @else {
 			<div class="pa-analytics__message">

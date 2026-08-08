@@ -11,6 +11,17 @@
 			align-items: start;
 		}
 
+		&__comparison-grid {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 1rem;
+
+			> .p-card {
+				min-width: 0;
+				height: 100%;
+			}
+		}
+
 		&__card {
 			min-width: 0;
 			overflow: hidden;
@@ -102,6 +113,82 @@
 
 		p {
 			max-width: 42rem;
+		}
+	}
+
+	.pa-route-comparison {
+		display: grid;
+		grid-template-columns: minmax(9rem, 13rem) minmax(10rem, 1fr);
+		justify-content: center;
+		align-items: center;
+		gap: 1rem;
+
+		&__chart {
+			height: 13rem;
+		}
+
+		&__summary {
+			min-width: 0;
+
+			ul {
+				display: flex;
+				flex-direction: column;
+				gap: 0.55rem;
+				padding: 0;
+				margin: 0.8rem 0 0;
+				list-style: none;
+			}
+
+			li {
+				display: grid;
+				grid-template-columns: auto minmax(0, 1fr) auto;
+				align-items: center;
+				gap: 0.6rem;
+				color: var(--pa-label);
+				font-size: 0.82rem;
+
+				i {
+					width: 0.65rem;
+					height: 0.65rem;
+					border-radius: 50%;
+					background: var(--route-comparison-color);
+				}
+
+				strong {
+					color: var(--pa-heading);
+					font-size: 0.88rem;
+				}
+			}
+		}
+
+		&__total {
+			display: flex;
+			flex-direction: column;
+			gap: 0.2rem;
+
+			strong {
+				color: var(--pa-heading);
+				font-size: 1.65rem;
+				line-height: 1.1;
+			}
+
+			span {
+				color: var(--pa-label);
+				font-size: 0.78rem;
+			}
+		}
+	}
+
+	.pa-detour-impact {
+		&__chart {
+			height: 13rem;
+		}
+
+		&__omission {
+			margin: 0.45rem 0 0;
+			color: var(--pa-label);
+			font-size: 0.74rem;
+			line-height: 1.4;
 		}
 	}
 
@@ -215,6 +302,7 @@
 	}
 
 	@media (max-width: 78rem) {
+		.pa-analytics__comparison-grid,
 		.pa-analytics__corridor-grid {
 			grid-template-columns: 1fr;
 		}
@@ -229,6 +317,15 @@
 	}
 
 	@media (max-width: 48rem) {
+		.pa-route-comparison {
+			grid-template-columns: minmax(9rem, 13rem) minmax(10rem, 1fr);
+			gap: 1rem;
+
+			&__chart {
+				height: 13rem;
+			}
+		}
+
 		.pa-evidence {
 			grid-template-columns: 1fr;
 
@@ -260,6 +357,16 @@
 
 			.pa-secondary-column {
 				display: none;
+			}
+		}
+	}
+
+	@media (max-width: 30rem) {
+		.pa-route-comparison {
+			grid-template-columns: 1fr;
+
+			&__chart {
+				height: 12rem;
 			}
 		}
 	}
