@@ -5,6 +5,7 @@ import {
 	AnalyticsCorridorsParams,
 	AnalyticsDistributionParams,
 	AnalyticsInfrastructureSignalsParams,
+	AnalyticsRouteComparisonParams,
 	NearMissIncidentsParams,
 	RoadClosuresParams,
 	SegmentEventsParams,
@@ -35,6 +36,10 @@ export class PreferenceAvoidanceAnalysisFacade {
 
 	public getAnalyticsContext(params: AnalyticsContextParams) {
 		return this._analyticsRequestService.getContext(params);
+	}
+
+	public getRouteComparisons(params: AnalyticsRouteComparisonParams) {
+		return this._analyticsRequestService.getRouteComparisons(params);
 	}
 
 	public getCorridors(params: AnalyticsCorridorsParams) {

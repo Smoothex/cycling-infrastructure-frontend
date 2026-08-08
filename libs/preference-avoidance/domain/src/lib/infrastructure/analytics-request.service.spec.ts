@@ -42,6 +42,14 @@ describe('AnalyticsRequestService', () => {
 		});
 	});
 
+	it('should call the filter-aware route-comparisons endpoint', () => {
+		service.getRouteComparisons({ from: 1000, to: 2000, rideIntent: 'COMMUTE' });
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/route-comparisons', {
+			params: { from: 1000, to: 2000, rideIntent: 'COMMUTE' },
+		});
+	});
+
 	it('should call the corridors endpoint with ranking params', () => {
 		service.getCorridors({ rank: 'AVOIDANCE', limit: 8, minRideCount: 5 });
 

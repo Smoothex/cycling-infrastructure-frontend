@@ -415,7 +415,7 @@
 
 	.event-legend {
 		display: flex;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		align-items: center;
 		gap: 0.5rem;
 		color: var(--pa-label);
@@ -450,7 +450,8 @@
 
 	.risk-legend {
 		display: inline-grid;
-		grid-template-columns: repeat(7, minmax(0, 1fr));
+		grid-template-columns: repeat(9, minmax(0, 1fr));
+		flex: 1 1 14rem;
 		align-items: stretch;
 		width: min(14rem, 32vw);
 		min-width: 8rem;
