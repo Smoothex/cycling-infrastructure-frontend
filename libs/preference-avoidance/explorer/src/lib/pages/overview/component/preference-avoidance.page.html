@@ -11,14 +11,14 @@
 			>
 				<option [ngValue]="undefined">All time</option>
 				@for (year of yearOptions(); track year) {
-					<option [ngValue]="year">{{ year }}</option>
+				<option [ngValue]="year">{{ year }}</option>
 				}
 			</select>
 		</div>
 
 		<div class="pa-global-filters" role="group" aria-label="Global filters">
 			<label class="pa-field pa-field--inline">
-				Ride type
+				Ride purpose
 				<select
 					[class.filter-control--active]="selectedRideIntent() !== undefined"
 					[ngModel]="selectedRideIntent()"
@@ -26,40 +26,43 @@
 				>
 					<option [ngValue]="undefined">Any</option>
 					@for (intent of rideIntentOptions.value(); track intent) {
-						<option [ngValue]="intent">{{ formatValue(intent) }}</option>
+					<option [ngValue]="intent">{{ formatValue(intent) }}</option>
 					}
 				</select>
 			</label>
 			@if (selectedTab() !== 'ANALYTICS') {
-				<label class="pa-field pa-field--inline">
-					Traffic
-					<select
-						[class.filter-control--active]="selectedTrafficCondition() !== undefined"
-						[ngModel]="selectedTrafficCondition()"
-						(ngModelChange)="selectedTrafficCondition.set($event)"
-					>
-						<option [ngValue]="undefined">Any</option>
-						@for (condition of trafficConditionOptions.value(); track condition) {
-							<option [ngValue]="condition">{{ formatValue(condition) }}</option>
-						}
-					</select>
-				</label>
-				<div class="pa-enrichment-chips" role="group" aria-label="Enrichment filters">
+			<label class="pa-field pa-field--inline">
+				Traffic condition
+				<select
+					[class.filter-control--active]="selectedTrafficCondition() !== undefined"
+					[ngModel]="selectedTrafficCondition()"
+					(ngModelChange)="selectedTrafficCondition.set($event)"
+				>
+					<option [ngValue]="undefined">Any</option>
+					@for (condition of trafficConditionOptions.value(); track condition) {
+					<option [ngValue]="condition">{{ formatValue(condition) }}</option>
+					}
+				</select>
+			</label>
+			<div class="pa-data-availability">
+				<span class="pa-data-availability__label">Data available</span>
+				<div class="pa-enrichment-chips" role="group" aria-label="Available event data">
 					@for (chip of enrichmentChipOptions; track chip.value) {
-						<button
-							type="button"
-							class="pa-enrichment-chip"
-							[class.pa-enrichment-chip--selected]="isEnrichmentChipSelected(chip.value)"
-							[attr.aria-pressed]="isEnrichmentChipSelected(chip.value)"
-							(click)="onEnrichmentChipToggle(chip.value)"
-						>
-							@if (isEnrichmentChipSelected(chip.value)) {
-								<i class="ph-bold ph-check" aria-hidden="true"></i>
-							}
-							{{ chip.label }}
-						</button>
+					<button
+						type="button"
+						class="pa-enrichment-chip"
+						[class.pa-enrichment-chip--selected]="isEnrichmentChipSelected(chip.value)"
+						[attr.aria-pressed]="isEnrichmentChipSelected(chip.value)"
+						[attr.title]="chip.description"
+						(click)="onEnrichmentChipToggle(chip.value)"
+					>
+						@if (isEnrichmentChipSelected(chip.value)) {
+						<i class="ph-bold ph-check" aria-hidden="true"></i>
+						} {{ chip.label }}
+					</button>
 					}
 				</div>
+			</div>
 			}
 			<button
 				type="button"
@@ -75,16 +78,16 @@
 
 	<div class="pa-tabs panel-toggle" role="tablist" aria-label="Preference and avoidance views">
 		@for (tab of tabOptions; track tab.value) {
-			<button
-				type="button"
-				role="tab"
-				[attr.aria-selected]="selectedTab() === tab.value"
-				[class.panel-toggle__button--active]="selectedTab() === tab.value"
-				(click)="onTabChange(tab.value)"
-			>
-				<i class="ph-bold {{ tab.icon }}"></i>
-				{{ tab.label }}
-			</button>
+		<button
+			type="button"
+			role="tab"
+			[attr.aria-selected]="selectedTab() === tab.value"
+			[class.panel-toggle__button--active]="selectedTab() === tab.value"
+			(click)="onTabChange(tab.value)"
+		>
+			<i class="ph-bold {{ tab.icon }}"></i>
+			{{ tab.label }}
+		</button>
 		}
 	</div>
 
@@ -98,21 +101,21 @@
 			[attr.aria-hidden]="selectedTab() !== 'MAP'"
 		>
 			@if (summaryStats.isLoading()) {
-				<p-skeleton height="4.5rem" />
+			<p-skeleton height="4.5rem" />
 			} @else if (summaryKpis().length) {
-				<div class="pa-kpi-row" aria-label="Data processing summary">
-					@for (kpi of summaryKpis(); track kpi.label) {
-						<div class="pa-kpi-tile">
-							<span class="pa-icon-circle pa-tint--{{ kpi.tone }}">
-								<i class="ph-bold {{ kpi.icon }}"></i>
-							</span>
-							<span class="pa-kpi-tile__text">
-								<small>{{ kpi.label }}</small>
-								<strong>{{ kpi.value | number }}</strong>
-							</span>
-						</div>
-					}
+			<div class="pa-kpi-row" aria-label="Data processing summary">
+				@for (kpi of summaryKpis(); track kpi.label) {
+				<div class="pa-kpi-tile">
+					<span class="pa-icon-circle pa-tint--{{ kpi.tone }}">
+						<i class="ph-bold {{ kpi.icon }}"></i>
+					</span>
+					<span class="pa-kpi-tile__text">
+						<small>{{ kpi.label }}</small>
+						<strong>{{ kpi.value | number }}</strong>
+					</span>
 				</div>
+				}
+			</div>
 			}
 
 			<div class="preference-avoidance__main-grid">
@@ -131,7 +134,11 @@
 									<i class="ph-bold ph-stack"></i>
 									Layers
 								</button>
-								<button type="button" class="pa-map-action" (click)="onResetMapView()">
+								<button
+									type="button"
+									class="pa-map-action"
+									(click)="onResetMapView()"
+								>
 									<i class="ph-bold ph-arrow-counter-clockwise"></i>
 									Reset map
 								</button>
@@ -175,32 +182,38 @@
 						</div>
 					</ng-template>
 					<div class="pa-map-frame">
-						<t-map-component [isNavigable]="true" (mapReady)="onMapReady($event)"></t-map-component>
+						<t-map-component
+							[isNavigable]="true"
+							(mapReady)="onMapReady($event)"
+						></t-map-component>
 						<div class="pa-map-legend">
 							<div class="event-legend">
 								<span class="event-legend__endpoint">Preferred</span>
-								<div class="risk-legend" aria-label="Preference to avoidance risk legend">
+								<div
+									class="risk-legend"
+									aria-label="Preference to avoidance risk legend"
+								>
 									@for (item of riskLegendItems; track item.bucket) {
-										<button
-											type="button"
-											class="risk-legend__segment"
-											[style.--risk-bucket-color]="item.color"
-											[class.risk-legend__segment--selected]="isRiskLegendSelected(item.bucket)"
-											[attr.aria-label]="item.label"
-											[attr.aria-pressed]="isRiskLegendSelected(item.bucket)"
-											(click)="onRiskLegendToggle(item.bucket)"
-										></button>
+									<button
+										type="button"
+										class="risk-legend__segment"
+										[style.--risk-bucket-color]="item.color"
+										[class.risk-legend__segment--selected]="isRiskLegendSelected(item.bucket)"
+										[attr.aria-label]="item.label"
+										[attr.aria-pressed]="isRiskLegendSelected(item.bucket)"
+										(click)="onRiskLegendToggle(item.bucket)"
+									></button>
 									}
 								</div>
 								<span class="event-legend__endpoint">Avoided</span>
 								@if (selectedRiskLegendBuckets().length) {
-									<button
-										type="button"
-										class="event-legend__clear"
-										(click)="onRiskLegendClear()"
-									>
-										Clear
-									</button>
+								<button
+									type="button"
+									class="event-legend__clear"
+									(click)="onRiskLegendClear()"
+								>
+									Clear
+								</button>
 								}
 							</div>
 						</div>
@@ -214,266 +227,314 @@
 								<div>
 									<h3>Segment inspector</h3>
 									@if (inspectorIdentity(); as identity) {
-										<div class="inspector-identity">
-											<strong>{{ identity.primary }}</strong>
-											<span>{{ identity.secondary }}</span>
-										</div>
+									<div class="inspector-identity">
+										<strong>{{ identity.primary }}</strong>
+										<span>{{ identity.secondary }}</span>
+									</div>
 									}
 								</div>
-								<div class="panel-toggle" role="group" aria-label="Segment inspector view">
+								<div
+									class="panel-toggle"
+									role="group"
+									aria-label="Segment inspector view"
+								>
 									@for (option of panelViewOptions; track option.value) {
-										<button
-											type="button"
-											[class.panel-toggle__button--active]="selectedPanelView() === option.value"
-											(click)="onPanelViewChange(option.value)"
-										>
-											{{ option.label }}
-										</button>
+									<button
+										type="button"
+										[class.panel-toggle__button--active]="selectedPanelView() === option.value"
+										(click)="onPanelViewChange(option.value)"
+									>
+										{{ option.label }}
+									</button>
 									}
 								</div>
 							</div>
 						</ng-template>
 
-						@if (selectedSegment(); as segment) {
-							@if (selectedPanelView() === 'INFO') {
-								<div class="detail-grid">
-									@for (metric of segmentInfoMetrics(); track metric.label) {
-										<div class="detail-grid__item">
-											<span>{{ metric.label }}</span>
-											<strong>{{ metric.value }}</strong>
-											@if (metric.detail) {
-												<small>{{ metric.detail }}</small>
-											}
-										</div>
+						@if (selectedSegment(); as segment) { @if (selectedPanelView() === 'INFO') {
+						<div class="detail-grid">
+							@for (metric of segmentInfoMetrics(); track metric.label) {
+							<div class="detail-grid__item">
+								<span>{{ metric.label }}</span>
+								<strong>{{ metric.value }}</strong>
+								@if (metric.detail) {
+								<small>{{ metric.detail }}</small>
+								}
+							</div>
+							}
+						</div>
+
+						@if (infrastructureHighlights().length) {
+						<div class="context-strip">
+							@for (context of infrastructureHighlights(); track context.label) {
+							<div>
+								<span>{{ context.label }}</span>
+								<strong>{{ context.value }}</strong>
+								<small>{{ context.count | number }} events</small>
+							</div>
+							}
+						</div>
+						} } @else if (selectedPanelView() === 'EVENTS') {
+						<div class="event-filter-row">
+							<span
+								>{{ filteredSelectedSegmentEvents().length | number }} events
+								loaded</span
+							>
+							<select
+								[ngModel]="selectedEventFilter()"
+								(ngModelChange)="onEventFilterChange($event)"
+								aria-label="Selected segment event type"
+							>
+								@for (option of eventFilterOptions; track option.value) {
+								<option [value]="option.value">{{ option.label }}</option>
+								}
+							</select>
+						</div>
+
+						@if (selectedSegmentEvents.isLoading()) {
+						<div class="event-card-list">
+							@for (_ of [1, 2, 3]; track _) {
+							<p-skeleton height="5rem"></p-skeleton>
+							}
+						</div>
+						} @else if (filteredSelectedSegmentEvents().length) {
+						<div class="event-card-list">
+							@for (event of filteredSelectedSegmentEvents(); track event.id) {
+							<article
+								class="event-card"
+								[class.event-card--avoidance]="event.eventType === 'AVOIDANCE'"
+								[class.event-card--preference]="event.eventType === 'PREFERENCE'"
+								[class.event-card--expanded]="selectedEventId() === event.id"
+								(click)="onEventCardContainerClick($event, event.id)"
+							>
+								<button
+									type="button"
+									class="event-card__button"
+									[attr.aria-expanded]="selectedEventId() === event.id"
+									(click)="onEventCardClick(event.id)"
+								>
+									<span
+										class="event-pill"
+										[class.event-pill--avoidance]="event.eventType === 'AVOIDANCE'"
+										[class.event-pill--preference]="event.eventType === 'PREFERENCE'"
+									>
+										{{ formatValue(event.eventType) }}
+									</span>
+									<span class="event-card__time"
+										>{{ formatDateTime(event.eventTimestamp) }}</span
+									>
+									@if (formatDirection(event.pathBearingDegrees); as direction) {
+									<span class="event-card__direction">{{ direction }}</span>
+									}
+								</button>
+
+								@if (selectedEventId() !== event.id &&
+								eventPreviewChips(event).length) {
+								<div class="event-chip-list">
+									@for (chip of eventPreviewChips(event); track chip.label) {
+									<span
+										class="event-chip"
+										[class.event-chip--infrastructure]="chip.tone === 'infrastructure'"
+										[class.event-chip--traffic]="chip.tone === 'traffic'"
+										[class.event-chip--weather]="chip.tone === 'weather'"
+										[class.event-chip--wind]="chip.tone === 'wind'"
+									>
+										{{ chip.label }}: {{ chip.value }}
+									</span>
 									}
 								</div>
-
-								@if (infrastructureHighlights().length) {
-									<div class="context-strip">
-										@for (context of infrastructureHighlights(); track context.label) {
+								} @if (selectedEventId() === event.id) {
+								<div class="event-detail">
+									@if (rideDetailItems(event).length) {
+									<section class="event-detail__group">
+										<h4>Ride</h4>
+										<dl>
+											@for (item of rideDetailItems(event); track item.label)
+											{
 											<div>
-												<span>{{ context.label }}</span>
-												<strong>{{ context.value }}</strong>
-												<small>{{ context.count | number }} events</small>
+												<dt>{{ item.label }}</dt>
+												<dd>{{ item.value }}</dd>
 											</div>
-										}
-									</div>
-								}
-							} @else if (selectedPanelView() === 'EVENTS') {
-								<div class="event-filter-row">
-									<span>{{ filteredSelectedSegmentEvents().length | number }} events loaded</span>
-									<select
-										[ngModel]="selectedEventFilter()"
-										(ngModelChange)="onEventFilterChange($event)"
-										aria-label="Selected segment event type"
-									>
-										@for (option of eventFilterOptions; track option.value) {
-											<option [value]="option.value">{{ option.label }}</option>
-										}
-									</select>
-								</div>
-
-								@if (selectedSegmentEvents.isLoading()) {
-									<div class="event-card-list">
-										@for (_ of [1, 2, 3]; track _) {
-											<p-skeleton height="5rem"></p-skeleton>
-										}
-									</div>
-								} @else if (filteredSelectedSegmentEvents().length) {
-									<div class="event-card-list">
-										@for (event of filteredSelectedSegmentEvents(); track event.id) {
-											<article
-												class="event-card"
-												[class.event-card--avoidance]="event.eventType === 'AVOIDANCE'"
-												[class.event-card--preference]="event.eventType === 'PREFERENCE'"
-												[class.event-card--expanded]="selectedEventId() === event.id"
-												(click)="onEventCardContainerClick($event, event.id)"
+											}
+										</dl>
+									</section>
+									} @if (eventConditionRows(event).length) {
+									<div class="pa-conditions">
+										<h4>Context at event time</h4>
+										@for (row of eventConditionRows(event); track row.label) {
+										<div
+											class="pa-conditions__row"
+											[class.pa-conditions__row--open]="expandedConditionGroup() === row.label"
+										>
+											<button
+												type="button"
+												class="pa-conditions__toggle"
+												[attr.aria-expanded]="expandedConditionGroup() === row.label"
+												(click)="onConditionRowToggle(row.label)"
 											>
-												<button
-													type="button"
-													class="event-card__button"
-													[attr.aria-expanded]="selectedEventId() === event.id"
-													(click)="onEventCardClick(event.id)"
+												<span
+													class="pa-icon-circle pa-tint--{{ row.tone }}"
 												>
-													<span
-														class="event-pill"
-														[class.event-pill--avoidance]="event.eventType === 'AVOIDANCE'"
-														[class.event-pill--preference]="event.eventType === 'PREFERENCE'"
-													>
-														{{ formatValue(event.eventType) }}
-													</span>
-													<span class="event-card__time">{{ formatDateTime(event.eventTimestamp) }}</span>
-													@if (formatDirection(event.pathBearingDegrees); as direction) {
-														<span class="event-card__direction">{{ direction }}</span>
+													<i class="ph-bold {{ row.icon }}"></i>
+												</span>
+												<span class="pa-conditions__text">
+													<strong>{{ row.label }}</strong>
+													<small>{{ row.summary }}</small>
+												</span>
+												<i
+													class="ph-bold pa-conditions__chevron"
+													[class.ph-caret-down]="expandedConditionGroup() !== row.label"
+													[class.ph-caret-up]="expandedConditionGroup() === row.label"
+												></i>
+											</button>
+											@if (expandedConditionGroup() === row.label) { @if
+											(row.detailGroups?.length) {
+											<div class="pa-conditions__detail-groups">
+												@for (group of row.detailGroups; track group.id) {
+												<section
+													class="pa-conditions__detail-group pa-conditions__detail-group--{{ group.tone }}"
+												>
+													<h5>{{ group.label }}</h5>
+													@if (group.description) {
+													<p>{{ group.description }}</p>
+													} @if (group.items.length) {
+													<dl class="pa-conditions__details">
+														@for (item of group.items; track item.label)
+														{
+														<div
+															[class.pa-conditions__detail--wide]="item.wide"
+														>
+															<dt>{{ item.label }}</dt>
+															<dd>{{ item.value }}</dd>
+														</div>
+														}
+													</dl>
 													}
-												</button>
-
-												@if (eventPreviewChips(event).length) {
-													<div class="event-chip-list">
-														@for (chip of eventPreviewChips(event); track chip.label) {
-															<span
-																class="event-chip"
-																[class.event-chip--infrastructure]="chip.tone === 'infrastructure'"
-																[class.event-chip--traffic]="chip.tone === 'traffic'"
-																[class.event-chip--weather]="chip.tone === 'weather'"
-																[class.event-chip--wind]="chip.tone === 'wind'"
-															>
-																{{ chip.label }}: {{ chip.value }}
-															</span>
-														}
-													</div>
+												</section>
 												}
-
-												@if (selectedEventId() === event.id) {
-													<div class="event-detail">
-														@if (rideDetailItems(event).length) {
-															<section class="event-detail__group">
-																<h4>Ride</h4>
-																<dl>
-																	@for (item of rideDetailItems(event); track item.label) {
-																		<div>
-																			<dt>{{ item.label }}</dt>
-																			<dd>{{ item.value }}</dd>
-																		</div>
-																	}
-																</dl>
-															</section>
-														}
-
-														@if (eventConditionRows(event).length) {
-															<div class="pa-conditions">
-																<h4>Ride conditions</h4>
-																@for (row of eventConditionRows(event); track row.label) {
-																	<div
-																		class="pa-conditions__row"
-																		[class.pa-conditions__row--open]="expandedConditionGroup() === row.label"
-																	>
-																		<button
-																			type="button"
-																			class="pa-conditions__toggle"
-																			[attr.aria-expanded]="expandedConditionGroup() === row.label"
-																			(click)="onConditionRowToggle(row.label)"
-																		>
-																			<span class="pa-icon-circle pa-tint--{{ row.tone }}">
-																				<i class="ph-bold {{ row.icon }}"></i>
-																			</span>
-																			<span class="pa-conditions__text">
-																				<strong>{{ row.label }}</strong>
-																				<small>{{ row.summary }}</small>
-																			</span>
-																			@if (row.compact) {
-																				<span class="pa-conditions__compact">{{ row.compact }}</span>
-																			}
-																			<i
-																				class="ph-bold pa-conditions__chevron"
-																				[class.ph-caret-down]="expandedConditionGroup() !== row.label"
-																				[class.ph-caret-up]="expandedConditionGroup() === row.label"
-																			></i>
-																		</button>
-																		@if (expandedConditionGroup() === row.label) {
-																			<dl class="pa-conditions__details">
-																				@for (item of row.items; track item.label) {
-																					<div>
-																						<dt>
-																							{{ item.label }}
-																							@if (item.infoId) {
-																								<span class="event-detail__info">
-																									<button
-																										type="button"
-																										class="event-detail__info-button"
-																										[class.event-detail__info-button--active]="selectedInfoPopoverId() === item.infoId"
-																										aria-label="Weather code documentation"
-																										[attr.aria-expanded]="selectedInfoPopoverId() === item.infoId"
-																										(click)="onInfoPopoverToggle($event, item.infoId)"
-																									>
-																										i
-																									</button>
-																									@if (selectedInfoPopoverId() === item.infoId && item.infoUrl) {
-																										<span class="event-detail__popover" role="tooltip">
-																											<a [href]="item.infoUrl" target="_blank" rel="noopener noreferrer">
-																												Open-Meteo weather code documentation
-																											</a>
-																										</span>
-																									}
-																								</span>
-																							}
-																						</dt>
-																						<dd>{{ item.value }}</dd>
-																					</div>
-																				}
-																			</dl>
-																		}
-																	</div>
-																}
-															</div>
-														}
-
-														@if (technicalDetailItems(event).length) {
+											</div>
+											} @else {
+											<dl class="pa-conditions__details">
+												@for (item of row.items; track item.label) {
+												<div
+													[class.pa-conditions__detail--wide]="item.wide"
+												>
+													<dt>
+														{{ item.label }} @if (item.infoId) {
+														<span class="event-detail__info">
 															<button
 																type="button"
-																class="pa-tech-toggle"
-																[attr.aria-expanded]="showTechnicalDetails()"
-																(click)="onTechnicalDetailsToggle()"
+																class="event-detail__info-button"
+																[class.event-detail__info-button--active]="selectedInfoPopoverId() === item.infoId"
+																aria-label="Weather code documentation"
+																[attr.aria-expanded]="selectedInfoPopoverId() === item.infoId"
+																(click)="onInfoPopoverToggle($event, item.infoId)"
 															>
-																{{ showTechnicalDetails() ? 'Hide' : 'Show' }} technical details
-																<i
-																	class="ph-bold"
-																	[class.ph-caret-down]="!showTechnicalDetails()"
-																	[class.ph-caret-up]="showTechnicalDetails()"
-																></i>
+																i
 															</button>
-															@if (showTechnicalDetails()) {
-																<section class="event-detail__group">
-																	<dl>
-																		@for (item of technicalDetailItems(event); track item.label) {
-																			<div>
-																				<dt>
-																					{{ item.label }}
-																					@if (item.infoId) {
-																						<span class="event-detail__info">
-																							<button
-																								type="button"
-																								class="event-detail__info-button"
-																								[class.event-detail__info-button--active]="selectedInfoPopoverId() === item.infoId"
-																								aria-label="Weather code documentation"
-																								[attr.aria-expanded]="selectedInfoPopoverId() === item.infoId"
-																								(click)="onInfoPopoverToggle($event, item.infoId)"
-																							>
-																								i
-																							</button>
-																							@if (selectedInfoPopoverId() === item.infoId && item.infoUrl) {
-																								<span class="event-detail__popover" role="tooltip">
-																									<a [href]="item.infoUrl" target="_blank" rel="noopener noreferrer">
-																										Open-Meteo weather code documentation
-																									</a>
-																								</span>
-																							}
-																						</span>
-																					}
-																				</dt>
-																				<dd>{{ item.value }}</dd>
-																			</div>
-																		}
-																	</dl>
-																</section>
+															@if (selectedInfoPopoverId() ===
+															item.infoId && item.infoUrl) {
+															<span
+																class="event-detail__popover"
+																role="tooltip"
+															>
+																<a
+																	[href]="item.infoUrl"
+																	target="_blank"
+																	rel="noopener noreferrer"
+																>
+																	Open-Meteo weather code
+																	documentation
+																</a>
+															</span>
 															}
+														</span>
 														}
-													</div>
+													</dt>
+													<dd>{{ item.value }}</dd>
+												</div>
 												}
-											</article>
+											</dl>
+											} }
+										</div>
 										}
 									</div>
-								} @else {
-									<p class="empty-state">No event details available for this segment.</p>
+									} @if (technicalDetailItems(event).length) {
+									<button
+										type="button"
+										class="pa-tech-toggle"
+										[attr.aria-expanded]="showTechnicalDetails()"
+										(click)="onTechnicalDetailsToggle()"
+									>
+										{{ showTechnicalDetails() ? 'Hide' : 'Show' }} technical
+										details
+										<i
+											class="ph-bold"
+											[class.ph-caret-down]="!showTechnicalDetails()"
+											[class.ph-caret-up]="showTechnicalDetails()"
+										></i>
+									</button>
+									@if (showTechnicalDetails()) {
+									<section class="event-detail__group">
+										<dl>
+											@for (item of technicalDetailItems(event); track
+											item.label) {
+											<div>
+												<dt>
+													{{ item.label }} @if (item.infoId) {
+													<span class="event-detail__info">
+														<button
+															type="button"
+															class="event-detail__info-button"
+															[class.event-detail__info-button--active]="selectedInfoPopoverId() === item.infoId"
+															aria-label="Weather code documentation"
+															[attr.aria-expanded]="selectedInfoPopoverId() === item.infoId"
+															(click)="onInfoPopoverToggle($event, item.infoId)"
+														>
+															i
+														</button>
+														@if (selectedInfoPopoverId() === item.infoId
+														&& item.infoUrl) {
+														<span
+															class="event-detail__popover"
+															role="tooltip"
+														>
+															<a
+																[href]="item.infoUrl"
+																target="_blank"
+																rel="noopener noreferrer"
+															>
+																Open-Meteo weather code
+																documentation
+															</a>
+														</span>
+														}
+													</span>
+													}
+												</dt>
+												<dd>{{ item.value }}</dd>
+											</div>
+											}
+										</dl>
+									</section>
+									} }
+								</div>
 								}
+							</article>
 							}
-						} @else if (selectedSegmentId()) {
-							<p-skeleton height="18rem"></p-skeleton>
+						</div>
 						} @else {
-							<div class="inspector-empty-state">
-								<p>No segment selected.</p>
-								<small>Click a segment on the map or a row in the segments table to inspect it.</small>
-							</div>
+						<p class="empty-state">No event details available for this segment.</p>
+						} } } @else if (selectedSegmentId()) {
+						<p-skeleton height="18rem"></p-skeleton>
+						} @else {
+						<div class="inspector-empty-state">
+							<p>No segment selected.</p>
+							<small
+								>Click a segment on the map or a row in the segments table to
+								inspect it.</small
+							>
+						</div>
 						}
 					</p-card>
 				</div>
@@ -481,22 +542,20 @@
 		</div>
 
 		@if (selectedTab() === 'ANALYTICS') {
-			<t-analytics-dashboard
-				role="tabpanel"
-				[filters]="analyticsFilters()"
-				(viewCorridorOnMap)="onViewCorridorOnMap($event)"
-			/>
-		}
-
-		@if (selectedTab() === 'SEGMENTS') {
-			<t-segments-table
-				role="tabpanel"
-				[segments]="filteredSegments()"
-				[loading]="segmentPool.isLoading()"
-				[selectedSegmentId]="selectedSegmentId()"
-				(rowSelected)="onTableRowSelected($event)"
-				(rowHovered)="hoveredSegmentId.set($event)"
-			/>
+		<t-analytics-dashboard
+			role="tabpanel"
+			[filters]="analyticsFilters()"
+			(viewCorridorOnMap)="onViewCorridorOnMap($event)"
+		/>
+		} @if (selectedTab() === 'SEGMENTS') {
+		<t-segments-table
+			role="tabpanel"
+			[segments]="filteredSegments()"
+			[loading]="segmentPool.isLoading()"
+			[selectedSegmentId]="selectedSegmentId()"
+			(rowSelected)="onTableRowSelected($event)"
+			(rowHovered)="hoveredSegmentId.set($event)"
+		/>
 		}
 	</div>
 </section>

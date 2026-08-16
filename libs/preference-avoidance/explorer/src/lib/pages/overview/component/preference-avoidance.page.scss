@@ -18,6 +18,8 @@
 	--pa-tint-purple-fg: #9333ea;
 	--pa-tint-orange-bg: #ffedd5;
 	--pa-tint-orange-fg: #ea580c;
+	--pa-tint-red-bg: #fee2e2;
+	--pa-tint-red-fg: #b91c1c;
 
 	display: block;
 	background: var(--pa-page-bg);
@@ -153,6 +155,18 @@
 		gap: 0.4rem;
 	}
 
+	.pa-data-availability {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+
+		&__label {
+			color: var(--pa-label);
+			font-size: 0.76rem;
+			font-weight: 550;
+		}
+	}
+
 	.pa-enrichment-chip {
 		@include pa-control;
 		display: inline-flex;
@@ -227,6 +241,11 @@
 		color: var(--pa-tint-orange-fg);
 	}
 
+	.pa-tint--red {
+		background: var(--pa-tint-red-bg);
+		color: var(--pa-tint-red-fg);
+	}
+
 	// ── Data-processing summary strip (Map Explorer tab) ─────────────────────
 	.pa-kpi-row {
 		display: grid;
@@ -297,7 +316,7 @@
 	// ── Main grid ────────────────────────────────────────────────────────────
 	&__main-grid {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(20rem, 23rem);
+		grid-template-columns: minmax(0, 1fr) clamp(25rem, 28vw, 30rem);
 		grid-template-areas: 'map inspector';
 		gap: 1rem;
 		align-items: start;
@@ -780,7 +799,7 @@
 		}
 	}
 
-	// ── Ride conditions card inside an event card ────────────────────────────
+	// ── Event-time context card inside an event card ─────────────────────────
 	.pa-conditions {
 		border: 1px solid var(--pa-card-border);
 		border-radius: var(--pa-radius-control);
@@ -835,18 +854,6 @@
 			}
 		}
 
-		&__compact {
-			flex: 0 1 auto;
-			overflow: hidden;
-			max-width: 9rem;
-			color: var(--pa-label);
-			font-size: 0.74rem;
-			font-weight: 600;
-			text-align: right;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
 		&__chevron {
 			flex: 0 0 auto;
 			color: var(--pa-label);
@@ -874,6 +881,47 @@
 				margin: 0.1rem 0 0;
 				font-size: 0.82rem;
 				font-weight: 600;
+			}
+		}
+
+		&__detail--wide {
+			grid-column: 1 / -1;
+		}
+
+		&__detail-groups {
+			display: grid;
+			gap: 0.55rem;
+			padding: 0.15rem 0 0.6rem;
+		}
+
+		&__detail-group {
+			border-left: 2px solid var(--pa-card-border);
+			padding-left: 0.6rem;
+
+			&--green {
+				border-left-color: var(--pa-tint-green-fg);
+			}
+
+			&--red {
+				border-left-color: var(--pa-tint-red-fg);
+			}
+
+			h5 {
+				margin: 0 0 0.35rem;
+				color: var(--pa-heading);
+				font-size: 0.75rem;
+				font-weight: 700;
+			}
+
+			p {
+				margin: 0 0 0.45rem;
+				color: var(--pa-label);
+				font-size: 0.75rem;
+				line-height: 1.35;
+			}
+
+			.pa-conditions__details {
+				padding-bottom: 0;
 			}
 		}
 	}

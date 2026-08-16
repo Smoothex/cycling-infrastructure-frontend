@@ -86,6 +86,7 @@ export interface SegmentTileProperties {
 	weatherEnrichedEventCount: number;
 	ohsomeEnrichedEventCount: number;
 	trafficMeasuredEventCount: number;
+	roadDisruptionAffectedEventCount: number;
 }
 
 export interface SegmentEventFilters {
@@ -137,7 +138,8 @@ export type SegmentEnrichmentFilter =
 	| 'TRAFFIC_ENRICHED'
 	| 'WEATHER_ENRICHED'
 	| 'OHSOME_ENRICHED'
-	| 'TRAFFIC_MEASURED';
+	| 'TRAFFIC_MEASURED'
+	| 'ROAD_DISRUPTION_AFFECTED';
 
 export interface SegmentEvent {
 	id: string;
@@ -178,4 +180,5 @@ export interface SegmentEvent {
 	trafficSpeedPkw?: number;
 	trafficVolumeLkw?: number;
 	trafficSpeedLkw?: number;
+	roadDisruptions: ExternalFactor[];
 }
