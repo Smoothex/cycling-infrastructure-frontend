@@ -16,6 +16,7 @@ import {
 	AnalyticsFilters,
 	CorridorGeometry,
 	CorridorRanking,
+	ExternalFactor,
 	SegmentEnrichmentFilter,
 	SegmentEvent,
 	SegmentEventType,
@@ -60,7 +61,8 @@ const preferenceAvoidanceSegmentsLayer = 'preference-avoidance-segments-layer';
 const preferenceAvoidanceMatchedSource = 'preference-avoidance-matched-source';
 const preferenceAvoidanceMatchedLayer = 'preference-avoidance-matched-layer';
 const preferenceAvoidanceHighlightSource = 'preference-avoidance-segments-highlight-source';
-const preferenceAvoidanceHighlightOutlineLayer = 'preference-avoidance-segments-highlight-outline-layer';
+const preferenceAvoidanceHighlightOutlineLayer =
+	'preference-avoidance-segments-highlight-outline-layer';
 const preferenceAvoidanceHighlightLayer = 'preference-avoidance-segments-highlight-layer';
 const trafficDetectorsSource = 'preference-avoidance-traffic-detectors-source';
 const trafficDetectorsLayer = 'preference-avoidance-traffic-detectors-layer';
@@ -104,13 +106,27 @@ const roadClosureSeverityLabels: Record<string, string> = {
 	DIRECTIONAL_CLOSURE: 'One direction closed',
 	UNKNOWN: '',
 };
+const cyclewayTypeLabels: Record<string, string> = {
+	TRACK: 'Protected cycle track',
+	LANE: 'Cycle lane',
+	SHARED_LANE: 'Shared lane',
+	SHARE_BUSWAY: 'Shared bus lane',
+	SEPARATE: 'Separate cycleway',
+	CROSSING: 'Cycle crossing',
+};
+const cyclewayLocationLabels: Record<string, string> = {
+	LEFT: 'Left side',
+	RIGHT: 'Right side',
+	BOTH: 'Both sides',
+};
+const omittedContextValues = new Set(['NONE', 'UNKNOWN', 'NOT_APPLICABLE', 'N/A', 'NULL']);
 const berlinMapCenter: [number, number] = [13.413, 52.522];
 const berlinMapZoom = 14;
 // below this zoom the tileset only contains the aggregated 'streets' layer
 const segmentDetailMinZoom = 12;
 const segmentLayerTransitionZoom = 1;
 const mapMinSampleSize = 10;
-const minSelectableEventYear = 2015;	// avoide test/noise rides
+const minSelectableEventYear = 2015; // avoide test/noise rides
 
 let pmtilesProtocolRegistered = false;
 function registerPmtilesProtocol(): void {
@@ -118,7 +134,9 @@ function registerPmtilesProtocol(): void {
 		return;
 	}
 	const protocol = new Protocol();
-	maplibregl.addProtocol('pmtiles', (params, abortController) => protocol.tile(params, abortController));
+	maplibregl.addProtocol('pmtiles', (params, abortController) =>
+		protocol.tile(params, abortController),
+	);
 	pmtilesProtocolRegistered = true;
 }
 
@@ -174,12 +192,14 @@ class MapBaseStyleControl implements maplibregl.IControl {
 	}
 }
 // map to the per-segment enrichment event counts baked into the tile properties
-const enrichmentFilterCountProperty: Record<SegmentEnrichmentFilter, keyof SegmentTileProperties> = {
-	TRAFFIC_ENRICHED: 'trafficEnrichedEventCount',
-	WEATHER_ENRICHED: 'weatherEnrichedEventCount',
-	OHSOME_ENRICHED: 'ohsomeEnrichedEventCount',
-	TRAFFIC_MEASURED: 'trafficMeasuredEventCount',
-};
+const enrichmentFilterCountProperty: Record<SegmentEnrichmentFilter, keyof SegmentTileProperties> =
+	{
+		TRAFFIC_ENRICHED: 'trafficEnrichedEventCount',
+		WEATHER_ENRICHED: 'weatherEnrichedEventCount',
+		OHSOME_ENRICHED: 'ohsomeEnrichedEventCount',
+		TRAFFIC_MEASURED: 'trafficMeasuredEventCount',
+		ROAD_DISRUPTION_AFFECTED: 'roadDisruptionAffectedEventCount',
+	};
 
 // the tiles carry all-time properties (bucket/eventCount) plus per-year variants
 // (bucket_<year>/eventCount_<year>), so year views restyle the same tile layers
@@ -199,8 +219,13 @@ function bucketColorExpression(bucketProperty: string): maplibregl.ExpressionSpe
 // replicates eventLineWidth(): min(8, max(1.5, 1.5 + log10(events + 1) * 2.2))
 function eventLineWidthExpression(countProperty: string): maplibregl.ExpressionSpecification {
 	return [
-		'min', 8,
-		['max', 1.5, ['+', 1.5, ['*', 2.2, ['log10', ['+', ['coalesce', ['get', countProperty], 0], 1]]]]],
+		'min',
+		8,
+		[
+			'max',
+			1.5,
+			['+', 1.5, ['*', 2.2, ['log10', ['+', ['coalesce', ['get', countProperty], 0], 1]]]],
+		],
 	];
 }
 
@@ -236,6 +261,7 @@ interface EventChip {
 interface EventDetailItem {
 	label: string;
 	value: string;
+	wide?: boolean;
 	infoId?: string;
 	infoUrl?: string;
 }
@@ -245,16 +271,24 @@ interface EventDetailGroup {
 	items: EventDetailItem[];
 }
 
-type IconTone = 'blue' | 'green' | 'purple' | 'orange';
+interface ConditionDetailGroup {
+	id: string;
+	label: string;
+	tone: 'green' | 'red';
+	items: EventDetailItem[];
+	description?: string;
+}
 
-/** One expandable row of the "Ride conditions" card inside an event card. */
+type IconTone = 'blue' | 'green' | 'purple' | 'orange' | 'red';
+
+/** One expandable row of the event-time context card inside an event card. */
 interface ConditionRow {
-	label: 'Weather' | 'Infrastructure' | 'Traffic';
+	label: 'Weather' | 'Infrastructure' | 'Traffic' | 'Road disruption';
 	icon: string;
 	tone: IconTone;
 	summary: string;
-	compact?: string;
 	items: EventDetailItem[];
+	detailGroups?: ConditionDetailGroup[];
 }
 
 /** One tile of the data-processing summary strip shown on the Map Explorer tab. */
@@ -296,7 +330,9 @@ export class PreferenceAvoidancePage {
 	private readonly _appConfig = inject(APP_CONFIG);
 	private readonly _mapTilerToken = this._appConfig.mapTilerToken;
 	private readonly _map = signal<maplibregl.Map | undefined>(undefined);
-	private readonly _selectedSegmentTileProperties = signal<SegmentTileProperties | undefined>(undefined);
+	private readonly _selectedSegmentTileProperties = signal<SegmentTileProperties | undefined>(
+		undefined,
+	);
 	private readonly _selectionPinned = signal(false);
 	private readonly _segmentDetailCache = new Map<number, SegmentSummary>();
 	private readonly _addressCache = new Map<number, string | undefined>();
@@ -342,10 +378,32 @@ export class PreferenceAvoidancePage {
 		{ label: 'Analytics', value: 'ANALYTICS', icon: 'ph-chart-bar' },
 		{ label: 'Segments', value: 'SEGMENTS', icon: 'ph-table' },
 	];
-	protected readonly enrichmentChipOptions: { label: string; value: SegmentEnrichmentFilter }[] = [
-		{ label: 'Weather enriched', value: 'WEATHER_ENRICHED' },
-		{ label: 'OSM history', value: 'OHSOME_ENRICHED' },
-		{ label: 'Traffic measured', value: 'TRAFFIC_MEASURED' },
+	protected readonly enrichmentChipOptions: {
+		label: string;
+		description: string;
+		value: SegmentEnrichmentFilter;
+	}[] = [
+		{
+			label: 'Weather',
+			description: 'Events with matched weather data',
+			value: 'WEATHER_ENRICHED',
+		},
+		{
+			label: 'Cycling infrastructure',
+			description:
+				'Events with OpenStreetMap infrastructure data applicable at the event date',
+			value: 'OHSOME_ENRICHED',
+		},
+		{
+			label: 'Traffic measurements',
+			description: 'Events with matched traffic detector measurements',
+			value: 'TRAFFIC_MEASURED',
+		},
+		{
+			label: 'Road disruptions',
+			description: 'Events affected by a construction, closure, event, hazard, or incident',
+			value: 'ROAD_DISRUPTION_AFFECTED',
+		},
 	];
 	protected readonly eventFilterOptions: { label: string; value: EventFilter }[] = [
 		{ label: 'All events', value: 'ALL' },
@@ -378,41 +436,64 @@ export class PreferenceAvoidancePage {
 				icon: 'ph-check-circle',
 				tone: 'green',
 			},
-			{ label: 'Segment events', value: summary.totalSegmentEvents, icon: 'ph-share-network', tone: 'purple' },
-			{ label: 'Observed segments', value: summary.observedSegments, icon: 'ph-path', tone: 'orange' },
-			{ label: 'Weather enriched', value: summary.weatherEnrichedEvents, icon: 'ph-cloud-rain', tone: 'blue' },
 			{
-				label: 'Historical OSM data enriched',
+				label: 'Segment events',
+				value: summary.totalSegmentEvents,
+				icon: 'ph-share-network',
+				tone: 'purple',
+			},
+			{
+				label: 'Observed segments',
+				value: summary.observedSegments,
+				icon: 'ph-path',
+				tone: 'orange',
+			},
+			{
+				label: 'Weather data',
+				value: summary.weatherEnrichedEvents,
+				icon: 'ph-cloud-rain',
+				tone: 'blue',
+			},
+			{
+				label: 'Cycling infrastructure data',
 				value: summary.ohsomeEnrichedEvents,
-				icon: 'ph-clock-counter-clockwise',
+				icon: 'ph-road-horizon',
 				tone: 'green',
 			},
-			{ label: 'Traffic measured', value: summary.trafficMeasuredEvents, icon: 'ph-traffic-signal', tone: 'orange' },
+			{
+				label: 'Traffic measurements',
+				value: summary.trafficMeasuredEvents,
+				icon: 'ph-traffic-signal',
+				tone: 'orange',
+			},
 		];
 	});
 
 	protected readonly segmentPool = resource<SegmentSummary[], string>({
-		params: () => [
-			this.segmentPoolLimit(),
-			[...this.selectedEnrichmentFilters()].sort().join(','),
-			this.selectedYear() ?? '',
-			this.selectedRideIntent() ?? '',
-			this.selectedTrafficCondition() ?? '',
-		].join('|'),
+		params: () =>
+			[
+				this.segmentPoolLimit(),
+				[...this.selectedEnrichmentFilters()].sort().join(','),
+				this.selectedYear() ?? '',
+				this.selectedRideIntent() ?? '',
+				this.selectedTrafficCondition() ?? '',
+			].join('|'),
 		defaultValue: [],
 		loader: async ({ params }) => {
 			const [limit, filters, year, rideIntent, trafficCondition] = params.split('|');
-			return firstValueFrom(this._facade.getSegments({
-				minAvoidanceRatio: 0,
-				minSampleSize: 1,
-				limit: Number(limit),
-				...this.yearRange(year ? Number(year) : undefined),
-				enrichmentFilters: this.enrichmentFiltersParam(
-					filters ? filters.split(',') as SegmentEnrichmentFilter[] : [],
-				),
-				rideIntent: rideIntent || undefined,
-				trafficCondition: trafficCondition || undefined,
-			}));
+			return firstValueFrom(
+				this._facade.getSegments({
+					minAvoidanceRatio: 0,
+					minSampleSize: 1,
+					limit: Number(limit),
+					...this.yearRange(year ? Number(year) : undefined),
+					enrichmentFilters: this.enrichmentFiltersParam(
+						filters ? (filters.split(',') as SegmentEnrichmentFilter[]) : [],
+					),
+					rideIntent: rideIntent || undefined,
+					trafficCondition: trafficCondition || undefined,
+				}),
+			);
 		},
 	});
 
@@ -420,9 +501,13 @@ export class PreferenceAvoidancePage {
 		loader: async () => firstValueFrom(this._facade.getTileStatus()).catch(() => undefined),
 	});
 
-	protected readonly trafficDetectors = resource<TrafficDetectorsResponse | undefined, boolean | undefined>({
+	protected readonly trafficDetectors = resource<
+		TrafficDetectorsResponse | undefined,
+		boolean | undefined
+	>({
 		params: () => this.showTrafficSensors() || undefined,
-		loader: async () => firstValueFrom(this._facade.getTrafficDetectors()).catch(() => undefined),
+		loader: async () =>
+			firstValueFrom(this._facade.getTrafficDetectors()).catch(() => undefined),
 	});
 
 	private readonly trafficDetectorFeatures = computed<GeoJSON.Feature<Point>[]>(() => {
@@ -453,7 +538,9 @@ export class PreferenceAvoidancePage {
 					street: sample.street ?? '',
 					position: sample.position ?? '',
 					positionDetail: sample.positionDetail ?? '',
-					directions: [...new Set(detectors.map((detector) => detector.direction).filter(Boolean))].join(' · '),
+					directions: [
+						...new Set(detectors.map((detector) => detector.direction).filter(Boolean)),
+					].join(' · '),
 					detectorNames: detectors.map((detector) => detector.detName).join(', '),
 					laneCount: detectors.length,
 					activeLaneCount: activeDetectors.length,
@@ -465,12 +552,17 @@ export class PreferenceAvoidancePage {
 		});
 	});
 
-	protected readonly nearMissIncidents = resource<NearMissIncident[] | undefined, string | undefined>({
+	protected readonly nearMissIncidents = resource<
+		NearMissIncident[] | undefined,
+		string | undefined
+	>({
 		params: () => (this.showNearMissIncidents() ? `${this.selectedYear() ?? ''}` : undefined),
 		loader: async ({ params }) =>
-			firstValueFrom(this._facade.getNearMissIncidents(
-				this.yearRange(params ? Number(params) : undefined),
-			)).catch(() => undefined),
+			firstValueFrom(
+				this._facade.getNearMissIncidents(
+					this.yearRange(params ? Number(params) : undefined),
+				),
+			).catch(() => undefined),
 	});
 
 	private readonly nearMissIncidentFeatures = computed<GeoJSON.Feature<Point>[]>(() =>
@@ -484,58 +576,69 @@ export class PreferenceAvoidancePage {
 				description: incident.description ?? '',
 				participants: (incident.involvedParticipants ?? []).join(','),
 			},
-		})));
+		})),
+	);
 
 	protected readonly roadClosures = resource<RoadClosure[] | undefined, string | undefined>({
 		params: () => (this.showRoadClosures() ? `${this.selectedYear() ?? ''}` : undefined),
 		loader: async ({ params }) =>
-			firstValueFrom(this._facade.getRoadClosures(
-				this.yearRange(params ? Number(params) : undefined),
-			)).catch(() => undefined),
+			firstValueFrom(
+				this._facade.getRoadClosures(this.yearRange(params ? Number(params) : undefined)),
+			).catch(() => undefined),
 	});
 
-	private readonly roadClosureFeatures = computed<GeoJSON.Feature<Point | MultiLineString>[]>(() =>
-		(this.roadClosures.value() ?? []).flatMap((closure) => {
-			const properties = {
-				id: closure.id,
-				factorType: closure.factorType ?? '',
-				severity: closure.severity ?? '',
-				direction: closure.direction ?? '',
-				street: closure.street ?? '',
-				section: closure.section ?? '',
-				content: closure.content ?? '',
-				validFrom: closure.validFrom ?? 0,
-				validTo: closure.validTo ?? 0,
-				marker: closure.factorType === 'ROAD_CLOSURE' || closure.severity === 'FULL_CLOSURE'
-					? 'warning'
-					: 'circle',
-			};
-			const features: GeoJSON.Feature<Point | MultiLineString>[] = [];
-			if (closure.lines?.length) {
+	private readonly roadClosureFeatures = computed<GeoJSON.Feature<Point | MultiLineString>[]>(
+		() =>
+			(this.roadClosures.value() ?? []).flatMap((closure) => {
+				const properties = {
+					id: closure.id,
+					factorType: closure.factorType ?? '',
+					severity: closure.severity ?? '',
+					direction: closure.direction ?? '',
+					street: closure.street ?? '',
+					section: closure.section ?? '',
+					content: closure.content ?? '',
+					validFrom: closure.validFrom ?? 0,
+					validTo: closure.validTo ?? 0,
+					marker:
+						closure.factorType === 'ROAD_CLOSURE' || closure.severity === 'FULL_CLOSURE'
+							? 'warning'
+							: 'circle',
+				};
+				const features: GeoJSON.Feature<Point | MultiLineString>[] = [];
+				if (closure.lines?.length) {
+					features.push({
+						type: 'Feature' as const,
+						geometry: { type: 'MultiLineString' as const, coordinates: closure.lines },
+						properties,
+					});
+				}
 				features.push({
 					type: 'Feature' as const,
-					geometry: { type: 'MultiLineString' as const, coordinates: closure.lines },
+					geometry: { type: 'Point' as const, coordinates: [closure.lon, closure.lat] },
 					properties,
 				});
-			}
-			features.push({
-				type: 'Feature' as const,
-				geometry: { type: 'Point' as const, coordinates: [closure.lon, closure.lat] },
-				properties,
-			});
-			return features;
-		}));
+				return features;
+			}),
+	);
 
-	protected readonly selectedSegmentDetails = resource<SegmentSummary | undefined, number | undefined>({
+	protected readonly selectedSegmentDetails = resource<
+		SegmentSummary | undefined,
+		number | undefined
+	>({
 		params: () => this.selectedSegmentId(),
 		loader: async ({ params }) => this.resolveSegmentSummary(params),
 	});
 
-	protected readonly selectedSegmentAddress = resource<string | undefined, {
-		segmentId: number;
-		lon: number;
-		lat: number;
-	} | undefined>({
+	protected readonly selectedSegmentAddress = resource<
+		string | undefined,
+		| {
+				segmentId: number;
+				lon: number;
+				lat: number;
+		  }
+		| undefined
+	>({
 		params: () => {
 			const segment = this.selectedSegment();
 			const coordinates = segment?.geometry?.coordinates;
@@ -549,14 +652,18 @@ export class PreferenceAvoidancePage {
 		loader: async ({ params }) => this.reverseGeocode(params.segmentId, params.lon, params.lat),
 	});
 
-	protected readonly selectedSegmentEvents = resource<SegmentEvent[], {
-		segmentId: number;
-		eventFilter: EventFilter;
-		year?: number;
-		enrichmentFilters: SegmentEnrichmentFilter[];
-		rideIntent?: string;
-		trafficCondition?: string;
-	} | undefined>({
+	protected readonly selectedSegmentEvents = resource<
+		SegmentEvent[],
+		| {
+				segmentId: number;
+				eventFilter: EventFilter;
+				year?: number;
+				enrichmentFilters: SegmentEnrichmentFilter[];
+				rideIntent?: string;
+				trafficCondition?: string;
+		  }
+		| undefined
+	>({
 		params: () => {
 			const segmentId = this.selectedSegmentId();
 			if (!segmentId) {
@@ -574,42 +681,52 @@ export class PreferenceAvoidancePage {
 		},
 		defaultValue: [],
 		loader: async ({ params }) => {
-			return firstValueFrom(this._facade.getSegmentEvents(params.segmentId, {
-				eventType: params.eventFilter === 'ALL' ? undefined : params.eventFilter,
-				...this.yearRange(params.year),
-				enrichmentFilters: this.enrichmentFiltersParam(params.enrichmentFilters),
-				rideIntent: params.rideIntent,
-				trafficCondition: params.trafficCondition,
-				limit: 1000,
-			}));
+			return firstValueFrom(
+				this._facade.getSegmentEvents(params.segmentId, {
+					eventType: params.eventFilter === 'ALL' ? undefined : params.eventFilter,
+					...this.yearRange(params.year),
+					enrichmentFilters: this.enrichmentFiltersParam(params.enrichmentFilters),
+					rideIntent: params.rideIntent,
+					trafficCondition: params.trafficCondition,
+					limit: 1000,
+				}),
+			);
 		},
 	});
 
-	protected readonly filteredSelectedSegmentEvents = computed(() => this.selectedSegmentEvents.value() ?? []);
+	protected readonly filteredSelectedSegmentEvents = computed(
+		() => this.selectedSegmentEvents.value() ?? [],
+	);
 
 	private readonly segmentPoolLimit = computed<number>(() => {
 		return this.segmentFiltersActive() ? 250 : 50;
 	});
 
 	protected readonly segmentFiltersActive = computed(() => {
-		return this.selectedRideIntent() !== undefined
-			|| this.selectedTrafficCondition() !== undefined
-			|| this.selectedYear() !== undefined
-			|| this.selectedEnrichmentFilters().length > 0;
+		return (
+			this.selectedRideIntent() !== undefined ||
+			this.selectedTrafficCondition() !== undefined ||
+			this.selectedYear() !== undefined ||
+			this.selectedEnrichmentFilters().length > 0
+		);
 	});
 
 	protected readonly matchedOverlayActive = computed(() => {
-		return this.selectedRideIntent() !== undefined
-			|| this.selectedTrafficCondition() !== undefined;
+		return (
+			this.selectedRideIntent() !== undefined || this.selectedTrafficCondition() !== undefined
+		);
 	});
 
-	protected readonly globalFiltersActive = computed(() => this.segmentFiltersActive()
-		|| this.selectedRiskLegendBuckets().length > 0);
+	protected readonly globalFiltersActive = computed(
+		() => this.segmentFiltersActive() || this.selectedRiskLegendBuckets().length > 0,
+	);
 
 	protected readonly rideIntentOptions = resource<string[], unknown>({
 		defaultValue: [],
 		loader: async () => {
-			const buckets = await firstValueFrom(this._facade.getDistribution({ dimension: 'RIDE_INTENT' }));
+			const buckets = await firstValueFrom(
+				this._facade.getDistribution({ dimension: 'RIDE_INTENT' }),
+			);
 			return buckets.map((bucket) => bucket.value);
 		},
 	});
@@ -617,12 +734,17 @@ export class PreferenceAvoidancePage {
 	protected readonly trafficConditionOptions = resource<string[], unknown>({
 		defaultValue: [],
 		loader: async () => {
-			const buckets = await firstValueFrom(this._facade.getDistribution({ dimension: 'TRAFFIC_CONDITION' }));
+			const buckets = await firstValueFrom(
+				this._facade.getDistribution({ dimension: 'TRAFFIC_CONDITION' }),
+			);
 			return buckets.map((bucket) => bucket.value).filter((value) => value !== 'UNKNOWN');
 		},
 	});
 
-	protected readonly matchedOverlayCollection = resource<SegmentsGeoJson | undefined, string | undefined>({
+	protected readonly matchedOverlayCollection = resource<
+		SegmentsGeoJson | undefined,
+		string | undefined
+	>({
 		params: () => {
 			if (!this.matchedOverlayActive()) {
 				return undefined;
@@ -636,18 +758,20 @@ export class PreferenceAvoidancePage {
 		},
 		loader: async ({ params }) => {
 			const [year, filters, rideIntent, trafficCondition] = params.split('|');
-			return firstValueFrom(this._facade.getSegmentsGeoJson({
-				minAvoidanceRatio: 0,
-				minPreferenceRatio: 0,
-				minSampleSize: 1,
-				limit: 10000,
-				...this.yearRange(year ? Number(year) : undefined),
-				enrichmentFilters: this.enrichmentFiltersParam(
-					filters ? filters.split(',') as SegmentEnrichmentFilter[] : [],
-				),
-				rideIntent: rideIntent || undefined,
-				trafficCondition: trafficCondition || undefined,
-			}));
+			return firstValueFrom(
+				this._facade.getSegmentsGeoJson({
+					minAvoidanceRatio: 0,
+					minPreferenceRatio: 0,
+					minSampleSize: 1,
+					limit: 10000,
+					...this.yearRange(year ? Number(year) : undefined),
+					enrichmentFilters: this.enrichmentFiltersParam(
+						filters ? (filters.split(',') as SegmentEnrichmentFilter[]) : [],
+					),
+					rideIntent: rideIntent || undefined,
+					trafficCondition: trafficCondition || undefined,
+				}),
+			);
 		},
 	});
 
@@ -657,8 +781,8 @@ export class PreferenceAvoidancePage {
 			return [];
 		}
 
-		return collection.features
-			.map((feature): GeoJSON.Feature<LineString> => ({
+		return collection.features.map(
+			(feature): GeoJSON.Feature<LineString> => ({
 				type: 'Feature',
 				geometry: feature.geometry,
 				properties: {
@@ -669,7 +793,8 @@ export class PreferenceAvoidancePage {
 					color: this.eventSignalColor(feature.properties),
 					width: this.eventLineWidth(feature.properties),
 				},
-			}));
+			}),
+		);
 	});
 
 	protected readonly filteredSegments = computed(() => this.segmentPool.value() ?? []);
@@ -687,7 +812,9 @@ export class PreferenceAvoidancePage {
 
 		const earliestYear = Math.max(
 			minSelectableEventYear,
-			summary.earliestEventTimestamp ? new Date(summary.earliestEventTimestamp).getUTCFullYear() : minSelectableEventYear,
+			summary.earliestEventTimestamp
+				? new Date(summary.earliestEventTimestamp).getUTCFullYear()
+				: minSelectableEventYear,
 		);
 		const latestYear = new Date(summary.latestEventTimestamp).getUTCFullYear();
 		const years: number[] = [];
@@ -708,7 +835,9 @@ export class PreferenceAvoidancePage {
 		return segments.find((currentSegment) => currentSegment.id === segmentId);
 	});
 
-	protected readonly inspectorIdentity = computed<{ primary: string; secondary: string } | undefined>(() => {
+	protected readonly inspectorIdentity = computed<
+		{ primary: string; secondary: string } | undefined
+	>(() => {
 		const segment = this.selectedSegment();
 		if (!segment) {
 			return undefined;
@@ -736,9 +865,10 @@ export class PreferenceAvoidancePage {
 			{ label: 'Preference ratio', value: this.formatPercent(segment.preferenceRatio) },
 			{
 				label: 'Gradient',
-				value: segment?.gradientPercent === null || segment?.gradientPercent === undefined
-					? '-'
-					: `${segment.gradientPercent.toFixed(1)}%`,
+				value:
+					segment?.gradientPercent === null || segment?.gradientPercent === undefined
+						? '-'
+						: `${segment.gradientPercent.toFixed(1)}%`,
 			},
 			{
 				label: 'Traffic',
@@ -761,14 +891,20 @@ export class PreferenceAvoidancePage {
 	protected readonly infrastructureHighlights = computed<ContextHighlight[]>(() => {
 		const events = this.filteredSelectedSegmentEvents();
 		return [
-			this.topContext(events, 'highway', 'Highway'),
-			this.topContext(events, 'cyclewayType', 'Cycleway type'),
-			this.topContext(events, 'cyclewayLocation', 'Cycleway location'),
-			this.topContext(events, 'cyclewaySurface', 'Cycleway surface'),
+			this.topContext(events, 'highway', 'Road/path type'),
+			this.topContext(events, 'cyclewayType', 'Cycling facility', (value) =>
+				this.cyclewayTypeLabel(value),
+			),
+			this.topContext(events, 'cyclewayLocation', 'Position', (value) =>
+				this.cyclewayLocationLabel(value),
+			),
+			this.topContext(events, 'cyclewaySurface', 'Facility surface'),
 			this.topContext(events, 'surface', 'Surface'),
 			this.topContext(events, 'smoothness', 'Smoothness'),
 			this.topContext(events, 'lit', 'Lighting'),
-			this.topContext(events, 'bicycleOneway', 'Bicycle oneway'),
+			this.topContext(events, 'bicycleOneway', 'Cycling direction', (value) =>
+				this.cyclingDirectionLabel(value),
+			),
 		].filter((item): item is ContextHighlight => item !== undefined);
 	});
 
@@ -821,17 +957,24 @@ export class PreferenceAvoidancePage {
 			const selectedId = this.selectedSegmentId();
 			const filters = this.selectedEnrichmentFilters();
 			const segmentFilteringActive = this.segmentFiltersActive();
-			if (!selectedId || !segmentFilteringActive || this._selectionPinned()
-				|| this.segmentPool.isLoading()) {
+			if (
+				!selectedId ||
+				!segmentFilteringActive ||
+				this._selectionPinned() ||
+				this.segmentPool.isLoading()
+			) {
 				return;
 			}
 
 			const tileProperties = this._selectedSegmentTileProperties();
-			const selectedSegmentVisible = this.filteredSegments().some((segment) => segment.id === selectedId)
-				|| this.matchedOverlayFeatures().some((feature) => feature.properties?.['id'] === selectedId)
-				|| (!this.matchedOverlayActive()
-					&& tileProperties !== undefined
-					&& this.tilePropertiesMatchFilters(tileProperties, filters, this.selectedYear()));
+			const selectedSegmentVisible =
+				this.filteredSegments().some((segment) => segment.id === selectedId) ||
+				this.matchedOverlayFeatures().some(
+					(feature) => feature.properties?.['id'] === selectedId,
+				) ||
+				(!this.matchedOverlayActive() &&
+					tileProperties !== undefined &&
+					this.tilePropertiesMatchFilters(tileProperties, filters, this.selectedYear()));
 			if (!selectedSegmentVisible) {
 				this.selectSegment(undefined);
 			}
@@ -839,7 +982,9 @@ export class PreferenceAvoidancePage {
 
 		effect(() => {
 			const map = this._map();
-			this._trafficDetectorFeatures = this.showTrafficSensors() ? this.trafficDetectorFeatures() : [];
+			this._trafficDetectorFeatures = this.showTrafficSensors()
+				? this.trafficDetectorFeatures()
+				: [];
 			if (map) {
 				this.syncTrafficDetectorSource(map);
 			}
@@ -847,7 +992,9 @@ export class PreferenceAvoidancePage {
 
 		effect(() => {
 			const map = this._map();
-			this._nearMissIncidentFeatures = this.showNearMissIncidents() ? this.nearMissIncidentFeatures() : [];
+			this._nearMissIncidentFeatures = this.showNearMissIncidents()
+				? this.nearMissIncidentFeatures()
+				: [];
 			// dots may disappear under an open popup when the year filter changes
 			this.closeNearMissIncidentPopup();
 			if (map) {
@@ -873,8 +1020,13 @@ export class PreferenceAvoidancePage {
 			}
 
 			if (hoveredId && hoveredId !== selectedId) {
-				void this.applyHoverHighlight(map, hoveredId, () =>
-					this.hoveredSegmentId() === hoveredId && this.selectedSegmentId() !== hoveredId);
+				void this.applyHoverHighlight(
+					map,
+					hoveredId,
+					() =>
+						this.hoveredSegmentId() === hoveredId &&
+						this.selectedSegmentId() !== hoveredId,
+				);
 			} else {
 				this.clearHoverHighlight(map);
 			}
@@ -906,11 +1058,14 @@ export class PreferenceAvoidancePage {
 		map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
 		map.addControl(new maplibregl.FullscreenControl(), 'top-right');
 		map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
-		map.addControl(new MapBaseStyleControl(
-			this.mapBaseStyleOptions,
-			() => this.selectedMapBaseStyle(),
-			(style) => this.onMapBaseStyleChange(style),
-		), 'top-left');
+		map.addControl(
+			new MapBaseStyleControl(
+				this.mapBaseStyleOptions,
+				() => this.selectedMapBaseStyle(),
+				(style) => this.onMapBaseStyleChange(style),
+			),
+			'top-left',
+		);
 		this._map.set(map);
 	}
 
@@ -931,7 +1086,7 @@ export class PreferenceAvoidancePage {
 	}
 
 	protected onConditionRowToggle(label: string): void {
-		this.expandedConditionGroup.update((expanded) => expanded === label ? undefined : label);
+		this.expandedConditionGroup.update((expanded) => (expanded === label ? undefined : label));
 	}
 
 	protected onTechnicalDetailsToggle(): void {
@@ -968,8 +1123,12 @@ export class PreferenceAvoidancePage {
 			this._selectionPinned.set(true);
 		}
 
-		if (street.minLon == null || street.minLat == null
-			|| street.maxLon == null || street.maxLat == null) {
+		if (
+			street.minLon == null ||
+			street.minLat == null ||
+			street.maxLon == null ||
+			street.maxLat == null
+		) {
 			return;
 		}
 		void this.loadCorridorGeometry(street, requestVersion);
@@ -1001,9 +1160,15 @@ export class PreferenceAvoidancePage {
 		}
 
 		const coordinates = segment.geometry.coordinates;
-		const bounds = coordinates.reduce((currentBounds, coordinate) => {
-			return currentBounds.extend(coordinate as [number, number]);
-		}, new maplibregl.LngLatBounds(coordinates[0] as [number, number], coordinates[0] as [number, number]));
+		const bounds = coordinates.reduce(
+			(currentBounds, coordinate) => {
+				return currentBounds.extend(coordinate as [number, number]);
+			},
+			new maplibregl.LngLatBounds(
+				coordinates[0] as [number, number],
+				coordinates[0] as [number, number],
+			),
+		);
 
 		map.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 800 });
 
@@ -1107,7 +1272,9 @@ export class PreferenceAvoidancePage {
 		this.selectedInfoPopoverId.set(undefined);
 		this.expandedConditionGroup.set(undefined);
 		this.showTechnicalDetails.set(false);
-		this.selectedEventId.update((selectedEventId) => selectedEventId === eventId ? undefined : eventId);
+		this.selectedEventId.update((selectedEventId) =>
+			selectedEventId === eventId ? undefined : eventId,
+		);
 	}
 
 	protected onEventCardContainerClick(mouseEvent: MouseEvent, eventId: string): void {
@@ -1120,7 +1287,9 @@ export class PreferenceAvoidancePage {
 
 	protected onInfoPopoverToggle(event: MouseEvent, infoId: string): void {
 		event.stopPropagation();
-		this.selectedInfoPopoverId.update((selectedInfoId) => selectedInfoId === infoId ? undefined : infoId);
+		this.selectedInfoPopoverId.update((selectedInfoId) =>
+			selectedInfoId === infoId ? undefined : infoId,
+		);
 	}
 
 	protected formatPercent(value?: number): string {
@@ -1167,8 +1336,12 @@ export class PreferenceAvoidancePage {
 	protected eventPreviewChips(event: SegmentEvent): EventChip[] {
 		const temperatureChip = this.eventChip('Temp', event.temperature2m, 'weather', '°C');
 		const chips = [
-			this.eventChip('Cycleway', event.cyclewayType, 'infrastructure'),
-			this.eventChip('Highway', event.highway, 'infrastructure'),
+			this.eventChip(
+				'Cycleway',
+				this.cyclewayTypeLabel(event.cyclewayType),
+				'infrastructure',
+			),
+			this.eventChip('Path', event.highway, 'infrastructure'),
 			this.eventChip('Surface', event.surface, 'infrastructure'),
 			this.eventChip('Traffic', event.trafficCondition, 'traffic'),
 			this.eventChip('Volume', event.trafficVolumeKfz, 'traffic', ' vehicles'),
@@ -1186,85 +1359,316 @@ export class PreferenceAvoidancePage {
 
 	protected rideDetailItems(event: SegmentEvent): EventDetailItem[] {
 		return this.eventDetailGroup('Ride', [
-			this.eventDetailItem('Intent', event.rideIntent),
+			this.eventDetailItem('Purpose', event.rideIntent),
 			this.eventDetailItem('Bike type', event.bikeType),
-			this.eventDetailItem('Ride id', event.rideId, { formatBucket: false }),
 		]).items;
 	}
 
 	protected eventConditionRows(event: SegmentEvent): ConditionRow[] {
 		const rows: (ConditionRow | undefined)[] = [
-			event.weatherEnriched ? {
-				label: 'Weather',
-				icon: 'ph-cloud-rain',
-				tone: 'blue',
-				summary: (event.weatherCode !== null && event.weatherCode !== undefined
-					? this.weatherCodeDescription(event.weatherCode)
-					: undefined) ?? 'Conditions recorded',
-				compact: this.eventWeatherSummary(event),
-				items: this.eventDetailGroup('Weather', [
-					this.eventDetailItem('Temperature', event.temperature2m, { suffix: '°C' }),
-					this.eventDetailItem('Precipitation', event.precipitation, { suffix: ' mm' }),
-					this.eventDetailItem('Wind exposure', event.windExposure),
-					this.eventDetailItem('Wind speed', event.windSpeed10m, { suffix: ' km/h' }),
-					this.eventDetailItem('Weather code', this.formatWeatherCode(event.weatherCode), {
-						formatBucket: false,
-						infoId: `${event.id}-weather-code`,
-						infoUrl: 'https://open-meteo.com/en/docs#weather_variable_documentation',
-					}),
-				]).items,
-			} : undefined,
-			event.ohsomeEnriched ? {
-				label: 'Infrastructure',
-				icon: 'ph-bicycle',
-				tone: 'green',
-				summary: this.eventInfrastructureSummary(event),
-				compact: this.formatOptionalValue(event.cyclewayLocation),
-				items: this.eventDetailGroup('Cycling infrastructure', [
-					this.eventDetailItem('Cycleway location', event.cyclewayLocation),
-					this.eventDetailItem('Cycleway type', event.cyclewayType),
-				]).items,
-			} : undefined,
-			event.trafficEnriched ? {
-				label: 'Traffic',
-				icon: 'ph-traffic-signal',
-				tone: 'orange',
-				summary: this.formatOptionalValue(event.trafficCondition) ?? 'Unknown',
-				compact: this.formatOptionalValue(event.trafficEnrichmentStatus),
-				items: this.eventDetailGroup('Traffic', [
-					this.eventDetailItem('Condition', event.trafficCondition),
-					this.eventDetailItem('Motor vehicle volume', event.trafficVolumeKfz, { suffix: ' vehicles' }),
-					this.eventDetailItem('Motor vehicle speed', event.trafficSpeedKfz, { suffix: ' km/h' }),
-					this.eventDetailItem('Car volume', event.trafficVolumePkw, { suffix: ' cars' }),
-					this.eventDetailItem('Car speed', event.trafficSpeedPkw, { suffix: ' km/h' }),
-					this.eventDetailItem('Truck volume', event.trafficVolumeLkw, { suffix: ' trucks' }),
-					this.eventDetailItem('Truck speed', event.trafficSpeedLkw, { suffix: ' km/h' }),
-				]).items,
-			} : undefined,
+			event.weatherEnriched
+				? {
+						label: 'Weather',
+						icon: 'ph-cloud-rain',
+						tone: 'blue',
+						summary: this.eventWeatherSummary(event) ?? 'Weather data recorded',
+						items: this.eventDetailGroup('Weather', [
+							this.eventDetailItem('Temperature', event.temperature2m, {
+								suffix: '°C',
+							}),
+							this.eventDetailItem('Precipitation', event.precipitation, {
+								suffix: ' mm',
+							}),
+							this.eventDetailItem('Wind exposure', event.windExposure),
+							this.eventDetailItem('Wind speed', event.windSpeed10m, {
+								suffix: ' km/h',
+							}),
+							this.eventDetailItem(
+								'Weather code',
+								this.formatWeatherCode(event.weatherCode),
+								{
+									formatBucket: false,
+									infoId: `${event.id}-weather-code`,
+									infoUrl:
+										'https://open-meteo.com/en/docs#weather_variable_documentation',
+								},
+							),
+						]).items,
+					}
+				: undefined,
+			event.ohsomeEnriched ? this.infrastructureConditionRow(event) : undefined,
+			event.trafficEnriched
+				? {
+						label: 'Traffic',
+						icon: 'ph-traffic-signal',
+						tone: 'orange',
+						summary: this.eventTrafficSummary(event) ?? 'Traffic data recorded',
+						items: this.eventDetailGroup('Traffic', [
+							this.eventDetailItem('Condition', event.trafficCondition),
+							this.eventDetailItem('Motor vehicle volume', event.trafficVolumeKfz, {
+								suffix: ' vehicles',
+							}),
+							this.eventDetailItem('Motor vehicle speed', event.trafficSpeedKfz, {
+								suffix: ' km/h',
+							}),
+							this.eventDetailItem('Car volume', event.trafficVolumePkw, {
+								suffix: ' cars',
+							}),
+							this.eventDetailItem('Car speed', event.trafficSpeedPkw, {
+								suffix: ' km/h',
+							}),
+							this.eventDetailItem('Truck volume', event.trafficVolumeLkw, {
+								suffix: ' trucks',
+							}),
+							this.eventDetailItem('Truck speed', event.trafficSpeedLkw, {
+								suffix: ' km/h',
+							}),
+						]).items,
+					}
+				: undefined,
+			this.roadDisruptionConditionRow(event),
 		];
-		return rows.filter((row): row is ConditionRow => row !== undefined && row.items.length > 0);
+		return rows.filter(
+			(row): row is ConditionRow =>
+				row !== undefined && (row.items.length > 0 || (row.detailGroups?.length ?? 0) > 0),
+		);
 	}
 
 	protected technicalDetailItems(event: SegmentEvent): EventDetailItem[] {
 		return [
-			event.trafficEnriched ? this.eventDetailItem('Traffic status', event.trafficEnrichmentStatus) : undefined,
-			event.trafficEnriched ? this.eventDetailItem('Traffic source type', event.trafficSourceType) : undefined,
+			event.trafficEnriched
+				? this.eventDetailItem('Traffic status', event.trafficEnrichmentStatus)
+				: undefined,
+			event.trafficEnriched
+				? this.eventDetailItem('Traffic source type', event.trafficSourceType)
+				: undefined,
 		].filter((item): item is EventDetailItem => item !== undefined);
 	}
 
 	private eventWeatherSummary(event: SegmentEvent): string | undefined {
+		const windSpeed = this.formatContextValue(event.windSpeed10m, ' km/h');
 		const parts = [
-			this.formatOptionalValue(event.temperature2m, '°C'),
-			this.formatOptionalValue(event.precipitation, ' mm'),
-			this.formatOptionalValue(event.windSpeed10m, ' km/h'),
+			this.weatherCodeSummary(event.weatherCode),
+			this.formatContextValue(event.temperature2m, '°C'),
+			windSpeed ? `Wind ${windSpeed}` : undefined,
 		].filter((part): part is string => part !== undefined);
 		return parts.length ? parts.join(' · ') : undefined;
 	}
 
-	private eventInfrastructureSummary(event: SegmentEvent): string {
-		return this.formatOptionalValue(event.cyclewayType)
-			?? this.formatOptionalValue(event.highway)
-			?? 'No cycleway data';
+	private eventTrafficSummary(event: SegmentEvent): string | undefined {
+		const parts = [
+			this.formatContextValue(event.trafficCondition),
+			this.formatContextValue(event.trafficVolumeKfz, ' vehicles'),
+			this.formatContextValue(event.trafficSpeedKfz, ' km/h'),
+		].filter((part): part is string => part !== undefined);
+		return parts.length ? parts.join(' · ') : undefined;
+	}
+
+	private infrastructureConditionRow(event: SegmentEvent): ConditionRow | undefined {
+		const pathItems = [
+			this.eventDetailItem('Road/path type', event.highway),
+			this.eventDetailItem('Surface', event.surface),
+			this.eventDetailItem('Smoothness', event.smoothness),
+			this.eventDetailItem('Lighting', event.lit),
+		].filter((item): item is EventDetailItem => item !== undefined);
+		const cyclingItems = [
+			this.eventDetailItem('Cycling facility', this.cyclewayTypeLabel(event.cyclewayType)),
+			this.eventDetailItem('Position', this.cyclewayLocationLabel(event.cyclewayLocation)),
+			this.eventDetailItem('Facility surface', event.cyclewaySurface),
+			this.eventDetailItem('Width', event.cyclewayWidth, { suffix: ' m' }),
+			this.eventDetailItem(
+				'Cycling direction',
+				this.cyclingDirectionLabel(event.bicycleOneway),
+			),
+		].filter((item): item is EventDetailItem => item !== undefined);
+		const noDedicatedFacility = this.noDedicatedCyclingFacilityRecorded(event)
+			? 'No dedicated cycling facility recorded'
+			: undefined;
+		const detailGroupCandidates: (ConditionDetailGroup | undefined)[] = [
+			pathItems.length
+				? {
+						id: `${event.id}-path-characteristics`,
+						label: 'Path characteristics',
+						tone: 'green',
+						items: pathItems,
+					}
+				: undefined,
+			cyclingItems.length || noDedicatedFacility
+				? {
+						id: `${event.id}-cycling-facility`,
+						label: 'Cycling facility',
+						tone: 'green',
+						items: cyclingItems,
+						description: noDedicatedFacility,
+					}
+				: undefined,
+		];
+		const detailGroups = detailGroupCandidates.filter(
+			(group): group is ConditionDetailGroup => group !== undefined,
+		);
+
+		if (!detailGroups.length) {
+			return undefined;
+		}
+
+		return {
+			label: 'Infrastructure',
+			icon: 'ph-bicycle',
+			tone: 'green',
+			summary: this.eventInfrastructureSummary(event) ?? 'Infrastructure attributes recorded',
+			items: [],
+			detailGroups,
+		};
+	}
+
+	private eventInfrastructureSummary(event: SegmentEvent): string | undefined {
+		const facilityType = this.cyclewayTypeLabel(event.cyclewayType);
+		const parts = facilityType
+			? [facilityType, this.cyclewayLocationLabel(event.cyclewayLocation)]
+			: [this.formatContextValue(event.highway), this.formatContextValue(event.surface)];
+		const meaningfulParts = parts.filter((part): part is string => part !== undefined);
+		if (meaningfulParts.length) {
+			return meaningfulParts.join(' · ');
+		}
+		return this.noDedicatedCyclingFacilityRecorded(event)
+			? 'No dedicated cycling facility recorded'
+			: undefined;
+	}
+
+	private cyclewayTypeLabel(value: string | undefined): string | undefined {
+		if (
+			!value ||
+			omittedContextValues.has(value.toUpperCase()) ||
+			value.toUpperCase() === 'NO'
+		) {
+			return undefined;
+		}
+		return cyclewayTypeLabels[value.toUpperCase()] ?? this.formatContextValue(value);
+	}
+
+	private cyclewayLocationLabel(value: string | undefined): string | undefined {
+		if (!value || omittedContextValues.has(value.toUpperCase())) {
+			return undefined;
+		}
+		return cyclewayLocationLabels[value.toUpperCase()] ?? this.formatContextValue(value);
+	}
+
+	private cyclingDirectionLabel(value: boolean | undefined): string | undefined {
+		if (value === null || value === undefined) {
+			return undefined;
+		}
+		return value ? 'One-way' : 'Two-way';
+	}
+
+	private noDedicatedCyclingFacilityRecorded(event: SegmentEvent): boolean {
+		const facilityRecorded =
+			this.cyclewayTypeLabel(event.cyclewayType) !== undefined ||
+			this.cyclewayLocationLabel(event.cyclewayLocation) !== undefined ||
+			this.formatContextValue(event.cyclewaySurface) !== undefined ||
+			(event.cyclewayWidth !== null && event.cyclewayWidth !== undefined);
+		if (facilityRecorded) {
+			return false;
+		}
+		const explicitlyAbsent =
+			event.cyclewayType?.toUpperCase() === 'NO' ||
+			event.cyclewayLocation?.toUpperCase() === 'NONE';
+		return explicitlyAbsent && event.highway?.toUpperCase() !== 'CYCLEWAY';
+	}
+
+	private roadDisruptionConditionRow(event: SegmentEvent): ConditionRow | undefined {
+		const disruptions = event.roadDisruptions ?? [];
+		if (!disruptions.length) {
+			return undefined;
+		}
+
+		const firstDisruption = disruptions[0];
+		return {
+			label: 'Road disruption',
+			icon: 'ph-warning',
+			tone: 'red',
+			summary:
+				disruptions.length === 1
+					? this.roadDisruptionSummary(firstDisruption)
+					: `${disruptions.length} disruptions`,
+			items: [],
+			detailGroups: disruptions.map((disruption, index) =>
+				this.roadDisruptionDetailGroup(disruption, index),
+			),
+		};
+	}
+
+	private roadDisruptionDetailGroup(
+		disruption: ExternalFactor,
+		index: number,
+	): ConditionDetailGroup {
+		const severity = this.roadDisruptionMetadata(disruption, 'severity');
+		const externalId = this.roadDisruptionMetadata(disruption, 'id');
+		return {
+			id: externalId ?? `${disruption.factorType}-${disruption.validFrom ?? index}-${index}`,
+			label: this.roadDisruptionTypeLabel(disruption.factorType),
+			tone: 'red',
+			items: [
+				this.eventDetailItem(
+					'Severity',
+					severity ? roadClosureSeverityLabels[severity] || severity : undefined,
+					{ formatBucket: false },
+				),
+				this.eventDetailItem(
+					'Direction',
+					this.roadDisruptionMetadata(disruption, 'direction'),
+					{
+						formatBucket: false,
+					},
+				),
+				this.eventDetailItem(
+					'Active from',
+					disruption.validFrom == null
+						? undefined
+						: this.formatDateTime(disruption.validFrom),
+					{ formatBucket: false },
+				),
+				this.eventDetailItem(
+					'Active until',
+					disruption.validTo == null
+						? 'Ongoing'
+						: this.formatDateTime(disruption.validTo),
+					{ formatBucket: false },
+				),
+				this.eventDetailItem('Street', this.roadDisruptionMetadata(disruption, 'street'), {
+					formatBucket: false,
+					wide: true,
+				}),
+				this.eventDetailItem(
+					'Section',
+					this.roadDisruptionMetadata(disruption, 'section'),
+					{
+						formatBucket: false,
+						wide: true,
+					},
+				),
+				this.eventDetailItem(
+					'Description',
+					this.roadDisruptionMetadata(disruption, 'content'),
+					{
+						formatBucket: false,
+						wide: true,
+					},
+				),
+			].filter((item): item is EventDetailItem => item !== undefined),
+		};
+	}
+
+	private roadDisruptionSummary(disruption: ExternalFactor): string {
+		return this.roadDisruptionTypeLabel(disruption.factorType);
+	}
+
+	private roadDisruptionMetadata(disruption: ExternalFactor, key: string): string | undefined {
+		const value = disruption.metadata?.[key];
+		return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
+	}
+
+	private roadDisruptionTypeLabel(factorType: string): string {
+		return roadClosureTypeLabels[factorType] ?? this.formatValue(factorType);
 	}
 
 	private ensureMapLayers(map: maplibregl.Map, generatedAt: number): void {
@@ -1352,8 +1756,14 @@ export class PreferenceAvoidancePage {
 			data: { type: 'FeatureCollection', features: [] },
 		});
 
-		const hoverAwareOpacity = (selectedOpacity: number, hoverOpacity: number): maplibregl.ExpressionSpecification => [
-			'case', ['==', ['get', 'highlightKind'], 'hover'], hoverOpacity, selectedOpacity,
+		const hoverAwareOpacity = (
+			selectedOpacity: number,
+			hoverOpacity: number,
+		): maplibregl.ExpressionSpecification => [
+			'case',
+			['==', ['get', 'highlightKind'], 'hover'],
+			hoverOpacity,
+			selectedOpacity,
 		];
 
 		map.addLayer({
@@ -1462,7 +1872,11 @@ export class PreferenceAvoidancePage {
 			id: roadClosuresPointLayer,
 			type: 'circle',
 			source: roadClosuresSource,
-			filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'marker'], 'circle']],
+			filter: [
+				'all',
+				['==', ['geometry-type'], 'Point'],
+				['==', ['get', 'marker'], 'circle'],
+			],
 			paint: {
 				'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 14, 7],
 				'circle-color': '#ffffff',
@@ -1474,7 +1888,11 @@ export class PreferenceAvoidancePage {
 			id: roadClosuresSymbolLayer,
 			type: 'symbol',
 			source: roadClosuresSource,
-			filter: ['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'marker'], 'warning']],
+			filter: [
+				'all',
+				['==', ['geometry-type'], 'Point'],
+				['==', ['get', 'marker'], 'warning'],
+			],
 			layout: {
 				'icon-image': roadClosureWarningImageId,
 				'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 14, 1],
@@ -1532,7 +1950,11 @@ export class PreferenceAvoidancePage {
 			this.clearCorridorUnlessMember(segmentId, map);
 			this.selectSegment(segmentId);
 			this._selectedSegmentTileProperties.set(properties);
-			this.setSelectedHighlight(map, feature.geometry as LineString | MultiLineString, properties);
+			this.setSelectedHighlight(
+				map,
+				feature.geometry as LineString | MultiLineString,
+				properties,
+			);
 		};
 		map.on('click', preferenceAvoidanceStreetsLayer, onTileSegmentClick);
 		map.on('click', preferenceAvoidanceSegmentsLayer, onTileSegmentClick);
@@ -1566,7 +1988,11 @@ export class PreferenceAvoidancePage {
 			}
 		});
 
-		for (const layerId of [roadClosuresLineLayer, roadClosuresPointLayer, roadClosuresSymbolLayer]) {
+		for (const layerId of [
+			roadClosuresLineLayer,
+			roadClosuresPointLayer,
+			roadClosuresSymbolLayer,
+		]) {
 			map.on('click', layerId, (event) => {
 				const feature = event.features?.[0];
 				if (feature) {
@@ -1576,20 +2002,24 @@ export class PreferenceAvoidancePage {
 		}
 
 		map.on('click', (event) => {
-			const clickableLayers = interactiveLayers
-				.filter((layerId) => map.getLayer(layerId));
+			const clickableLayers = interactiveLayers.filter((layerId) => map.getLayer(layerId));
 			if (!clickableLayers.length) {
 				return;
 			}
 
 			const features = map.queryRenderedFeatures(event.point, { layers: clickableLayers });
-			const segmentFeature = features.find((feature) =>
-				feature.layer.id === preferenceAvoidanceStreetsLayer
-				|| feature.layer.id === preferenceAvoidanceSegmentsLayer
-				|| feature.layer.id === preferenceAvoidanceMatchedLayer);
+			const segmentFeature = features.find(
+				(feature) =>
+					feature.layer.id === preferenceAvoidanceStreetsLayer ||
+					feature.layer.id === preferenceAvoidanceSegmentsLayer ||
+					feature.layer.id === preferenceAvoidanceMatchedLayer,
+			);
 			const clickedSegmentId = Number(segmentFeature?.properties?.['id']);
-			if (this.selectedCorridorSegmentIds().length
-				&& (!Number.isFinite(clickedSegmentId) || !this.isSelectedCorridorSegment(clickedSegmentId))) {
+			if (
+				this.selectedCorridorSegmentIds().length &&
+				(!Number.isFinite(clickedSegmentId) ||
+					!this.isSelectedCorridorSegment(clickedSegmentId))
+			) {
 				this.clearSelectedCorridor(map);
 			}
 			if (features.length === 0) {
@@ -1622,8 +2052,15 @@ export class PreferenceAvoidancePage {
 
 	private normalizeApiBase(apiUrl: string | undefined): string {
 		// same normalization as backendUrlInterceptor
-		const normalized = (apiUrl ?? '').trim().replace(/\/+$/, '').replace(/\/api$/i, '');
-		if (!normalized || normalized.startsWith('/') || /^[a-z][a-z\d+\-.]*:\/\//i.test(normalized)) {
+		const normalized = (apiUrl ?? '')
+			.trim()
+			.replace(/\/+$/, '')
+			.replace(/\/api$/i, '');
+		if (
+			!normalized ||
+			normalized.startsWith('/') ||
+			/^[a-z][a-z\d+\-.]*:\/\//i.test(normalized)
+		) {
 			return normalized;
 		}
 
@@ -1677,7 +2114,10 @@ export class PreferenceAvoidancePage {
 				highlightKind,
 				eventSignalColor: this.eventSignalColor(segment),
 				eventLineWidth: this.eventLineWidth(segment),
-				eventBalance: calculateEventBalance(segment.avoidanceCount, segment.preferenceCount),
+				eventBalance: calculateEventBalance(
+					segment.avoidanceCount,
+					segment.preferenceCount,
+				),
 				eventSignalBucket: this.eventSignalBucket(segment),
 			},
 		};
@@ -1748,7 +2188,10 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
-	private selectTrafficDetector(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
+	private selectTrafficDetector(
+		map: maplibregl.Map,
+		feature: maplibregl.MapGeoJSONFeature,
+	): void {
 		const properties = feature.properties ?? {};
 		const key = String(properties['key'] ?? '');
 		if (!key || this.selectedDetectorKey() === key) {
@@ -1795,9 +2238,10 @@ export class PreferenceAvoidancePage {
 		const activeLaneCount = Number(properties['activeLaneCount'] ?? 0);
 		const activeFrom = String(properties['activeFrom'] ?? '');
 		const activeTo = String(properties['activeTo'] ?? '');
-		const activePeriod = activeFrom || activeTo
-			? `${this.escapeHtml(activeFrom || '?')} – ${activeTo ? this.escapeHtml(activeTo) : 'today'}`
-			: '';
+		const activePeriod =
+			activeFrom || activeTo
+				? `${this.escapeHtml(activeFrom || '?')} – ${activeTo ? this.escapeHtml(activeTo) : 'today'}`
+				: '';
 		const rows = [
 			['Direction', text('directions')],
 			['Lane detectors', `${activeLaneCount} of ${laneCount} active`],
@@ -1814,7 +2258,8 @@ export class PreferenceAvoidancePage {
 			offset: [0, 12],
 		})
 			.setLngLat(popupCoordinate)
-			.setHTML(`
+			.setHTML(
+				`
 				<div class="detector-popup">
 					<h4>${text('street') || 'Traffic sensor'}</h4>
 					${properties['position'] ? `<p>${text('position')}${properties['positionDetail'] ? ` · ${text('positionDetail')}` : ''}</p>` : ''}
@@ -1822,7 +2267,8 @@ export class PreferenceAvoidancePage {
 						${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}
 					</dl>
 				</div>
-			`)
+			`,
+			)
 			.addTo(map);
 		popup.on('close', () => {
 			if (this._trafficDetectorPopup === popup) {
@@ -1843,15 +2289,21 @@ export class PreferenceAvoidancePage {
 			return fallback;
 		}
 
-		return boundary.reduce<[number, number]>((lowestCoordinate, coordinate) => {
-			const candidate = coordinate as [number, number];
-			return map.project(candidate).y > map.project(lowestCoordinate).y
-				? candidate
-				: lowestCoordinate;
-		}, boundary[0] as [number, number]);
+		return boundary.reduce<[number, number]>(
+			(lowestCoordinate, coordinate) => {
+				const candidate = coordinate as [number, number];
+				return map.project(candidate).y > map.project(lowestCoordinate).y
+					? candidate
+					: lowestCoordinate;
+			},
+			boundary[0] as [number, number],
+		);
 	}
 
-	private openNearMissIncidentPopup(map: maplibregl.Map, feature: maplibregl.MapGeoJSONFeature): void {
+	private openNearMissIncidentPopup(
+		map: maplibregl.Map,
+		feature: maplibregl.MapGeoJSONFeature,
+	): void {
 		this._nearMissIncidentPopup?.remove();
 
 		const properties = feature.properties ?? {};
@@ -1870,9 +2322,14 @@ export class PreferenceAvoidancePage {
 			['Involved', this.escapeHtml(participants)],
 		].filter(([, value]) => value);
 
-		const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '320px' })
+		const popup = new maplibregl.Popup({
+			closeButton: true,
+			closeOnClick: false,
+			maxWidth: '320px',
+		})
 			.setLngLat([lon, lat])
-			.setHTML(`
+			.setHTML(
+				`
 				<div class="detector-popup">
 					<h4>${this.escapeHtml(typeLabel)}</h4>
 					<dl>
@@ -1880,7 +2337,8 @@ export class PreferenceAvoidancePage {
 					</dl>
 					${description ? `<p>${this.escapeHtml(description)}</p>` : ''}
 				</div>
-			`)
+			`,
+			)
 			.addTo(map);
 		popup.on('close', () => {
 			if (this._nearMissIncidentPopup === popup) {
@@ -1919,9 +2377,14 @@ export class PreferenceAvoidancePage {
 			['Period', this.escapeHtml(period)],
 		].filter(([, value]) => value);
 
-		const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '320px' })
+		const popup = new maplibregl.Popup({
+			closeButton: true,
+			closeOnClick: false,
+			maxWidth: '320px',
+		})
 			.setLngLat(lngLat)
-			.setHTML(`
+			.setHTML(
+				`
 				<div class="detector-popup">
 					<h4>${this.escapeHtml(text('street') || typeLabel)}</h4>
 					${properties['section'] ? `<p>${this.escapeHtml(text('section'))}</p>` : ''}
@@ -1930,7 +2393,8 @@ export class PreferenceAvoidancePage {
 					</dl>
 					${properties['content'] ? `<p>${this.escapeHtml(text('content'))}</p>` : ''}
 				</div>
-			`)
+			`,
+			)
 			.addTo(map);
 		popup.on('close', () => {
 			if (this._roadClosurePopup === popup) {
@@ -1958,7 +2422,9 @@ export class PreferenceAvoidancePage {
 	}
 
 	private syncTrafficDetectorSource(map: maplibregl.Map): void {
-		const source = map.getSource(trafficDetectorsSource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(trafficDetectorsSource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		if (!source) {
 			return;
 		}
@@ -1966,16 +2432,22 @@ export class PreferenceAvoidancePage {
 	}
 
 	private syncTrafficDetectorRadiusSource(map: maplibregl.Map): void {
-		const source = map.getSource(trafficDetectorRadiusSource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(trafficDetectorRadiusSource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		if (!source) {
 			return;
 		}
-		const features = this._trafficDetectorRadiusFeature ? [this._trafficDetectorRadiusFeature] : [];
+		const features = this._trafficDetectorRadiusFeature
+			? [this._trafficDetectorRadiusFeature]
+			: [];
 		source.setData({ type: 'FeatureCollection', features });
 	}
 
 	private syncNearMissIncidentSource(map: maplibregl.Map): void {
-		const source = map.getSource(nearMissIncidentsSource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(nearMissIncidentsSource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		if (!source) {
 			return;
 		}
@@ -2027,11 +2499,15 @@ export class PreferenceAvoidancePage {
 		context.textBaseline = 'middle';
 		context.fillText('!', size / 2, size * 0.62);
 
-		map.addImage(roadClosureWarningImageId, context.getImageData(0, 0, size, size), { pixelRatio: 2 });
+		map.addImage(roadClosureWarningImageId, context.getImageData(0, 0, size, size), {
+			pixelRatio: 2,
+		});
 	}
 
 	private syncMatchedSource(map: maplibregl.Map): void {
-		const source = map.getSource(preferenceAvoidanceMatchedSource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(preferenceAvoidanceMatchedSource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		if (!source) {
 			return;
 		}
@@ -2044,7 +2520,10 @@ export class PreferenceAvoidancePage {
 		const filter: maplibregl.FilterSpecification = segmentIds.length
 			? ['in', ['get', 'id'], ['literal', segmentIds]]
 			: ['==', ['get', 'id'], -1];
-		for (const layerId of [preferenceAvoidanceCorridorStreetsLayer, preferenceAvoidanceCorridorSegmentsLayer]) {
+		for (const layerId of [
+			preferenceAvoidanceCorridorStreetsLayer,
+			preferenceAvoidanceCorridorSegmentsLayer,
+		]) {
 			if (map.getLayer(layerId)) {
 				map.setFilter(layerId, filter);
 				map.setLayoutProperty(
@@ -2055,7 +2534,9 @@ export class PreferenceAvoidancePage {
 			}
 		}
 
-		const source = map.getSource(preferenceAvoidanceCorridorGeometrySource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(preferenceAvoidanceCorridorGeometrySource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		source?.setData({
 			type: 'FeatureCollection',
 			features: this._corridorGeometryFeature ? [this._corridorGeometryFeature] : [],
@@ -2069,18 +2550,25 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
-	private async loadCorridorGeometry(street: CorridorRanking, requestVersion: number): Promise<void> {
+	private async loadCorridorGeometry(
+		street: CorridorRanking,
+		requestVersion: number,
+	): Promise<void> {
 		try {
-			const corridor = await firstValueFrom(this._facade.getCorridorGeometry({
-				streetName: street.streetName,
-				minLon: street.minLon as number,
-				minLat: street.minLat as number,
-				maxLon: street.maxLon as number,
-				maxLat: street.maxLat as number,
-			}));
-			if (requestVersion !== this._corridorRequestVersion
-				|| !this.selectedCorridorSegmentIds().length
-				|| !corridor.geometry.coordinates.length) {
+			const corridor = await firstValueFrom(
+				this._facade.getCorridorGeometry({
+					streetName: street.streetName,
+					minLon: street.minLon as number,
+					minLat: street.minLat as number,
+					maxLon: street.maxLon as number,
+					maxLat: street.maxLat as number,
+				}),
+			);
+			if (
+				requestVersion !== this._corridorRequestVersion ||
+				!this.selectedCorridorSegmentIds().length ||
+				!corridor.geometry.coordinates.length
+			) {
 				return;
 			}
 
@@ -2110,7 +2598,10 @@ export class PreferenceAvoidancePage {
 	}
 
 	private clearCorridorUnlessMember(segmentId: number, map: maplibregl.Map | undefined): void {
-		if (this.selectedCorridorSegmentIds().length && !this.isSelectedCorridorSegment(segmentId)) {
+		if (
+			this.selectedCorridorSegmentIds().length &&
+			!this.isSelectedCorridorSegment(segmentId)
+		) {
 			this.clearSelectedCorridor(map);
 		}
 	}
@@ -2128,13 +2619,17 @@ export class PreferenceAvoidancePage {
 	}
 
 	private syncHighlightSource(map: maplibregl.Map): void {
-		const source = map.getSource(preferenceAvoidanceHighlightSource) as maplibregl.GeoJSONSource | undefined;
+		const source = map.getSource(preferenceAvoidanceHighlightSource) as
+			| maplibregl.GeoJSONSource
+			| undefined;
 		if (!source) {
 			return;
 		}
 
-		const features = [this._selectedHighlightFeature, this._hoverHighlightFeature]
-			.filter((feature): feature is GeoJSON.Feature<LineString | MultiLineString> => feature !== undefined);
+		const features = [this._selectedHighlightFeature, this._hoverHighlightFeature].filter(
+			(feature): feature is GeoJSON.Feature<LineString | MultiLineString> =>
+				feature !== undefined,
+		);
 		source.setData({ type: 'FeatureCollection', features });
 	}
 
@@ -2146,10 +2641,11 @@ export class PreferenceAvoidancePage {
 		const clauses: maplibregl.ExpressionSpecification[] = [
 			year !== undefined
 				? ['>', ['coalesce', ['get', countProperty], 0], 0]
-				: ['any',
-					['>=', ['coalesce', ['get', 'totalObservationCount'], 0], mapMinSampleSize],
-					['>', ['coalesce', ['get', 'eventCount'], 0], 0],
-				],
+				: [
+						'any',
+						['>=', ['coalesce', ['get', 'totalObservationCount'], 0], mapMinSampleSize],
+						['>', ['coalesce', ['get', 'eventCount'], 0], 0],
+					],
 		];
 
 		const selectedBuckets = this.selectedRiskLegendBuckets();
@@ -2168,8 +2664,16 @@ export class PreferenceAvoidancePage {
 			if (map.getLayer(layerId)) {
 				map.setFilter(layerId, tileLayerFilter);
 				map.setPaintProperty(layerId, 'line-color', bucketColorExpression(bucketProperty));
-				map.setPaintProperty(layerId, 'line-width', eventLineWidthExpression(countProperty));
-				map.setLayoutProperty(layerId, 'visibility', overlayActive || !segmentsVisible ? 'none' : 'visible');
+				map.setPaintProperty(
+					layerId,
+					'line-width',
+					eventLineWidthExpression(countProperty),
+				);
+				map.setLayoutProperty(
+					layerId,
+					'visibility',
+					overlayActive || !segmentsVisible ? 'none' : 'visible',
+				);
 			}
 		});
 
@@ -2182,20 +2686,30 @@ export class PreferenceAvoidancePage {
 			map.setFilter(
 				preferenceAvoidanceMatchedLayer,
 				selectedBuckets.length
-					? (['in', ['get', 'bucket'], ['literal', selectedBuckets]] as maplibregl.FilterSpecification)
+					? ([
+							'in',
+							['get', 'bucket'],
+							['literal', selectedBuckets],
+						] as maplibregl.FilterSpecification)
 					: null,
 			);
 		}
 
 		// highlight features only carry the legend bucket, so they only follow that filter
 		const highlightFilter = selectedBuckets.length
-			? (['in', ['get', 'eventSignalBucket'], ['literal', selectedBuckets]] as maplibregl.FilterSpecification)
+			? ([
+					'in',
+					['get', 'eventSignalBucket'],
+					['literal', selectedBuckets],
+				] as maplibregl.FilterSpecification)
 			: null;
-		[preferenceAvoidanceHighlightOutlineLayer, preferenceAvoidanceHighlightLayer].forEach((layerId) => {
-			if (map.getLayer(layerId)) {
-				map.setFilter(layerId, highlightFilter);
-			}
-		});
+		[preferenceAvoidanceHighlightOutlineLayer, preferenceAvoidanceHighlightLayer].forEach(
+			(layerId) => {
+				if (map.getLayer(layerId)) {
+					map.setFilter(layerId, highlightFilter);
+				}
+			},
+		);
 	}
 
 	private tilePropertiesMatchFilters(
@@ -2203,9 +2717,15 @@ export class PreferenceAvoidancePage {
 		filters: SegmentEnrichmentFilter[],
 		year?: number,
 	): boolean {
-		const yearEventCount = (properties as unknown as Record<string, unknown>)[`eventCount_${year}`];
-		return (year === undefined || Number(yearEventCount ?? 0) > 0)
-			&& filters.every((filter) => Number(properties[enrichmentFilterCountProperty[filter]] ?? 0) > 0);
+		const yearEventCount = (properties as unknown as Record<string, unknown>)[
+			`eventCount_${year}`
+		];
+		return (
+			(year === undefined || Number(yearEventCount ?? 0) > 0) &&
+			filters.every(
+				(filter) => Number(properties[enrichmentFilterCountProperty[filter]] ?? 0) > 0,
+			)
+		);
 	}
 
 	private eventSignalColor(segment?: HighlightableSegment): string {
@@ -2221,7 +2741,9 @@ export class PreferenceAvoidancePage {
 		return classifyRiskBucket(balance, eventCount);
 	}
 
-	private eventLineWidth(segment?: Pick<SegmentSummary, 'avoidanceCount' | 'preferenceCount'>): number {
+	private eventLineWidth(
+		segment?: Pick<SegmentSummary, 'avoidanceCount' | 'preferenceCount'>,
+	): number {
 		const events = (segment?.avoidanceCount ?? 0) + (segment?.preferenceCount ?? 0);
 		return Math.min(8, Math.max(1.5, 1.5 + Math.log10(events + 1) * 2.2));
 	}
@@ -2236,7 +2758,9 @@ export class PreferenceAvoidancePage {
 		this.selectedSegmentId.set(segmentId);
 	}
 
-	private enrichmentFiltersParam(filters: SegmentEnrichmentFilter[]): SegmentEnrichmentFilter[] | undefined {
+	private enrichmentFiltersParam(
+		filters: SegmentEnrichmentFilter[],
+	): SegmentEnrichmentFilter[] | undefined {
 		return filters.length ? filters : undefined;
 	}
 
@@ -2251,10 +2775,11 @@ export class PreferenceAvoidancePage {
 		events: SegmentEvent[],
 		key: T,
 		label: string,
+		formatter?: (value: SegmentEvent[T]) => string | undefined,
 	): ContextHighlight | undefined {
 		const counts = events.reduce((currentCounts, event) => {
 			const rawValue = event[key];
-			const value = this.formatOptionalValue(rawValue);
+			const value = formatter ? formatter(rawValue) : this.formatContextValue(rawValue);
 			if (!value) {
 				return currentCounts;
 			}
@@ -2280,11 +2805,14 @@ export class PreferenceAvoidancePage {
 		tone: EventChip['tone'],
 		suffix = '',
 	): EventChip | undefined {
-		const formattedValue = this.formatOptionalValue(value, suffix);
+		const formattedValue = this.formatContextValue(value, suffix);
 		return formattedValue ? { label, value: formattedValue, tone } : undefined;
 	}
 
-	private eventDetailGroup(label: EventDetailGroup['label'], items: (EventDetailItem | undefined)[]): EventDetailGroup {
+	private eventDetailGroup(
+		label: EventDetailGroup['label'],
+		items: (EventDetailItem | undefined)[],
+	): EventDetailGroup {
 		return {
 			label,
 			items: items.filter((item): item is EventDetailItem => item !== undefined),
@@ -2294,10 +2822,77 @@ export class PreferenceAvoidancePage {
 	private eventDetailItem(
 		label: string,
 		value: unknown,
-		options: { suffix?: string; formatBucket?: boolean; infoId?: string; infoUrl?: string } = {},
+		options: {
+			suffix?: string;
+			formatBucket?: boolean;
+			wide?: boolean;
+			infoId?: string;
+			infoUrl?: string;
+		} = {},
 	): EventDetailItem | undefined {
-		const formattedValue = this.formatOptionalValue(value, options.suffix ?? '', options.formatBucket ?? true);
-		return formattedValue ? { label, value: formattedValue, infoId: options.infoId, infoUrl: options.infoUrl } : undefined;
+		const formattedValue = this.formatContextValue(
+			value,
+			options.suffix ?? '',
+			options.formatBucket ?? true,
+		);
+		return formattedValue
+			? {
+					label,
+					value: formattedValue,
+					wide: options.wide,
+					infoId: options.infoId,
+					infoUrl: options.infoUrl,
+				}
+			: undefined;
+	}
+
+	private weatherCodeSummary(code: number | null | undefined): string | undefined {
+		if (code === null || code === undefined) {
+			return undefined;
+		}
+		if (code === 0) {
+			return 'Clear';
+		}
+		if (code === 1) {
+			return 'Mostly clear';
+		}
+		if (code === 2) {
+			return 'Partly cloudy';
+		}
+		if (code === 3) {
+			return 'Overcast';
+		}
+		if ([45, 48].includes(code)) {
+			return 'Fog';
+		}
+		if ([51, 53, 55].includes(code)) {
+			return 'Drizzle';
+		}
+		if ([56, 57].includes(code)) {
+			return 'Freezing drizzle';
+		}
+		if ([61, 63, 65].includes(code)) {
+			return 'Rain';
+		}
+		if ([66, 67].includes(code)) {
+			return 'Freezing rain';
+		}
+		if ([71, 73, 75].includes(code)) {
+			return 'Snow';
+		}
+		if (code === 77) {
+			return 'Snow grains';
+		}
+		if ([80, 81, 82].includes(code)) {
+			return 'Rain showers';
+		}
+		if ([85, 86].includes(code)) {
+			return 'Snow showers';
+		}
+		if ([95, 96, 99].includes(code)) {
+			return 'Thunderstorm';
+		}
+		return undefined;
 	}
 
 	private formatWeatherCode(code: number | null | undefined): string | undefined {
@@ -2352,7 +2947,11 @@ export class PreferenceAvoidancePage {
 		return undefined;
 	}
 
-	private formatOptionalValue(value: unknown, suffix = '', formatBucket = true): string | undefined {
+	private formatOptionalValue(
+		value: unknown,
+		suffix = '',
+		formatBucket = true,
+	): string | undefined {
 		if (value === null || value === undefined || value === '') {
 			return undefined;
 		}
@@ -2363,6 +2962,17 @@ export class PreferenceAvoidancePage {
 			return `${value.toLocaleString('en', { maximumFractionDigits: 1 })}${suffix}`;
 		}
 		return formatBucket ? this.formatBucketValue(String(value)) : String(value);
+	}
+
+	private formatContextValue(
+		value: unknown,
+		suffix = '',
+		formatBucket = true,
+	): string | undefined {
+		if (typeof value === 'string' && omittedContextValues.has(value.trim().toUpperCase())) {
+			return undefined;
+		}
+		return this.formatOptionalValue(value, suffix, formatBucket);
 	}
 
 	private formatPlainValue(value: unknown): string {
@@ -2392,7 +3002,11 @@ export class PreferenceAvoidancePage {
 		return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 	}
 
-	private async reverseGeocode(segmentId: number, lon: number, lat: number): Promise<string | undefined> {
+	private async reverseGeocode(
+		segmentId: number,
+		lon: number,
+		lat: number,
+	): Promise<string | undefined> {
 		if (this._addressCache.has(segmentId)) {
 			return this._addressCache.get(segmentId);
 		}
@@ -2403,7 +3017,7 @@ export class PreferenceAvoidancePage {
 				`https://api.maptiler.com/geocoding/${lon},${lat}.json?key=${this._mapTilerToken}&limit=1`,
 			);
 			if (response.ok) {
-				const body = await response.json() as {
+				const body = (await response.json()) as {
 					features?: { context?: { id?: string; text?: string }[] }[];
 				};
 				const context = body.features?.[0]?.context ?? [];
@@ -2444,7 +3058,9 @@ export class PreferenceAvoidancePage {
 		if (!factors.length) {
 			return undefined;
 		}
-		const uniqueTypes = [...new Set(factors.map((factor) => this.formatBucketValue(factor.factorType)))];
+		const uniqueTypes = [
+			...new Set(factors.map((factor) => this.formatBucketValue(factor.factorType))),
+		];
 		return uniqueTypes.slice(0, 3).join(', ');
 	}
 
