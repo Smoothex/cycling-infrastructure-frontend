@@ -1,0 +1,603 @@
+<section class="pa-route-reviewer" aria-labelledby="route-reviewer-title">
+	<div class="pa-route-reviewer__toolbar">
+		<div class="pa-route-reviewer__intro">
+			<h3 id="route-reviewer-title">Route-comparison reviewer</h3>
+			<p>Inspect observed routes against the distance-shortest reference.</p>
+		</div>
+
+		<div class="panel-toggle" role="group" aria-label="Reviewer mode">
+			<button
+				type="button"
+				[class.panel-toggle__button--active]="mode() === 'EXPLORE'"
+				[attr.aria-pressed]="mode() === 'EXPLORE'"
+				(click)="onModeChange('EXPLORE')"
+			>
+				Explore
+			</button>
+			<button
+				type="button"
+				[class.panel-toggle__button--active]="mode() === 'REVIEW'"
+				[attr.aria-pressed]="mode() === 'REVIEW'"
+				(click)="onModeChange('REVIEW')"
+			>
+				Review
+			</button>
+		</div>
+
+		<label class="pa-route-reviewer__field">
+			Automated class
+			<select
+				[ngModel]="automatedClassFilter()"
+				(ngModelChange)="onAutomatedClassFilterChange($event)"
+			>
+				@for (option of automatedClassOptions; track option.value) {
+					<option [value]="option.value">{{ option.label }}</option>
+				}
+			</select>
+		</label>
+
+		<label class="pa-route-reviewer__field">
+			Review state
+			<select
+				[ngModel]="reviewStateFilter()"
+				(ngModelChange)="onReviewStateFilterChange($event)"
+			>
+				@for (option of reviewStateOptions; track option.value) {
+					<option [value]="option.value">{{ option.label }}</option>
+				}
+			</select>
+		</label>
+
+		<div class="pa-route-reviewer__navigation" aria-label="Sample navigation">
+			<button
+				type="button"
+				aria-label="Previous route"
+				[disabled]="navigationItems().length < 2"
+				(click)="onPrevious()"
+			>
+				<i class="ph-bold ph-arrow-left"></i>
+			</button>
+			<strong>
+				{{ selectedItem()?.sampleOrder ?? 0 }} / {{ sample.value()?.totalItems ?? 0 }}
+			</strong>
+			<button
+				type="button"
+				aria-label="Next route"
+				[disabled]="navigationItems().length < 2"
+				(click)="onNext()"
+			>
+				<i class="ph-bold ph-arrow-right"></i>
+			</button>
+		</div>
+
+		<a
+			class="pa-route-reviewer__export"
+			href="/api/route-comparisons/review-sample.csv"
+			download="route-comparison-review-sample.csv"
+		>
+			<i class="ph-bold ph-download-simple"></i>
+			Export CSV
+		</a>
+	</div>
+
+	@if (pendingNavigation()) {
+		<div class="pa-route-reviewer__unsaved" role="alert">
+			<div>
+				<strong>Unsaved review</strong>
+				<span>Your current selections will be lost if you continue.</span>
+			</div>
+			<button type="button" (click)="keepEditing()">Keep editing</button>
+			<button type="button" class="pa-route-reviewer__discard" (click)="discardAndContinue()">
+				Discard and continue
+			</button>
+		</div>
+	}
+
+	@if (sample.isLoading()) {
+		<div class="pa-route-reviewer__loading">
+			<p-skeleton height="5rem" />
+			<p-skeleton height="34rem" />
+		</div>
+	} @else if (sample.error()) {
+		<div class="pa-route-reviewer__message pa-route-reviewer__message--error" role="alert">
+			<div>
+				<strong>Review sample could not be loaded.</strong>
+				<span>Check the backend connection and try again.</span>
+			</div>
+			<button type="button" (click)="sample.reload()">Retry</button>
+		</div>
+	} @else if (!sample.value()?.items?.length) {
+		<div class="pa-route-reviewer__message">
+			<strong>No eligible routes are available.</strong>
+			<span>Processed rides need both route geometries and comparison metrics.</span>
+		</div>
+	} @else {
+		<div class="pa-route-reviewer__sample-note">
+			<i class="ph-bold ph-info"></i>
+			<span>
+				This fixed sample contains up to {{ sample.value()?.sampleSizePerType }} routes per
+				automated class. It is balanced for review and is not representative of class
+				prevalence.
+			</span>
+		</div>
+
+		@if (saveMessage()) {
+			<div
+				class="pa-route-reviewer__message pa-route-reviewer__message--success"
+				role="status"
+			>
+				<i class="ph-bold ph-check-circle"></i>
+				<span>{{ saveMessage() }}</span>
+			</div>
+		}
+
+		@if (mode() === 'EXPLORE') {
+			<section class="pa-route-validation" aria-labelledby="validation-summary-title">
+				<div class="pa-route-validation__heading">
+					<div>
+						<h3 id="validation-summary-title">Manual-review agreement</h3>
+						<p>
+							Descriptive comparison with reviewer decisions; this is not a blinded
+							accuracy test.
+						</p>
+					</div>
+					<strong
+						>{{ validationSummary().reviewed }} /
+						{{ sample.value()?.totalItems }} reviewed</strong
+					>
+				</div>
+				<div class="pa-route-validation__metrics">
+					<div>
+						<span>Comparable reviews</span>
+						<strong>{{ validationSummary().comparable }}</strong>
+						<small>Excludes uncertain and unusable</small>
+					</div>
+					<div>
+						<span>Overall agreement</span>
+						<strong>{{
+							agreementPercent(
+								validationSummary().agreements,
+								validationSummary().comparable
+							)
+						}}</strong>
+						<small>{{ validationSummary().agreements }} matching decisions</small>
+					</div>
+					<div>
+						<span>Uncertain</span>
+						<strong>{{ validationSummary().uncertain }}</strong>
+						<small>Insufficient evidence</small>
+					</div>
+					<div>
+						<span>Unusable</span>
+						<strong>{{ validationSummary().unusable }}</strong>
+						<small>Data-quality exclusion</small>
+					</div>
+				</div>
+				<div class="pa-route-validation__classes">
+					@for (item of validationSummary().perClass; track item.routeClass) {
+						<div>
+							<i
+								[style.background]="routeClassDefinitions[item.routeClass].color"
+							></i>
+							<span>{{ item.label }}</span>
+							<strong>{{
+								agreementPercent(item.agreements, item.comparable)
+							}}</strong>
+							<small>{{ item.agreements }} of {{ item.comparable }} comparable</small>
+						</div>
+					}
+				</div>
+				<details class="pa-route-validation__technical">
+					<summary>Technical comparison matrix</summary>
+					<div class="pa-route-validation__matrix-scroll">
+						<table>
+							<caption>
+								Automated class by manual review decision
+							</caption>
+							<thead>
+								<tr>
+									<th>Automated</th>
+									@for (choice of manualChoices; track choice.value) {
+										<th>{{ choice.label }}</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								@for (
+									routeClass of automatedClassOptions.slice(1);
+									track routeClass.value
+								) {
+									<tr>
+										<th>{{ routeClass.label }}</th>
+										@for (choice of manualChoices; track choice.value) {
+											<td>
+												{{
+													confusionCount(
+														$any(routeClass.value),
+														choice.value
+													)
+												}}
+											</td>
+										}
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</details>
+			</section>
+		} @else if (unreviewedCount() === 0) {
+			<div class="pa-route-reviewer__complete" role="status">
+				<i class="ph-bold ph-check-circle"></i>
+				<div>
+					<strong>Review sample complete</strong>
+					<span
+						>All {{ sample.value()?.totalItems }} eligible sample routes have a manual
+						decision.</span
+					>
+				</div>
+				<a href="/api/route-comparisons/review-sample.csv" download
+					>Export completed sample</a
+				>
+			</div>
+		}
+
+		<div class="pa-route-reviewer__main-grid">
+			<p-card class="pa-route-review-map-card">
+				<ng-template pTemplate="header">
+					<div class="card-header">
+						<div>
+							<h3>Observed and shortest route</h3>
+							@if (selectedItem()?.startTimestamp; as startTimestamp) {
+								<p>{{ startTimestamp | date: 'MMM d, y, h:mm a' }}</p>
+							}
+						</div>
+						@if (selectedItem()?.review) {
+							<span class="pa-route-review-map-card__reviewed">
+								<i class="ph-bold ph-check"></i>
+								Reviewed
+							</span>
+						}
+					</div>
+				</ng-template>
+
+				@if (detail.isLoading()) {
+					<p-skeleton height="34rem" />
+				} @else if (detail.error()) {
+					<div
+						class="pa-route-reviewer__message pa-route-reviewer__message--error"
+						role="alert"
+					>
+						<span>Route geometry could not be loaded.</span>
+						<button type="button" (click)="detail.reload()">Retry</button>
+					</div>
+				} @else if (detail.value(); as routeDetail) {
+					<div class="pa-route-review-map">
+						<t-map-component [isNavigable]="true" (mapReady)="onMapReady($event)" />
+						<div
+							class="pa-route-review-map__style panel-toggle"
+							aria-label="Base map style"
+						>
+							<button
+								type="button"
+								[class.panel-toggle__button--active]="
+									selectedMapBaseStyle() === 'MAP'
+								"
+								(click)="onMapBaseStyleChange('MAP')"
+							>
+								Map
+							</button>
+							<button
+								type="button"
+								[class.panel-toggle__button--active]="
+									selectedMapBaseStyle() === 'SATELLITE'
+								"
+								(click)="onMapBaseStyleChange('SATELLITE')"
+							>
+								Satellite
+							</button>
+						</div>
+						<div class="pa-route-review-map__legend" aria-label="Route map legend">
+							<span
+								><i class="pa-route-swatch pa-route-swatch--observed"></i>Observed
+								route</span
+							>
+							<span
+								><i class="pa-route-swatch pa-route-swatch--shortest"></i>Shortest
+								route</span
+							>
+							<span
+								><i class="pa-route-swatch pa-route-swatch--preferred"></i>Preferred
+								segment</span
+							>
+							<span
+								><i class="pa-route-swatch pa-route-swatch--avoided"></i>Avoided
+								segment</span
+							>
+							<span
+								><i class="pa-route-endpoint pa-route-endpoint--start"></i
+								>Start</span
+							>
+							<span
+								><i class="pa-route-endpoint pa-route-endpoint--end"></i
+								>Destination</span
+							>
+						</div>
+					</div>
+				}
+			</p-card>
+
+			<div class="pa-route-reviewer__evidence">
+				@if (detail.isLoading()) {
+					<p-skeleton height="34rem" />
+				} @else if (detail.value(); as routeDetail) {
+					<p-card class="pa-route-evidence-card">
+						<ng-template pTemplate="header">
+							<div class="card-header pa-route-evidence-card__header">
+								<div>
+									<span>Automated classification</span>
+									<strong
+										class="pa-route-class-badge pa-route-class-badge--{{
+											routeDetail.automatedClassification.toLowerCase()
+										}}"
+									>
+										{{ routeClassLabel(routeDetail.automatedClassification) }}
+									</strong>
+								</div>
+								<span>#{{ routeDetail.sampleOrder }}</span>
+							</div>
+						</ng-template>
+
+						<p class="pa-route-evidence-card__explanation">
+							{{
+								routeClassDefinitions[routeDetail.automatedClassification]
+									.explanation
+							}}
+						</p>
+
+						<div class="pa-route-evidence-card__metrics">
+							<div>
+								<span>Observed distance</span
+								><strong
+									>{{
+										routeDetail.actualDistanceMeters | number: '1.0-0'
+									}}
+									m</strong
+								>
+							</div>
+							<div>
+								<span>Shortest distance</span
+								><strong
+									>{{
+										routeDetail.shortestPathDistanceMeters | number: '1.0-0'
+									}}
+									m</strong
+								>
+							</div>
+							<div>
+								<span>Excess distance</span>
+								<strong
+									>{{
+										routeDetail.absoluteExcessDistanceMeters | number: '1.0-0'
+									}}
+									m</strong
+								>
+								<small>{{
+									routeDetail.relativeDetourRatio ?? 0 | percent: '1.0-1'
+								}}</small>
+							</div>
+							<div>
+								<span>Route overlap</span
+								><strong>{{ routeDetail.overlapRatio | percent: '1.0-0' }}</strong>
+							</div>
+							<div>
+								<span>Median GPS accuracy</span
+								><strong
+									>{{
+										routeDetail.medianGpsAccuracyMeters | number: '1.0-1'
+									}}
+									m</strong
+								><small>{{ routeDetail.gpsPointCount | number }} points</small>
+							</div>
+							<div>
+								<span>Duration</span
+								><strong>{{ formatDuration(routeDetail.durationSeconds) }}</strong>
+							</div>
+							<div>
+								<span>Ride purpose</span
+								><strong>{{ formatEnum(routeDetail.rideIntent) }}</strong>
+							</div>
+							<div>
+								<span>Bike type</span
+								><strong>{{ formatEnum(routeDetail.bikeType) }}</strong>
+							</div>
+						</div>
+
+						<div class="pa-route-thresholds" aria-label="Classification thresholds">
+							<div class="pa-route-threshold">
+								<div>
+									<span>Extra distance</span
+									><strong>{{
+										routeDetail.relativeDetourRatio | percent: '1.0-1'
+									}}</strong>
+								</div>
+								<div class="pa-route-threshold__track">
+									<i
+										class="pa-route-threshold__fill pa-route-threshold__fill--detour"
+										[style.width.%]="detourGaugePercent(routeDetail)"
+									></i>
+									<i
+										class="pa-route-threshold__marker"
+										[style.left.%]="detourThresholdPercent(routeDetail)"
+									></i>
+								</div>
+								<small>
+									Marker:
+									{{
+										routeDetail.detourThresholdRatio | percent: '1.0-0'
+									}}
+									relative limit. Absolute excess limit:
+									{{
+										routeDetail.maximumEquivalentExcessDistanceMeters
+											| number: '1.0-0'
+									}}
+									m; exceeding either limit creates a detour.
+								</small>
+							</div>
+							<div class="pa-route-threshold">
+								<div>
+									<span>Shortest-route overlap</span
+									><strong>{{
+										routeDetail.overlapRatio | percent: '1.0-0'
+									}}</strong>
+								</div>
+								<div class="pa-route-threshold__track">
+									<i
+										class="pa-route-threshold__fill pa-route-threshold__fill--overlap"
+										[style.width.%]="overlapGaugePercent(routeDetail)"
+									></i>
+									<i
+										class="pa-route-threshold__marker"
+										[style.left.%]="overlapThresholdPercent(routeDetail)"
+									></i>
+								</div>
+								<small
+									>Marker:
+									{{
+										routeDetail.minimumOverlapRatio | percent: '1.0-0'
+									}}
+									corridor boundary</small
+								>
+							</div>
+						</div>
+
+						<div class="pa-route-signal-counts">
+							<div class="pa-route-signal-counts__preferred">
+								<span>Preferred segments</span
+								><strong>{{ signalCount(routeDetail, 'PREFERENCE') }}</strong>
+							</div>
+							<div class="pa-route-signal-counts__avoided">
+								<span>Avoided segments</span
+								><strong>{{ signalCount(routeDetail, 'AVOIDANCE') }}</strong>
+							</div>
+						</div>
+
+						<div class="pa-route-evidence-card__notice">
+							<i class="ph-bold ph-info"></i>
+							<span
+								>Manual reviews document validation evidence. They do not change the
+								automated class, segment events, or ratings.</span
+							>
+						</div>
+
+						@if (mode() === 'EXPLORE' && routeDetail.review; as review) {
+							<div class="pa-route-existing-review">
+								<span>Manual decision</span>
+								<strong>{{ formatEnum(review.manualClassification) }}</strong>
+								<small
+									>Reviewed
+									{{ review.reviewedAt | date: 'MMM d, y, h:mm a' }}</small
+								>
+							</div>
+						}
+					</p-card>
+
+					@if (mode() === 'REVIEW') {
+						<p-card class="pa-route-review-form-card">
+							<ng-template pTemplate="header">
+								<div class="card-header">
+									<div>
+										<h3>Manual review</h3>
+										<p>Choose the class supported by the mapped evidence.</p>
+									</div>
+									@if (draftDirty()) {
+										<span class="pa-route-review-form-card__dirty"
+											>Unsaved</span
+										>
+									}
+								</div>
+							</ng-template>
+							<form (submit)="$event.preventDefault(); onSaveReview()">
+								<fieldset class="pa-route-review-form-card__choices">
+									<legend>Manual classification</legend>
+									@for (choice of manualChoices; track choice.value) {
+										<label
+											[class.pa-route-review-choice--selected]="
+												manualClassification() === choice.value
+											"
+										>
+											<input
+												type="radio"
+												name="manual-classification"
+												[value]="choice.value"
+												[checked]="manualClassification() === choice.value"
+												(change)="
+													onManualClassificationChange(choice.value)
+												"
+											/>
+											<span
+												><strong>{{ choice.label }}</strong
+												><small>{{ choice.description }}</small></span
+											>
+										</label>
+									}
+								</fieldset>
+
+								<fieldset class="pa-route-review-form-card__issues">
+									<legend>Data-quality issues <small>Optional</small></legend>
+									@for (issue of issueChoices; track issue.value) {
+										<label [title]="issue.description">
+											<input
+												type="checkbox"
+												[checked]="isIssueSelected(issue.value)"
+												(change)="
+													onIssueToggle(
+														issue.value,
+														$any($event.target).checked
+													)
+												"
+											/>
+											<span>{{ issue.label }}</span>
+										</label>
+									}
+								</fieldset>
+
+								<label class="pa-route-review-form-card__notes">
+									<span
+										>Review notes
+										<small>{{ reviewNotes().length }} / 1000</small></span
+									>
+									<textarea
+										rows="3"
+										maxlength="1000"
+										placeholder="Optional context for this decision"
+										[ngModel]="reviewNotes()"
+										(ngModelChange)="onNotesChange($event)"
+										name="review-notes"
+									></textarea>
+								</label>
+
+								@if (formError()) {
+									<div class="pa-route-review-form-card__error" role="alert">
+										{{ formError() }}
+									</div>
+								}
+								<button
+									class="pa-route-review-form-card__save"
+									type="submit"
+									[disabled]="saving()"
+								>
+									@if (saving()) {
+										Saving…
+									} @else {
+										Save and continue
+									}
+								</button>
+							</form>
+						</p-card>
+					}
+				}
+			</div>
+		</div>
+	}
+</section>

@@ -14,7 +14,7 @@ import * as maplibregl from 'maplibre-gl';
 import { of, Subject } from 'rxjs';
 import { PreferenceAvoidancePage } from './preference-avoidance.page';
 
-type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS';
+type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS' | 'ROUTE_COMPARISONS';
 
 @Component({
 	selector: 't-map-component',
@@ -33,6 +33,8 @@ interface TestablePreferenceAvoidancePage {
 	selectedEnrichmentFilters: WritableSignal<SegmentEnrichmentFilter[]>;
 	selectedRiskLegendBuckets: WritableSignal<string[]>;
 	selectedTab: WritableSignal<ExplorerTab>;
+	routeReviewDirty: WritableSignal<boolean>;
+	pendingTab: WritableSignal<ExplorerTab | undefined>;
 	selectedPanelView: WritableSignal<'INFO' | 'EVENTS'>;
 	selectedSegmentId: WritableSignal<number | undefined>;
 	selectedCorridorSegmentIds: WritableSignal<number[]>;
@@ -48,6 +50,8 @@ interface TestablePreferenceAvoidancePage {
 		}[];
 	}[];
 	onClearAllFilters(): void;
+	onTabChange(tab: ExplorerTab): void;
+	discardRouteReviewAndSwitchTab(): void;
 	onTableRowSelected(segmentId: number): void;
 	onViewCorridorOnMap(corridor: CorridorRanking): void;
 	trafficDetectorPopupCoordinate(
@@ -94,6 +98,17 @@ describe('PreferenceAvoidancePage', () => {
 				geometry: { type: 'MultiLineString', coordinates: [] },
 			}),
 		),
+		getRouteReviewSample: jest.fn().mockReturnValue(
+			of({
+				sampleSizePerType: 30,
+				totalItems: 0,
+				reviewedItems: 0,
+				representativeOfPrevalence: false,
+				items: [],
+			}),
+		),
+		getRouteReviewDetail: jest.fn(),
+		saveRouteReview: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -181,6 +196,31 @@ describe('PreferenceAvoidancePage', () => {
 		expect(text).not.toContain('Historical OSM data enriched');
 	});
 
+	it('shows route comparisons as a dedicated tab without unrelated global filters', async () => {
+		component.selectedTab.set('ROUTE_COMPARISONS');
+		fixture.detectChanges();
+		await fixture.whenStable();
+		fixture.detectChanges();
+
+		expect(fixture.nativeElement.querySelector('.year-select')).toBeNull();
+		expect(fixture.nativeElement.querySelector('.pa-global-filters')).toBeNull();
+		expect(fixture.nativeElement.textContent).toContain('Route-comparison reviewer');
+		expect(facade.getRouteReviewSample).toHaveBeenCalled();
+	});
+
+	it('does not leave the reviewer while a manual decision is unsaved', () => {
+		component.selectedTab.set('ROUTE_COMPARISONS');
+		component.routeReviewDirty.set(true);
+
+		component.onTabChange('MAP');
+
+		expect(component.selectedTab()).toBe('ROUTE_COMPARISONS');
+		expect(component.pendingTab()).toBe('MAP');
+
+		component.discardRouteReviewAndSwitchTab();
+		expect(component.selectedTab()).toBe('MAP');
+	});
+
 	it('passes active filters to aggregate segment requests without per-segment qualification calls', async () => {
 		component.selectedYear.set(2024);
 		component.selectedRideIntent.set('COMMUTE');
@@ -200,6 +240,17 @@ describe('PreferenceAvoidancePage', () => {
 		expect(facade.getSegments).toHaveBeenLastCalledWith(expectedFilters);
 		expect(facade.getSegmentsGeoJson).toHaveBeenLastCalledWith(expectedFilters);
 		expect(facade.getSegmentEvents).not.toHaveBeenCalled();
+	});
+
+	it('uses the live segment overlay when an enrichment filter is active', async () => {
+		component.selectedEnrichmentFilters.set(['WEATHER_ENRICHED']);
+
+		fixture.detectChanges();
+		await fixture.whenStable();
+
+		expect(facade.getSegmentsGeoJson).toHaveBeenLastCalledWith(
+			expect.objectContaining({ enrichmentFilters: ['WEATHER_ENRICHED'] }),
+		);
 	});
 
 	it('returns to the map and selects a segment from the table', () => {

@@ -8,6 +8,7 @@ import {
 	AnalyticsRouteComparisonParams,
 	NearMissIncidentsParams,
 	RoadClosuresParams,
+	SaveRouteReviewRequest,
 	SegmentEventsParams,
 	SegmentListParams,
 	SegmentsGeoJsonParams,
@@ -15,6 +16,7 @@ import {
 import { AnalyticsRequestService } from '../infrastructure/analytics-request.service';
 import { IncidentRequestService } from '../infrastructure/incident-request.service';
 import { RoadClosureRequestService } from '../infrastructure/road-closure-request.service';
+import { RouteReviewRequestService } from '../infrastructure/route-review-request.service';
 import { SegmentsRequestService } from '../infrastructure/segments-request.service';
 import { TrafficRequestService } from '../infrastructure/traffic-request.service';
 
@@ -23,6 +25,7 @@ export class PreferenceAvoidanceAnalysisFacade {
 	private readonly _analyticsRequestService = inject(AnalyticsRequestService);
 	private readonly _incidentRequestService = inject(IncidentRequestService);
 	private readonly _roadClosureRequestService = inject(RoadClosureRequestService);
+	private readonly _routeReviewRequestService = inject(RouteReviewRequestService);
 	private readonly _segmentsRequestService = inject(SegmentsRequestService);
 	private readonly _trafficRequestService = inject(TrafficRequestService);
 
@@ -84,5 +87,17 @@ export class PreferenceAvoidanceAnalysisFacade {
 
 	public getRoadClosures(params: RoadClosuresParams) {
 		return this._roadClosureRequestService.getRoadClosures(params);
+	}
+
+	public getRouteReviewSample() {
+		return this._routeReviewRequestService.getSample();
+	}
+
+	public getRouteReviewDetail(rideId: string) {
+		return this._routeReviewRequestService.getDetail(rideId);
+	}
+
+	public saveRouteReview(rideId: string, request: SaveRouteReviewRequest) {
+		return this._routeReviewRequestService.saveReview(rideId, request);
 	}
 }

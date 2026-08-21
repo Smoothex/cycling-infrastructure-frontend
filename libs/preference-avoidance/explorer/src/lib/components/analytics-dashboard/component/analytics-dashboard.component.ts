@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import {
 	ChangeDetectionStrategy,
 	Component,
@@ -45,7 +45,7 @@ const routeComparisonTypes: {
 	label: string;
 	color: string;
 }[] = [
-	{ type: 'EQUIVALENT_ROUTE', label: 'Equivalent route', color: '#2563eb' },
+	{ type: 'EQUIVALENT_ROUTE', label: 'Within distance tolerance', color: '#2563eb' },
 	{ type: 'LOCAL_DETOUR', label: 'Local detour', color: '#d97706' },
 	{ type: 'CORRIDOR_ALTERNATIVE', label: 'Corridor alternative', color: '#7c3aed' },
 ];
@@ -63,7 +63,7 @@ Chart.register(BoxPlotController, BoxAndWiskers);
 @Component({
 	selector: 't-analytics-dashboard',
 	standalone: true,
-	imports: [Card, UIChart, Skeleton, TableModule, DecimalPipe, DatePipe],
+	imports: [Card, UIChart, Skeleton, TableModule, DecimalPipe, DatePipe, PercentPipe],
 	templateUrl: './analytics-dashboard.component.html',
 	styleUrl: './analytics-dashboard.component.scss',
 	encapsulation: ViewEncapsulation.None,
@@ -186,47 +186,52 @@ export class AnalyticsDashboardComponent {
 		};
 	});
 
-	protected readonly detourImpactChartOptions: ChartOptions<'boxplot'> = {
-		responsive: true,
-		maintainAspectRatio: false,
-		indexAxis: 'y',
-		plugins: {
-			legend: { display: false },
-			annotation: {
-				annotations: {
-					detourThreshold: {
-						type: 'line',
-						xMin: 10,
-						xMax: 10,
-						borderColor: '#64748b',
-						borderDash: [5, 5],
-						borderWidth: 1.5,
-						label: {
-							display: true,
-							content: '10% boundary',
-							position: 'end',
-							backgroundColor: 'rgba(100, 116, 139, 0.88)',
-							font: { size: 10 },
+	protected readonly detourImpactChartOptions = computed<ChartOptions<'boxplot'>>(() => {
+		const thresholdPercent = (this.routeComparisons.value()?.detourThresholdRatio ?? 0.1) * 100;
+		return {
+			responsive: true,
+			maintainAspectRatio: false,
+			indexAxis: 'y',
+			plugins: {
+				legend: { display: false },
+				annotation: {
+					annotations: {
+						detourThreshold: {
+							type: 'line',
+							xMin: thresholdPercent,
+							xMax: thresholdPercent,
+							borderColor: '#64748b',
+							borderDash: [5, 5],
+							borderWidth: 1.5,
+							label: {
+								display: true,
+								content: `${thresholdPercent.toLocaleString('en', {
+									maximumFractionDigits: 1,
+								})}% relative limit`,
+								position: 'end',
+								backgroundColor: 'rgba(100, 116, 139, 0.88)',
+								font: { size: 10 },
+							},
 						},
 					},
 				},
-			},
-			tooltip: {
-				callbacks: {
-					label: (context) => this.detourImpactTooltip(context),
+				tooltip: {
+					callbacks: {
+						label: (context) => this.detourImpactTooltip(context),
+					},
 				},
 			},
-		},
-		scales: {
-			x: {
-				suggestedMin: 0,
-				title: { display: true, text: 'Extra distance compared with shortest path' },
-				ticks: { callback: (value) => this.formatSignedPercent(Number(value)) },
-				grid: { color: 'rgba(148, 163, 184, 0.2)' },
+			scales: {
+				x: {
+					suggestedMin: 0,
+					title: { display: true, text: 'Extra distance compared with shortest path' },
+					ticks: { callback: (value) => this.formatSignedPercent(Number(value)) },
+					grid: { color: 'rgba(148, 163, 184, 0.2)' },
+				},
+				y: { grid: { display: false } },
 			},
-			y: { grid: { display: false } },
-		},
-	};
+		};
+	});
 
 	protected readonly topAvoidedCorridors = resource<CorridorRanking[], string>({
 		params: () => this.filtersKey(),

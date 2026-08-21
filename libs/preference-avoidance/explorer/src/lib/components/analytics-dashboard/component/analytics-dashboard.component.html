@@ -102,13 +102,13 @@
 				<div class="pa-analytics__message pa-analytics__message--error" role="alert">
 					Detour impact could not be loaded.
 				</div>
-			} @else if (routeComparisons.value()) {
+			} @else if (routeComparisons.value(); as routeComparisonSummary) {
 				@if (eligibleDetourImpact().length) {
-				<div class="pa-detour-impact__chart" aria-hidden="true">
-					<p-chart
-						[type]="detourImpactChartType"
+					<div class="pa-detour-impact__chart" aria-hidden="true">
+						<p-chart
+							[type]="detourImpactChartType"
 							[data]="detourImpactChartData()"
-							[options]="detourImpactChartOptions"
+							[options]="detourImpactChartOptions()"
 							height="13rem"
 						/>
 					</div>
@@ -137,7 +137,15 @@
 				}
 				<p class="pa-analytics__caption">
 					Values compare route length, not travel time, and include only rides with usable
-					distance measurements. The 10% line is the detour-classification boundary.
+					distance measurements. The
+					{{ routeComparisonSummary.detourThresholdRatio | percent: '1.0-1' }} line is the
+					relative excess-distance limit. Rides also enter a detour class when absolute
+					excess exceeds
+					{{
+						routeComparisonSummary.maximumEquivalentExcessDistanceMeters
+							| number: '1.0-0'
+					}}
+					m.
 				</p>
 			}
 		</p-card>

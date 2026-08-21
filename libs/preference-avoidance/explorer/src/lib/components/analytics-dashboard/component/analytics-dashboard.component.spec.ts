@@ -7,6 +7,9 @@ describe('AnalyticsDashboardComponent', () => {
 	let fixture: ComponentFixture<AnalyticsDashboardComponent>;
 	const routeComparisons = {
 		classifiedRideCount: 1955,
+		detourThresholdRatio: 0.1,
+		maximumEquivalentExcessDistanceMeters: 500,
+		minimumOverlapRatio: 0.3,
 		routeComparisonTypeCounts: {
 			EQUIVALENT_ROUTE: 900,
 			LOCAL_DETOUR: 496,
@@ -131,23 +134,24 @@ describe('AnalyticsDashboardComponent', () => {
 		expect(text).toContain('Chausseestraße');
 		expect(text).toContain('Infrastructure signals');
 		expect(text).toContain('Route comparison types');
-		expect(text).toContain('Equivalent route');
+		expect(text).toContain('Within distance tolerance');
 		expect(text).toContain('900');
 		expect(text).toContain('Detour impact');
 		expect(text).toContain('Local detour: median +14.2%');
+		expect(text).toContain('absolute excess exceeds 500 m');
 		expect(
 			fixture.nativeElement.querySelectorAll('.pa-analytics__comparison-grid > p-card'),
 		).toHaveLength(2);
 	});
 
-	it('maps quartiles to collapsed-whisker box plots and configures the 10% boundary', async () => {
+	it('maps quartiles to collapsed-whisker box plots and configures the relative limit', async () => {
 		await createComponent();
 		const component = fixture.componentInstance as unknown as {
 			detourImpactChartData: () => {
 				labels: string[];
 				datasets: { data: unknown[]; backgroundColor: string[] }[];
 			};
-			detourImpactChartOptions: {
+			detourImpactChartOptions: () => {
 				plugins: { annotation: { annotations: Record<string, unknown> } };
 			};
 		};
@@ -164,8 +168,14 @@ describe('AnalyticsDashboardComponent', () => {
 				},
 			],
 		});
-		expect(component.detourImpactChartOptions.plugins.annotation.annotations).toMatchObject({
-			detourThreshold: { type: 'line', xMin: 10, xMax: 10, borderDash: [5, 5] },
+		expect(component.detourImpactChartOptions().plugins.annotation.annotations).toMatchObject({
+			detourThreshold: {
+				type: 'line',
+				xMin: 10,
+				xMax: 10,
+				borderDash: [5, 5],
+				label: { content: '10% relative limit' },
+			},
 		});
 	});
 
@@ -189,6 +199,9 @@ describe('AnalyticsDashboardComponent', () => {
 		facade.getRouteComparisons.mockReturnValue(
 			of({
 				classifiedRideCount: 0,
+				detourThresholdRatio: 0.1,
+				maximumEquivalentExcessDistanceMeters: 500,
+				minimumOverlapRatio: 0.3,
 				routeComparisonTypeCounts: {
 					EQUIVALENT_ROUTE: 0,
 					LOCAL_DETOUR: 0,

@@ -2,6 +2,7 @@
 	<header class="preference-avoidance__header">
 		<div class="preference-avoidance__header-title">
 			<h2>Preference and Avoidance</h2>
+			@if (selectedTab() !== 'ROUTE_COMPARISONS') {
 			<select
 				class="year-select"
 				[class.filter-control--active]="selectedYear() !== undefined"
@@ -14,8 +15,10 @@
 				<option [ngValue]="year">{{ year }}</option>
 				}
 			</select>
+			}
 		</div>
 
+		@if (selectedTab() !== 'ROUTE_COMPARISONS') {
 		<div class="pa-global-filters" role="group" aria-label="Global filters">
 			<label class="pa-field pa-field--inline">
 				Ride purpose
@@ -74,6 +77,7 @@
 				Clear all
 			</button>
 		</div>
+		}
 	</header>
 
 	<div class="pa-tabs panel-toggle" role="tablist" aria-label="Preference and avoidance views">
@@ -90,6 +94,18 @@
 		</button>
 		}
 	</div>
+	@if (pendingTab()) {
+	<div class="pa-tab-unsaved" role="alert">
+		<div>
+			<strong>Unsaved route review</strong>
+			<span>Save the current decision or discard it before leaving Route comparisons.</span>
+		</div>
+		<button type="button" (click)="keepRouteReviewOpen()">Keep editing</button>
+		<button type="button" class="pa-tab-unsaved__discard" (click)="discardRouteReviewAndSwitchTab()">
+			Discard and switch tab
+		</button>
+	</div>
+	}
 
 	<div class="pa-tab-panels">
 		<!-- The map panel is always rendered and only visually hidden: destroying it
@@ -555,6 +571,11 @@
 			[selectedSegmentId]="selectedSegmentId()"
 			(rowSelected)="onTableRowSelected($event)"
 			(rowHovered)="hoveredSegmentId.set($event)"
+		/>
+		} @if (selectedTab() === 'ROUTE_COMPARISONS') {
+		<t-route-comparison-reviewer
+			role="tabpanel"
+			(dirtyChange)="routeReviewDirty.set($event)"
 		/>
 		}
 	</div>

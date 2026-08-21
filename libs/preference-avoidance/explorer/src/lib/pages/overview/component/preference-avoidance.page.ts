@@ -42,6 +42,7 @@ import { Checkbox } from 'primeng/checkbox';
 import { Popover } from 'primeng/popover';
 import { Skeleton } from 'primeng/skeleton';
 import { AnalyticsDashboardComponent } from '../../../components/analytics-dashboard/component/analytics-dashboard.component';
+import { RouteComparisonReviewerComponent } from '../../../components/route-comparison-reviewer/component/route-comparison-reviewer.component';
 import { SegmentsTableComponent } from '../../../components/segments-table/component/segments-table.component';
 import {
 	calculateEventBalance,
@@ -143,7 +144,7 @@ function registerPmtilesProtocol(): void {
 type EventFilter = 'ALL' | SegmentEventType;
 type PanelViewMode = 'INFO' | 'EVENTS';
 type MapBaseStyle = 'MAP' | 'SATELLITE';
-type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS';
+type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS' | 'ROUTE_COMPARISONS';
 
 /**
  * Map/Satellite switch rendered as a native MapLibre control so it sits on the
@@ -315,6 +316,7 @@ const processedRideStatus = 'PROCESSED';
 		DecimalPipe,
 		PrimeTemplate,
 		AnalyticsDashboardComponent,
+		RouteComparisonReviewerComponent,
 		SegmentsTableComponent,
 	],
 	templateUrl: './preference-avoidance.page.html',
@@ -372,11 +374,14 @@ export class PreferenceAvoidancePage {
 	protected readonly selectedTrafficCondition = signal<string | undefined>(undefined);
 	protected readonly selectedCorridorSegmentIds = signal<number[]>([]);
 	protected readonly selectedTab = signal<ExplorerTab>('MAP');
+	protected readonly routeReviewDirty = signal(false);
+	protected readonly pendingTab = signal<ExplorerTab | undefined>(undefined);
 	protected readonly riskLegendItems = RISK_LEGEND_ITEMS;
 	protected readonly tabOptions: { label: string; value: ExplorerTab; icon: string }[] = [
 		{ label: 'Map Explorer', value: 'MAP', icon: 'ph-map-trifold' },
 		{ label: 'Analytics', value: 'ANALYTICS', icon: 'ph-chart-bar' },
 		{ label: 'Segments', value: 'SEGMENTS', icon: 'ph-table' },
+		{ label: 'Route comparisons', value: 'ROUTE_COMPARISONS', icon: 'ph-git-diff' },
 	];
 	protected readonly enrichmentChipOptions: {
 		label: string;
@@ -713,7 +718,9 @@ export class PreferenceAvoidancePage {
 
 	protected readonly matchedOverlayActive = computed(() => {
 		return (
-			this.selectedRideIntent() !== undefined || this.selectedTrafficCondition() !== undefined
+			this.selectedRideIntent() !== undefined ||
+			this.selectedTrafficCondition() !== undefined ||
+			this.selectedEnrichmentFilters().length > 0
 		);
 	});
 
@@ -1094,7 +1101,28 @@ export class PreferenceAvoidancePage {
 	}
 
 	protected onTabChange(tab: ExplorerTab): void {
+		if (
+			this.selectedTab() === 'ROUTE_COMPARISONS' &&
+			tab !== 'ROUTE_COMPARISONS' &&
+			this.routeReviewDirty()
+		) {
+			this.pendingTab.set(tab);
+			return;
+		}
 		this.selectedTab.set(tab);
+	}
+
+	protected keepRouteReviewOpen(): void {
+		this.pendingTab.set(undefined);
+	}
+
+	protected discardRouteReviewAndSwitchTab(): void {
+		const tab = this.pendingTab();
+		this.pendingTab.set(undefined);
+		this.routeReviewDirty.set(false);
+		if (tab) {
+			this.selectedTab.set(tab);
+		}
 	}
 
 	protected onTableRowSelected(segmentId: number): void {
