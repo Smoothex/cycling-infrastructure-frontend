@@ -74,6 +74,9 @@ export interface AnalyticsContext {
 
 export interface RouteComparisonSummary {
 	classifiedRideCount: number;
+	detourThresholdRatio: number;
+	maximumEquivalentExcessDistanceMeters: number;
+	minimumOverlapRatio: number;
 	routeComparisonTypeCounts: Record<RouteComparisonType, number>;
 	detourImpact: RouteComparisonDetourImpact[];
 }

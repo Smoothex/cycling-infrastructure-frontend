@@ -8,7 +8,7 @@
 	--pa-shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 20px rgb(15 23 42 / 0.06);
 	--pa-heading: #0f172a; // dark navy
 	--pa-label: #64748b; // slate gray
-	--pa-accent: var(--primary-color);
+	--pa-accent: var(--primary-color, #2563eb);
 	// tinted icon circles
 	--pa-tint-blue-bg: #e0edfe;
 	--pa-tint-blue-fg: #2563eb;
@@ -300,6 +300,36 @@
 
 	.pa-tab-panels {
 		position: relative;
+	}
+
+	.pa-tab-unsaved {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		border: 1px solid #fed7aa;
+		border-radius: var(--pa-radius-control);
+		background: #fff7ed;
+		padding: 0.75rem 0.9rem;
+		color: #9a3412;
+		font-size: 0.78rem;
+
+		div {
+			display: flex;
+			flex: 1;
+			flex-direction: column;
+			gap: 0.1rem;
+		}
+
+		button {
+			border: 1px solid #fdba74;
+			border-radius: 8px;
+			background: #fff;
+			color: #9a3412;
+			cursor: pointer;
+			padding: 0.4rem 0.65rem;
+			font: inherit;
+			font-weight: 650;
+		}
 	}
 
 	// keep-alive hiding for the map panel: visibility (not display) so the
