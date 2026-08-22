@@ -44,6 +44,7 @@ export interface ProcessingSummary {
 	berlinOpenDataEnrichedEvents: number;
 	trafficEnrichedEvents: number;
 	trafficMeasuredEvents: number;
+	roadDisruptionAffectedEvents: number;
 }
 
 export interface DimensionBucket {

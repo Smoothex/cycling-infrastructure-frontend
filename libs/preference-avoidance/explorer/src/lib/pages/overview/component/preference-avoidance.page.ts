@@ -471,6 +471,12 @@ export class PreferenceAvoidancePage {
 				icon: 'ph-traffic-signal',
 				tone: 'orange',
 			},
+			{
+				label: 'Events with road disruptions',
+				value: summary.roadDisruptionAffectedEvents,
+				icon: 'ph-warning',
+				tone: 'red',
+			},
 		];
 	});
 

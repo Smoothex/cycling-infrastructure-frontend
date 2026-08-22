@@ -78,6 +78,7 @@ describe('PreferenceAvoidancePage', () => {
 				berlinOpenDataEnrichedEvents: 0,
 				trafficEnrichedEvents: 0,
 				trafficMeasuredEvents: 0,
+				roadDisruptionAffectedEvents: 12,
 			}),
 		),
 		getSegments: jest.fn().mockReturnValue(of([])),
@@ -193,7 +194,13 @@ describe('PreferenceAvoidancePage', () => {
 		expect(chips[1].title).toContain('applicable at the event date');
 		expect(text).toContain('Weather data');
 		expect(text).toContain('Cycling infrastructure data');
+		expect(text).toContain('Events with road disruptions');
 		expect(text).not.toContain('Historical OSM data enriched');
+
+		const disruptionKpi = [
+			...fixture.nativeElement.querySelectorAll('.pa-kpi-tile'),
+		].find((tile: Element) => tile.textContent?.includes('Events with road disruptions'));
+		expect(disruptionKpi?.querySelector('strong')?.textContent?.trim()).toBe('12');
 	});
 
 	it('shows route comparisons as a dedicated tab without unrelated global filters', async () => {
