@@ -1,0 +1,40 @@
+<section class="mapillary-viewer-shell" aria-live="polite">
+	@if (status() === 'idle') {
+		<div class="mapillary-viewer__state">
+			<p>Select a segment to view nearby street-level imagery.</p>
+		</div>
+	} @else if (status() === 'loading') {
+		<div class="mapillary-viewer__state">
+			<span class="mapillary-viewer__spinner" aria-hidden="true"></span>
+			<p>Loading nearby Mapillary imagery…</p>
+		</div>
+	} @else if (status() === 'empty') {
+		<div class="mapillary-viewer__state">
+			<p>No Mapillary imagery is available within 50 metres of this segment.</p>
+		</div>
+	} @else if (status() === 'error') {
+		<div class="mapillary-viewer__state" role="alert">
+			<p>Mapillary imagery could not be loaded.</p>
+		</div>
+	}
+
+	@if (displayedImage(); as currentImage) {
+		<div class="mapillary-viewer__metadata">
+			@if (currentImage.temporalMatch === 'NEAREST_DATE' && year(); as selectedYear) {
+				<strong>No nearby imagery from {{ selectedYear }}.</strong>
+				<span>
+					Showing the closest available capture from
+					{{ currentImage.capturedAt | date: 'mediumDate' : 'UTC' }}.
+				</span>
+			} @else {
+				<span>Captured {{ currentImage.capturedAt | date: 'mediumDate' : 'UTC' }}</span>
+			}
+		</div>
+	}
+
+	<div
+		#mapillaryContainer
+		class="mapillary-container"
+		[class.mapillary-container--hidden]="status() !== 'ready'"
+	></div>
+</section>

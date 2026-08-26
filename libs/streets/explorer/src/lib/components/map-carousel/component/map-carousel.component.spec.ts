@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { provideStore } from '@ngxs/store';
@@ -15,6 +16,7 @@ describe('MapCarouselComponent', () => {
 		await TestBed.configureTestingModule({
 			imports: [MapCarouselComponent, TranslateModule.forRoot()],
 			providers: [
+				provideHttpClient(),
 				provideRouter([]),
 				provideStore([StreetDetailState]),
 

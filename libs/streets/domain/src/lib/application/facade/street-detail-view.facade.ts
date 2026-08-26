@@ -2,8 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Store } from '@ngxs/store';
 import { MethodRunService } from '@simra/common-domain';
 import { IResponseStreet } from '@simra/streets-common';
-import { Observable, of, take, tap } from 'rxjs';
-import { MapillaryRequestService } from '../../infrastructure/mapillary-request.service';
+import { of, take, tap } from 'rxjs';
 import { StreetsRequestService } from '../../infrastructure/streets-request.service';
 import { SetStreet, SetStreetIdLoading } from '../store/street-detail.actions';
 import { StreetDetailState } from '../store/street-detail.state';
@@ -13,7 +12,6 @@ import { StreetDetailState } from '../store/street-detail.state';
 })
 export class StreetDetailViewFacade {
 	private readonly _streetsRequestService = inject(StreetsRequestService);
-	private readonly _mapillaryRequestService = inject(MapillaryRequestService);
 	private readonly _methodRunService = inject(MethodRunService);
 
 	private readonly _store = inject(Store);
@@ -38,10 +36,6 @@ export class StreetDetailViewFacade {
 				this._store.dispatch(new SetStreet(street));
 			})
 		);
-	}
-
-	public getIdOfNearestImage(lat: number, lng: number): Observable<number> {
-		return this._mapillaryRequestService.getIdOfNearestImage(lat, lng);
 	}
 
 	public fetchLastMethodRun(methodName: string) {

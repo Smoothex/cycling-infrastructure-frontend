@@ -16,6 +16,8 @@ describe('mapillaryInterceptor', () => {
           provide: APP_CONFIG,
           useValue: {
             apiUrl: 'http://localhost:8080',
+            mapillaryUrl: 'https://graph.mapillary.com',
+            mapillaryAccessToken: 'mapillary-test-token',
           },
         },
         provideHttpClient(withInterceptors([mapillaryInterceptor])),
@@ -27,6 +29,8 @@ describe('mapillaryInterceptor', () => {
     httpClient = TestBed.inject(HttpClient);
   });
 
+  afterEach(() => httpTestingController.verify());
+
   it('should return the original request if the request URL does not start with the Mapillary API base segment', () => {
     const url = '/non-mapillary/resource';
 
@@ -34,5 +38,15 @@ describe('mapillaryInterceptor', () => {
 
     const req = httpTestingController.expectOne(url);
     expect(req.request.url).toEqual(url);
+  });
+
+  it('should route Mapillary requests through the configured API and append the access token', () => {
+    httpClient.get('/mapillary/images', { params: { fields: 'id,captured_at' } }).subscribe();
+
+    const req = httpTestingController.expectOne(
+      (candidate) => candidate.url === 'https://graph.mapillary.com/images',
+    );
+    expect(req.request.params.get('fields')).toBe('id,captured_at');
+    expect(req.request.params.get('access_token')).toBe('mapillary-test-token');
   });
 });
