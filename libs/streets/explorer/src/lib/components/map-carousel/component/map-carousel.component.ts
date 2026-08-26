@@ -13,7 +13,13 @@ import {
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
-import { EPin, MapPage, MapUtils } from '@simra/common-components';
+import {
+	EPin,
+	MapillaryViewerComponent,
+	MapillaryViewerStatus,
+	MapPage,
+	MapUtils,
+} from '@simra/common-components';
 import { IIncident } from '@simra/incidents-models';
 import { createIncidentMarker } from '@simra/incidents-ui';
 import { IEnrichedStreet } from '@simra/streets-common';
@@ -29,13 +35,12 @@ import {
 	streetsLayer,
 	streetsSource,
 } from '../models/const';
-import { MapillaryComponent } from '../../mapillar/component/mapillary.component';
 
 @Component({
 	selector: 'm-map-carousel',
 	imports: [
     TabsModule,
-    MapillaryComponent,
+	MapillaryViewerComponent,
     TabList,
     TabPanels,
     MapPage,
@@ -77,6 +82,23 @@ export class MapCarouselComponent {
 			.map(([lng, lat]) => [lat, lng]);
 	});
 
+	protected readonly mapillaryCoordinates = computed(() => {
+		const convertedCoordinates = this.convertedCoordinates();
+		if (!convertedCoordinates?.length) {
+			return undefined;
+		}
+
+		const geographicCoordinates = convertedCoordinates.map(([lat, lng]) => [lng, lat]);
+		if (geographicCoordinates.length === 1) {
+			const [lng, lat] = geographicCoordinates[0];
+			return { lat, lng };
+		}
+
+		const line = lineString(geographicCoordinates);
+		const [lng, lat] = along(line, length(line) / 2).geometry.coordinates;
+		return { lat, lng };
+	});
+
 	protected readonly _enrichedStreet$ = computed<IEnrichedStreet>(() => {
 		const street = this._street$();
 		const safetyMetrics = this._safetyMetrics$();
@@ -101,16 +123,13 @@ export class MapCarouselComponent {
 
 	constructor() {
 		effect(() => {
-			const convertedCoordinates = this.convertedCoordinates();
-			if (!convertedCoordinates) {
+			const center = this.mapillaryCoordinates();
+			if (!center) {
 				return;
 			}
 
-			const line = lineString(convertedCoordinates);
-			const midpoint = along(line, length(line) / 2);
-			const center = midpoint.geometry.coordinates;
 			this._router.navigate([], {
-				queryParams: { lat: center[0], lng: center[1], zoom: 16, isNavigated: true },
+				queryParams: { lat: center.lat, lng: center.lng, zoom: 16, isNavigated: true },
 				queryParamsHandling: 'merge',
 				replaceUrl: true,
 			});
@@ -243,6 +262,10 @@ export class MapCarouselComponent {
 
 	onMapLoaded(mlMap: maplibregl.Map) {
 		this._mlMap.set(mlMap);
+	}
+
+	onMapillaryStatusChange(status: MapillaryViewerStatus): void {
+		this.hasMapillaryImage.set(status === 'ready');
 	}
 
 	protected readonly times = times;

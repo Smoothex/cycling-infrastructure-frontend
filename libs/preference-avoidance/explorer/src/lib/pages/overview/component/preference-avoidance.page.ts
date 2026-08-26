@@ -10,7 +10,7 @@ import {
 	ViewEncapsulation,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MapPage } from '@simra/common-components';
+import { MapillaryViewerComponent, MapPage } from '@simra/common-components';
 import { APP_CONFIG } from '@simra/common-models';
 import {
 	AnalyticsFilters,
@@ -31,7 +31,7 @@ import {
 	TrafficDetectorsResponse,
 } from '@simra/preference-avoidance-common';
 import { PreferenceAvoidanceAnalysisFacade } from '@simra/preference-avoidance-domain';
-import { circle } from '@turf/turf';
+import { along, circle, length, lineString } from '@turf/turf';
 import { LineString, MultiLineString, Point, Polygon } from 'geojson';
 import * as maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
@@ -142,7 +142,7 @@ function registerPmtilesProtocol(): void {
 }
 
 type EventFilter = 'ALL' | SegmentEventType;
-type PanelViewMode = 'INFO' | 'EVENTS';
+type PanelViewMode = 'INFO' | 'EVENTS' | 'STREET_VIEW';
 type MapBaseStyle = 'MAP' | 'SATELLITE';
 type ExplorerTab = 'MAP' | 'ANALYTICS' | 'SEGMENTS' | 'ROUTE_COMPARISONS';
 
@@ -309,6 +309,7 @@ const processedRideStatus = 'PROCESSED';
 	imports: [
 		FormsModule,
 		MapPage,
+		MapillaryViewerComponent,
 		Card,
 		Checkbox,
 		Popover,
@@ -418,6 +419,7 @@ export class PreferenceAvoidancePage {
 	protected readonly panelViewOptions: { label: string; value: PanelViewMode }[] = [
 		{ label: 'General', value: 'INFO' },
 		{ label: 'Events', value: 'EVENTS' },
+		{ label: 'Street View', value: 'STREET_VIEW' },
 	];
 	protected readonly mapBaseStyleOptions: { label: string; value: MapBaseStyle }[] = [
 		{ label: 'Map', value: 'MAP' },
@@ -846,6 +848,25 @@ export class PreferenceAvoidancePage {
 
 		const segments = this.segmentPool.value() ?? [];
 		return segments.find((currentSegment) => currentSegment.id === segmentId);
+	});
+
+	protected readonly selectedSegmentMidpoint = computed<
+		{ latitude: number; longitude: number } | undefined
+	>(() => {
+		const coordinates = this.selectedSegment()?.geometry?.coordinates;
+		if (!coordinates?.length) {
+			return undefined;
+		}
+
+		if (coordinates.length === 1) {
+			const [longitude, latitude] = coordinates[0];
+			return { latitude, longitude };
+		}
+
+		const segmentLine = lineString(coordinates);
+		const midpoint = along(segmentLine, length(segmentLine) / 2);
+		const [longitude, latitude] = midpoint.geometry.coordinates;
+		return { latitude, longitude };
 	});
 
 	protected readonly inspectorIdentity = computed<

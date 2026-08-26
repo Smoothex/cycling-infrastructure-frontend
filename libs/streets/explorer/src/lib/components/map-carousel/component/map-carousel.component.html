@@ -10,7 +10,11 @@
 			}
 		</p-tabpanel>
 		<p-tabpanel value="1">
-			<a-mapillary (hasMapillaryImage)="this.hasMapillaryImage.set($event)"></a-mapillary>
+			<t-mapillary-viewer
+				[latitude]="mapillaryCoordinates()?.lat"
+				[longitude]="mapillaryCoordinates()?.lng"
+				(statusChange)="onMapillaryStatusChange($event)"
+			/>
 		</p-tabpanel>
 	</p-tabpanels>
 </p-tabs>

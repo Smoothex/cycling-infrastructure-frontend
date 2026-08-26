@@ -541,7 +541,17 @@
 						</div>
 						} @else {
 						<p class="empty-state">No event details available for this segment.</p>
-						} } } @else if (selectedSegmentId()) {
+						} } @else if (selectedPanelView() === 'STREET_VIEW') {
+						@if (selectedSegmentMidpoint(); as midpoint) {
+						<t-mapillary-viewer
+							[latitude]="midpoint.latitude"
+							[longitude]="midpoint.longitude"
+							[year]="selectedYear()"
+						/>
+						} @else {
+						<p class="empty-state">This segment has no geometry for Street View.</p>
+						}
+						} } @else if (selectedSegmentId()) {
 						<p-skeleton height="18rem"></p-skeleton>
 						} @else {
 						<div class="inspector-empty-state">

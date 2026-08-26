@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component, input, output, WritableSignal } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import { MapPage } from '@simra/common-components';
+import { MapillaryViewerComponent, MapPage } from '@simra/common-components';
 import { APP_CONFIG } from '@simra/common-models';
 import {
 	CorridorRanking,
@@ -26,6 +27,17 @@ class MapPageStubComponent {
 	readonly mapReady = output<never>();
 }
 
+@Component({
+	selector: 't-mapillary-viewer',
+	standalone: true,
+	template: '',
+})
+class MapillaryViewerStubComponent {
+	readonly latitude = input<number | undefined>();
+	readonly longitude = input<number | undefined>();
+	readonly year = input<number | undefined>();
+}
+
 interface TestablePreferenceAvoidancePage {
 	selectedYear: WritableSignal<number | undefined>;
 	selectedRideIntent: WritableSignal<string | undefined>;
@@ -35,8 +47,9 @@ interface TestablePreferenceAvoidancePage {
 	selectedTab: WritableSignal<ExplorerTab>;
 	routeReviewDirty: WritableSignal<boolean>;
 	pendingTab: WritableSignal<ExplorerTab | undefined>;
-	selectedPanelView: WritableSignal<'INFO' | 'EVENTS'>;
+	selectedPanelView: WritableSignal<'INFO' | 'EVENTS' | 'STREET_VIEW'>;
 	selectedSegmentId: WritableSignal<number | undefined>;
+	_selectionPinned: WritableSignal<boolean>;
 	selectedCorridorSegmentIds: WritableSignal<number[]>;
 	rideDetailItems(event: SegmentEvent): { label: string; value: string }[];
 	eventPreviewChips(event: SegmentEvent): { label: string; value: string }[];
@@ -114,6 +127,7 @@ describe('PreferenceAvoidancePage', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
+		facade.getSegment.mockReturnValue(of(undefined));
 		await TestBed.configureTestingModule({
 			imports: [PreferenceAvoidancePage],
 			providers: [
@@ -126,8 +140,8 @@ describe('PreferenceAvoidancePage', () => {
 			],
 		})
 			.overrideComponent(PreferenceAvoidancePage, {
-				remove: { imports: [MapPage] },
-				add: { imports: [MapPageStubComponent] },
+				remove: { imports: [MapPage, MapillaryViewerComponent] },
+				add: { imports: [MapPageStubComponent, MapillaryViewerStubComponent] },
 			})
 			.compileComponents();
 
@@ -173,6 +187,35 @@ describe('PreferenceAvoidancePage', () => {
 			fixture.nativeElement.querySelector('.pa-enrichment-chip--selected .ph-check'),
 		).not.toBeNull();
 		expect(clearButton.disabled).toBe(false);
+	});
+
+	it('shows year-aware Street View for the selected segment midpoint', async () => {
+		facade.getSegment.mockReturnValue(
+			of({
+				id: 42,
+				streetName: 'Test street',
+				geometry: {
+					type: 'LineString',
+					coordinates: [
+						[13.4, 52.52],
+						[13.42, 52.52],
+					],
+				},
+			}),
+		);
+		component.selectedYear.set(2022);
+		component._selectionPinned.set(true);
+		component.selectedSegmentId.set(42);
+		component.selectedPanelView.set('STREET_VIEW');
+		fixture.detectChanges();
+		await fixture.whenStable();
+		fixture.detectChanges();
+
+		const viewer = fixture.debugElement.query(By.directive(MapillaryViewerStubComponent))
+			.componentInstance as MapillaryViewerStubComponent;
+		expect(viewer.latitude()).toBeCloseTo(52.52, 5);
+		expect(viewer.longitude()).toBeCloseTo(13.41, 5);
+		expect(viewer.year()).toBe(2022);
 	});
 
 	it('groups event data filters under concise labels', () => {
