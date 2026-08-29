@@ -37,6 +37,7 @@ type ReviewStateFilter = 'ALL' | 'REVIEWED' | 'UNREVIEWED';
 type AutomatedClassFilter = 'ALL' | RouteComparisonType;
 type MapBaseStyle = 'MAP' | 'SATELLITE';
 type PendingNavigation = { kind: 'RIDE'; rideId: string } | { kind: 'MODE'; mode: ReviewerMode };
+type DetailRequest = { rideId: string; directLookup: boolean };
 
 interface Choice<T> {
 	value: T;
@@ -53,6 +54,7 @@ const preferredSignalLayer = 'route-review-preferred-layer';
 const avoidedSignalLayer = 'route-review-avoided-layer';
 const endpointSource = 'route-review-endpoints-source';
 const endpointLayer = 'route-review-endpoints-layer';
+const rideIdPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 const routeClassDefinitions: Record<
 	RouteComparisonType,
@@ -168,6 +170,9 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 
 	protected readonly mode = signal<ReviewerMode>('EXPLORE');
 	protected readonly selectedRideId = signal<string | undefined>(undefined);
+	protected readonly directLookupRideId = signal<string | undefined>(undefined);
+	protected readonly rideIdQuery = signal('');
+	protected readonly rideIdLookupError = signal<string | undefined>(undefined);
 	protected readonly automatedClassFilter = signal<AutomatedClassFilter>('ALL');
 	protected readonly reviewStateFilter = signal<ReviewStateFilter>('ALL');
 	protected readonly selectedMapBaseStyle = signal<MapBaseStyle>('MAP');
@@ -201,15 +206,34 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	protected readonly sample = resource<RouteReviewSample | undefined, unknown>({
 		loader: async () => firstValueFrom(this._facade.getRouteReviewSample()),
 	});
+	protected readonly loadedSample = computed(() =>
+		this.sample.hasValue() ? this.sample.value() : undefined,
+	);
 
-	protected readonly detail = resource<RouteReviewDetail | undefined, string | undefined>({
-		params: () => this.selectedRideId(),
-		loader: async ({ params: rideId }) =>
-			rideId ? firstValueFrom(this._facade.getRouteReviewDetail(rideId)) : undefined,
+	protected readonly detail = resource<RouteReviewDetail | undefined, DetailRequest | undefined>({
+		params: () => {
+			const rideId = this.selectedRideId();
+			return rideId
+				? { rideId, directLookup: this.directLookupRideId() === rideId }
+				: undefined;
+		},
+		loader: async ({ params }) => {
+			if (!params) {
+				return undefined;
+			}
+			return firstValueFrom(
+				params.directLookup
+					? this._facade.getRouteComparisonDetail(params.rideId)
+					: this._facade.getRouteReviewDetail(params.rideId),
+			);
+		},
 	});
+	protected readonly loadedDetail = computed(() =>
+		this.detail.hasValue() ? this.detail.value() : undefined,
+	);
 
 	protected readonly navigationItems = computed(() => {
-		const items = this.sample.value()?.items ?? [];
+		const items = this.loadedSample()?.items ?? [];
 		return items.filter((item) => {
 			const classMatches =
 				this.automatedClassFilter() === 'ALL' ||
@@ -224,7 +248,12 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	});
 
 	protected readonly selectedItem = computed(() =>
-		this.sample.value()?.items.find((item) => item.rideId === this.selectedRideId()),
+		this.loadedSample()?.items.find((item) => item.rideId === this.selectedRideId()),
+	);
+	protected readonly isDirectLookup = computed(
+		() =>
+			this.directLookupRideId() !== undefined &&
+			this.directLookupRideId() === this.selectedRideId(),
 	);
 
 	protected readonly navigationIndex = computed(() =>
@@ -232,11 +261,11 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	);
 
 	protected readonly unreviewedCount = computed(
-		() => this.sample.value()?.items.filter((item) => !item.review).length ?? 0,
+		() => this.loadedSample()?.items.filter((item) => !item.review).length ?? 0,
 	);
 
 	protected readonly validationSummary = computed(() => {
-		const reviewedItems = (this.sample.value()?.items ?? []).filter((item) => item.review);
+		const reviewedItems = (this.loadedSample()?.items ?? []).filter((item) => item.review);
 		const comparableItems = reviewedItems.filter((item) =>
 			this.isAutomatedClass(item.review?.manualClassification),
 		);
@@ -279,7 +308,7 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 		effect(() => this.dirtyChange.emit(this.draftDirty()));
 
 		effect(() => {
-			const items = this.sample.value()?.items;
+			const items = this.loadedSample()?.items;
 			if (!items?.length || this.selectedRideId()) {
 				return;
 			}
@@ -287,7 +316,7 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 		});
 
 		effect(() => {
-			const detail = this.detail.value();
+			const detail = this.loadedDetail();
 			if (!detail || this._draftRideId === detail.rideId) {
 				return;
 			}
@@ -301,9 +330,22 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 
 		effect(() => {
 			const map = this._map();
-			const detail = this.detail.value();
+			const detail = this.loadedDetail();
 			if (map && detail && map.isStyleLoaded()) {
 				this.renderRouteComparison(map, detail);
+			}
+		});
+
+		effect(() => {
+			if (!this.isDirectLookup()) {
+				return;
+			}
+			if (this.detail.error()) {
+				this.rideIdLookupError.set(
+					'Ride not found or it has no completed route comparison.',
+				);
+			} else if (this.loadedDetail()) {
+				this.rideIdLookupError.set(undefined);
 			}
 		});
 	}
@@ -345,6 +387,47 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	protected onReviewStateFilterChange(value: ReviewStateFilter): void {
 		this.reviewStateFilter.set(value);
 		this.selectFirstVisibleItem();
+	}
+
+	protected onRideIdQueryChange(value: string): void {
+		this.rideIdQuery.set(value);
+		this.rideIdLookupError.set(undefined);
+	}
+
+	protected onRideIdLookup(): void {
+		const rideId = this.rideIdQuery().trim().toLowerCase();
+		if (!rideIdPattern.test(rideId)) {
+			this.rideIdLookupError.set('Enter a complete ride ID in UUID format.');
+			return;
+		}
+
+		this.rideIdLookupError.set(undefined);
+		const sampleItem = this.loadedSample()?.items.find(
+			(item) => item.rideId.toLowerCase() === rideId,
+		);
+		if (sampleItem) {
+			this.requestNavigation({ kind: 'RIDE', rideId: sampleItem.rideId });
+			return;
+		}
+
+		this.applyRideSelection(rideId, true);
+	}
+
+	protected onReturnToSample(): void {
+		let first = this.navigationItems()[0];
+		if (!first) {
+			this.automatedClassFilter.set('ALL');
+			this.reviewStateFilter.set('ALL');
+			first = this.loadedSample()?.items[0];
+		}
+		if (first) {
+			this.requestNavigation({ kind: 'RIDE', rideId: first.rideId });
+			return;
+		}
+
+		this.directLookupRideId.set(undefined);
+		this.selectedRideId.set(undefined);
+		this.rideIdLookupError.set(undefined);
 	}
 
 	protected onPrevious(): void {
@@ -456,7 +539,7 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 		}
 		map.setStyle(this.mapBaseStyleUrl(style));
 		map.once('style.load', () => {
-			const detail = this.detail.value();
+			const detail = this.loadedDetail();
 			if (detail) {
 				this.renderRouteComparison(map, detail);
 			}
@@ -517,7 +600,7 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 		automatedClassification: RouteComparisonType,
 		manualClassification: ManualRouteComparisonClassification,
 	): number {
-		return (this.sample.value()?.items ?? []).filter(
+		return (this.loadedSample()?.items ?? []).filter(
 			(item) =>
 				item.automatedClassification === automatedClassification &&
 				item.review?.manualClassification === manualClassification,
@@ -549,6 +632,9 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	private applyMode(mode: ReviewerMode): void {
 		this.mode.set(mode);
 		this.reviewStateFilter.set(mode === 'REVIEW' ? 'UNREVIEWED' : 'ALL');
+		if (mode === 'REVIEW' && !this.navigationItems().length) {
+			this.reviewStateFilter.set('ALL');
+		}
 		this.saveMessage.set(undefined);
 		this.selectFirstVisibleItem();
 	}
@@ -560,8 +646,15 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 		}
 	}
 
-	private applyRideSelection(rideId: string): void {
+	private applyRideSelection(rideId: string, directLookup = false): void {
+		this.directLookupRideId.set(directLookup ? rideId : undefined);
+		if (!directLookup) {
+			this.rideIdLookupError.set(undefined);
+		}
 		if (rideId === this.selectedRideId()) {
+			if (directLookup) {
+				this.detail.reload();
+			}
 			return;
 		}
 		this._draftRideId = undefined;
@@ -592,7 +685,7 @@ export class RouteComparisonReviewerComponent implements OnDestroy {
 	}
 
 	private nextUnreviewedRide(currentRideId: string): RouteReviewSampleItem | undefined {
-		const sampleItems = this.sample.value()?.items ?? [];
+		const sampleItems = this.loadedSample()?.items ?? [];
 		const classFilter = this.automatedClassFilter();
 		const allCandidates = sampleItems.filter(
 			(item) => !item.review && item.rideId !== currentRideId,

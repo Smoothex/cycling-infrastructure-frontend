@@ -97,6 +97,10 @@ export class PreferenceAvoidanceAnalysisFacade {
 		return this._routeReviewRequestService.getDetail(rideId);
 	}
 
+	public getRouteComparisonDetail(rideId: string) {
+		return this._routeReviewRequestService.getRideDetail(rideId);
+	}
+
 	public saveRouteReview(rideId: string, request: SaveRouteReviewRequest) {
 		return this._routeReviewRequestService.saveReview(rideId, request);
 	}

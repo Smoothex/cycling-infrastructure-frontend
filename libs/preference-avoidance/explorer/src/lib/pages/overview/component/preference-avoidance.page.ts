@@ -336,7 +336,6 @@ export class PreferenceAvoidancePage {
 	private readonly _selectedSegmentTileProperties = signal<SegmentTileProperties | undefined>(
 		undefined,
 	);
-	private readonly _selectionPinned = signal(false);
 	private readonly _segmentDetailCache = new Map<number, SegmentSummary>();
 	private readonly _addressCache = new Map<number, string | undefined>();
 	private _mapHandlersRegistered = false;
@@ -988,33 +987,6 @@ export class PreferenceAvoidancePage {
 		});
 
 		effect(() => {
-			const selectedId = this.selectedSegmentId();
-			const filters = this.selectedEnrichmentFilters();
-			const segmentFilteringActive = this.segmentFiltersActive();
-			if (
-				!selectedId ||
-				!segmentFilteringActive ||
-				this._selectionPinned() ||
-				this.segmentPool.isLoading()
-			) {
-				return;
-			}
-
-			const tileProperties = this._selectedSegmentTileProperties();
-			const selectedSegmentVisible =
-				this.filteredSegments().some((segment) => segment.id === selectedId) ||
-				this.matchedOverlayFeatures().some(
-					(feature) => feature.properties?.['id'] === selectedId,
-				) ||
-				(!this.matchedOverlayActive() &&
-					tileProperties !== undefined &&
-					this.tilePropertiesMatchFilters(tileProperties, filters, this.selectedYear()));
-			if (!selectedSegmentVisible) {
-				this.selectSegment(undefined);
-			}
-		});
-
-		effect(() => {
 			const map = this._map();
 			this._trafficDetectorFeatures = this.showTrafficSensors()
 				? this.trafficDetectorFeatures()
@@ -1173,9 +1145,6 @@ export class PreferenceAvoidancePage {
 		}
 		if (street.topSegmentId != null) {
 			this.selectSegment(street.topSegmentId);
-			// the street's top segment came from the analytics filters, not the
-			// segment pool, so keep it selected even if it is outside the pool
-			this._selectionPinned.set(true);
 		}
 
 		if (
@@ -2808,7 +2777,6 @@ export class PreferenceAvoidancePage {
 			this.selectedEventId.set(undefined);
 			this.selectedInfoPopoverId.set(undefined);
 			this._selectedSegmentTileProperties.set(undefined);
-			this._selectionPinned.set(false);
 		}
 		this.selectedSegmentId.set(segmentId);
 	}

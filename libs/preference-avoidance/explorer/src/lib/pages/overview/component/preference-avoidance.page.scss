@@ -451,10 +451,16 @@
 		}
 	}
 
-	// search bar on the map: capped so it leaves room for the nav/fullscreen
-	// controls stacked in the top-right corner
+	// Give the percentage-based geocoder width the full map as its containing block.
+	// MapLibre otherwise shrink-wraps this corner around its controls, making 60%
+	// progressively narrower than the geocoder's content.
+	.maplibregl-ctrl-top-right {
+		left: 0;
+	}
+
+	// Keep the search field readable while retaining a safe inset on narrow maps.
 	.maplibregl-ctrl-geocoder {
-		width: min(22rem, 60%);
+		width: min(22rem, calc(100% - 1.25rem));
 
 		form {
 			width: 100% !important;

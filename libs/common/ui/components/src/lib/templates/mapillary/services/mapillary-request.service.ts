@@ -5,6 +5,9 @@ import { map, Observable, of, switchMap } from 'rxjs';
 const defaultSearchRadiusMeters = 50;
 const maximumResults = 2000;
 const earthRadiusMeters = 6_371_000;
+const millisecondsPerYear = 365.25 * 24 * 60 * 60 * 1000;
+const recencyWeightMetersPerYear = 5;
+const maximumRecencyPenaltyMeters = 20;
 
 export type MapillaryTemporalMatch = 'IN_RANGE' | 'NEAREST_DATE';
 
@@ -63,7 +66,7 @@ export class MapillaryRequestService {
 
 		return this.requestImages(latitude, longitude, radiusMeters, from, to).pipe(
 			switchMap((images) => {
-				const nearestImage = this.selectSpatiallyNearest(images);
+				const nearestImage = this.selectSpatiallyAndTemporallyNearest(images);
 				if (nearestImage || !hasTemporalRange || !options.fallbackToNearestDate) {
 					return of(this.toMatch(nearestImage, 'IN_RANGE'));
 				}
@@ -139,20 +142,31 @@ export class MapillaryRequestService {
 			id: String(image.id),
 			coordinates: [imageLongitude, imageLatitude],
 			capturedAt,
-			distanceMeters: this.distanceMeters(
-				latitude,
-				longitude,
-				imageLatitude,
-				imageLongitude,
-			),
+			distanceMeters: this.distanceMeters(latitude, longitude, imageLatitude, imageLongitude),
 		};
 	}
 
-	private selectSpatiallyNearest(
+	private selectSpatiallyAndTemporallyNearest(
 		images: NormalizedMapillaryImage[],
 	): NormalizedMapillaryImage | undefined {
+		if (!images.length) {
+			return undefined;
+		}
+
+		const latestCaptureTime = Math.max(...images.map((image) => image.capturedAt.getTime()));
+		const score = (image: NormalizedMapillaryImage): number => {
+			const ageInYears =
+				(latestCaptureTime - image.capturedAt.getTime()) / millisecondsPerYear;
+			const recencyPenaltyMeters = Math.min(
+				ageInYears * recencyWeightMetersPerYear,
+				maximumRecencyPenaltyMeters,
+			);
+			return image.distanceMeters + recencyPenaltyMeters;
+		};
+
 		return [...images].sort(
 			(left, right) =>
+				score(left) - score(right) ||
 				left.distanceMeters - right.distanceMeters ||
 				right.capturedAt.getTime() - left.capturedAt.getTime(),
 		)[0];
