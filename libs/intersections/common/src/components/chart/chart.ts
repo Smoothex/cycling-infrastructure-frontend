@@ -1,4 +1,4 @@
-import { Component, input, computed, signal, effect, untracked, linkedSignal, WritableSignal, inject } from '@angular/core';
+import { Component, input, computed, signal, effect, untracked, linkedSignal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { Card } from 'primeng/card';
@@ -6,13 +6,14 @@ import { Button } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { Skeleton } from 'primeng/skeleton';
 import {
-	PrecomputedPageableRequest,
-	PagedProperties,
 	PageableRequest,
+	PrecomputedRequest,
 	ChartConfig,
 	ChartFilter,
-	TimeCategory
+	TimeCategory,
+	ScrollProperties
 } from '../../lib/common/interfaces';
+import { ChartDataHandler } from './chartDataHandler';
 import {
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, 
@@ -38,306 +39,196 @@ const TimeCatergoryLabelTranslations: Record<TimeCategory, any> = {
 	imports: [FormsModule, Card, ChartModule, Skeleton, Button, HistogramChartComponent, BoxplotChartComponent, HeatmapChartComponent, HeatmapStartTimeChartComponent, ScatterPlotComponent, ScatterPlotStartTimeComponent],
 	templateUrl: './chart.html'
 })
-export class IntersectionChartComponent<T, R extends PageableRequest | PrecomputedPageableRequest> {
+export class IntersectionChartComponent<T, R extends PageableRequest | PrecomputedRequest> {
 	public readonly header = input.required<string>();
     public readonly config = input.required<ChartConfig<T>>();
 
 	public readonly request = input.required<R | null>();
-	public readonly requestWithoutSorting = computed(() => {
-		const r = this.request();
-		if (!r) return null;
-		const newRequest = { ...r };
-		newRequest.sort = undefined;
-		return newRequest;
-	})
-	public readonly fetchFn = input.required<(req: R, page: number, size: number) => Promise<PagedProperties<T>>>();
+	public readonly fetchFn = input.required<(req: R, lastId: number | undefined, pageSize: number) => Promise<ScrollProperties<T>>>();
+	public readonly countFn = input.required<(req: R) => Promise<number>>();
 
-	public readonly requestValue = computed(() => {
-		const request = this.requestWithoutSorting();
-		if (!this.compare() || !request) return request;
-		const timeCategory = this.timeCategory();
-		if (timeCategory in request) {
-			const newRequest = <PrecomputedPageableRequest> {...request };
-			(newRequest[timeCategory] as any) = this.currentTimeCategorySignals().timeCategoryValue();
-			return <R> newRequest;
-		}
-		return request;
+	private readonly translate = inject(TranslateService);
+    private readonly PAGE_SIZE = 1000;
+
+	protected readonly primaryDataset = computed(() => {
+		const fetch = this.fetchFn();
+		const count = this.countFn();
+		return new ChartDataHandler<T, R>(fetch, count, this.PAGE_SIZE);
 	});
-    private readonly pageSize = 500;
-	protected readonly pagedProperties = signal<PagedProperties<T>| null>(null);
-	protected readonly totalElements = computed(() => this.getTotalElements(this.pagedProperties()));
-    protected readonly loading = signal(false);
-	protected readonly accumulatedData = signal<T[]>([]);
-	readonly showScatter = computed(() => this.accumulatedData().length < 300);
-
+    protected readonly compareDataset = computed(() => {
+		const fetch = this.fetchFn();
+		const count = this.countFn();
+		return new ChartDataHandler<T, R>(fetch, count, this.PAGE_SIZE);
+	});
 
 	protected filterMin = signal<number | null>(null);
     protected filterMax = signal<number | null>(null);
-	protected filterProperty = linkedSignal(() => this.config().defaultProperty2);
-	protected filterPropertyLabel = computed(() => {
-		for (const el of this.config().selectableProperties) if (el.value === this.filterProperty()) return el.label;
-		return "";
-	});
-	protected readonly filteredData = computed<T[]>(() => this.filterData(this.accumulatedData(), this.filterProperty(), this.filterMin(), this.filterMax()));
-	protected total = computed<number>(() => this.accumulatedData().length);
-	protected excluded = computed<number>(() => this.accumulatedData().length - this.filteredData().length);
-	protected chartFilter = computed<ChartFilter<T>>(() => {
-		const currentTimeCategorySignals = this.currentTimeCategorySignals();
-		return {
-			min: this.filterMin,
-			max: this.filterMax,
-			onProperty: this.filterProperty,
-			onPropertyLabel: this.filterPropertyLabel, 
-			totalElements: this.total,
-			excludedElements: this.excluded,
-			selectableProperties: this.config().selectableProperties,
-			...(this.compare() && {
-				timeCategory: this.timeCategory,
-				timeCategoryValue: currentTimeCategorySignals.timeCategoryValue,
-				timeCategoryCompare: currentTimeCategorySignals.timeCategoryCompare
-			})
-		}
-	});
+    protected filterProperty = linkedSignal(() => this.config().defaultProperty2);
+    protected propertyChart = linkedSignal(() => this.config().defaultProperty);
+    
+    // Category setups
+    protected timeCategory = signal<TimeCategory>("year");
+    protected isCompareMode = computed(() => this.config().isAggregated ?? false);
+
+    // Dynamic Category Signals
+    protected timeCategoryYear = linkedSignal<EYear>(() => (this.request() as any)?.year ?? EYear.ALL);
+    protected timeCategoryYearCompare = signal<EYear>(EYear.Y2020);
+    protected timeCategoryWeekDay = linkedSignal<EWeekDays>(() => (this.request() as any)?.weekDay ?? EWeekDays.ALL_WEEK);
+    protected timeCategoryWeekDayCompare = signal<EWeekDays>(EWeekDays.WEEKEND);
+    protected timeCategoryTrafficTime = linkedSignal<ETrafficTimes>(() => (this.request() as any)?.trafficTime ?? ETrafficTimes.ALL_DAY);
+    protected timeCategoryTrafficTimeCompare = signal<ETrafficTimes>(ETrafficTimes.MID_DAY);
+
+    protected currentCategoryValues = computed(() => {
+        const mappings = {
+            year: { value: this.timeCategoryYear, compare: this.timeCategoryYearCompare },
+            weekDay: { value: this.timeCategoryWeekDay, compare: this.timeCategoryWeekDayCompare },
+            trafficTime: { value: this.timeCategoryTrafficTime, compare: this.timeCategoryTrafficTimeCompare }
+        };
+        return mappings[this.timeCategory()];
+    });
+
+    // Requests resolution
+    public readonly requestValue = computed(() => this.overrideTimeCategoryRequest(this.request(), this.currentCategoryValues().value()));
+    public readonly requestCompare = computed(() => this.overrideTimeCategoryRequest(this.request(), this.currentCategoryValues().compare()));
+
+    // Processed Data Pipelines
+    protected readonly primaryFilteredData = computed(() => this.applyLocalFilters(this.primaryDataset().accumulatedData()));
+    protected readonly compareFilteredData = computed(() => this.applyLocalFilters(this.compareDataset().accumulatedData()));
+    
+    protected readonly showScatter = computed(() => this.primaryDataset().accumulatedData().length < 300);
+    protected readonly isLoading = computed(() => this.primaryDataset().loading() || this.compareDataset().loading());
+
+    protected readonly label = computed(() => this.config().selectableProperties.find(p => p.value === this.propertyChart())?.label ?? "");
+    protected readonly compareLabel = computed(() => this.compareConfig()?.selectableProperties.find(p => p.value === this.compareProperty())?.label ?? "");
+
 	
+	protected chartFilter = computed<ChartFilter<T>>(() => ({
+        min: this.filterMin,
+        max: this.filterMax,
+        onProperty: this.filterProperty,
+        onPropertyLabel: computed(() => this.config().selectableProperties.find(p => p.value === this.filterProperty())?.label ?? ""),
+        totalElements: computed(() => this.primaryDataset().accumulatedData().length),
+        excludedElements: computed(() => this.primaryDataset().accumulatedData().length - this.primaryFilteredData().length),
+        selectableProperties: this.config().selectableProperties,
+        ...(this.isCompareMode() && {
+            timeCategory: this.timeCategory,
+            timeCategoryValue: this.currentCategoryValues().value,
+            timeCategoryCompare: this.currentCategoryValues().compare
+        })
+    }));
 
-	protected propertyChart = linkedSignal(() => this.config().defaultProperty);
-	protected readonly label = computed(() => {
-		for (const el of this.config().selectableProperties) if (el.value === this.propertyChart()) return el.label;
-		return "";
-	});
-
-	protected timeCategory = signal<TimeCategory>("year");
-	protected timeCategoryYear = linkedSignal<EYear>(() => {
-		const request = this.requestWithoutSorting();
-		if (request && "year" in request) return request.year as EYear;
-		return EYear.ALL;
-	});
-	protected timeCategoryYearCompare = signal<EYear>(EYear.Y2020);
-	protected timeCategoryWeekDay = linkedSignal<EWeekDays>(() => {
-		const request = this.requestWithoutSorting();
-		if (request && "weekDay" in request) return request.weekDay as EWeekDays;
-		return EWeekDays.ALL_WEEK;
-	});
-	protected timeCategoryWeekDayCompare = signal<EWeekDays>(EWeekDays.WEEKEND);
-	protected timeCategoryTrafficTime = linkedSignal<ETrafficTimes>(() => {
-		const request = this.requestWithoutSorting();
-		if (request && "trafficTime" in request) return request.trafficTime as ETrafficTimes;
-		return ETrafficTimes.ALL_DAY;
-	});
-	protected timeCategoryTrafficTimeCompare = signal<ETrafficTimes>(ETrafficTimes.MID_DAY);
-	protected currentTimeCategorySignals = computed(() => {
-		const timeCategorySignals: Record<TimeCategory, { 
-			timeCategoryValue: WritableSignal<EYear> | WritableSignal<EWeekDays> | WritableSignal<ETrafficTimes>;
-			timeCategoryCompare: WritableSignal<EYear> | WritableSignal<EWeekDays> | WritableSignal<ETrafficTimes>;
-		}> = {
-			year: {
-				timeCategoryValue: this.timeCategoryYear,
-				timeCategoryCompare: this.timeCategoryYearCompare
-			},
-			weekDay: {
-				timeCategoryValue: this.timeCategoryWeekDay,
-				timeCategoryCompare: this.timeCategoryWeekDayCompare
-			},
-			trafficTime: {
-				timeCategoryValue: this.timeCategoryTrafficTime,
-				timeCategoryCompare: this.timeCategoryTrafficTimeCompare
-			}
-		}
-		return timeCategorySignals[this.timeCategory()];
-	});
-	protected readonly compare = computed(() => this.config().isAggregated ?? false);
-	protected readonly comparePagedProperties = signal<PagedProperties<T> | null>(null);
-	protected readonly compareTotalElements = computed(() => this.getTotalElements(this.comparePagedProperties()));
-	protected readonly compareAccumulatedData = signal<T[]>([]);
-	protected readonly compareFilteredData = computed<T[]>(() => this.filterData(this.compareAccumulatedData(), this.filterProperty(), this.filterMin(), this.filterMax()));
-	public readonly requestCompare = computed(() => {
-		const request = this.request();
-		if (!this.compare() || !request) return request;
-		const timeCategory = this.timeCategory();
-		if (timeCategory in request) {
-			const newRequest = <PrecomputedPageableRequest> {...request };
-			(newRequest[timeCategory] as any) = this.currentTimeCategorySignals().timeCategoryCompare();
-			return  <R> newRequest;
-		}
-		return request;
-	});
-	protected readonly compareConfig = computed<ChartConfig<Record<string, any>> | null>(() => {
-		const config = this.config();
-		if (!this.compare() || !config || !this.config().canCompare) return null;
-		const timeCategory = this.timeCategory();
-		const translation = TimeCatergoryLabelTranslations[timeCategory] as any;
-        const labelMap: Record<string, string> = {};
-        for (const [key, value] of Object.entries(translation)) {
-            labelMap[key] = this.translate.instant((value as any).label);
-        }
-
-		const c1 = this.currentTimeCategorySignals().timeCategoryValue();
-		const c2 = this.currentTimeCategorySignals().timeCategoryCompare();
-
-		const l1 = labelMap[c1];
-		const l2 = labelMap[c2];
-
-		const options: ({value: string; label: string})[] = []; 
-		config.selectableProperties.forEach(option => {
-			options.push({label: `${l1}: ${option.label}`, value: `${c1}${String(option.value)}`})
-			options.push({label: `${l2}: ${option.label}`, value: `${c2}${String(option.value)}`})
-			options.push({ label: `Change ${l1} to ${l2}: ${option.label}`, value: `${c2}${c1}${String(option.value)}`})
-		})
-
-		return {
-			selectableProperties: options,
-			defaultProperty: `${c2}${c1}${String(config.defaultProperty)}`, 
-			defaultProperty2: `${c2}${c1}${String(config.defaultProperty2)}`,
-			aggregationLabel: config.aggregationLabel,
-			isAggregated: config.isAggregated,
-			idKey: config.idKey as string
-		};
-	})
-	protected readonly compareProperty = linkedSignal(() => this.compareConfig()?.defaultProperty || "");
-	protected readonly compareLabel = computed(() => {
-		const config = this.compareConfig();
-		if (!config) return "";
-		for (const el of config.selectableProperties) if (el.value === this.compareProperty()) return el.label;
-		return "";
-	});
-	protected readonly mergedCompareData = computed<Record<string, any>[]>(() => {
-		const config = this.config();
-		if (!this.compare() || !config || !this.config().canCompare) return [];
-
-		const idKey = config.idKey as string;
-		
-		const c1 = this.currentTimeCategorySignals().timeCategoryValue() as string;
-		const c2 = this.currentTimeCategorySignals().timeCategoryCompare() as string;
-
-		const segmentMap = new Map<number | string, Record<string, any>>();
-
-		const data1 = this.filteredData();
-		data1.forEach((item: any) => {
-			const id = item[idKey];
-
-			const entry: any = {
-				[idKey]: id 
-			}
-			config.selectableProperties.forEach(prop => {
-				const propStr = String(prop.value);
-				entry[`${c1}${propStr}`] = item[propStr];
-			});
-			segmentMap.set(id, entry);
-		});
-		const data2 = this.compareFilteredData();
-		data2.forEach((item: any) => {
-			const id = item[idKey];
-
-			if (segmentMap.has(id)) {
-                const entry: any = segmentMap.get(id)!;
-				config.selectableProperties.forEach(prop => {
-					const propStr = String(prop.value);
-					entry[`${c2}${propStr}`] = item[propStr];
-				});
-            }
-		});
-
-		const mergedArray = Array.from(segmentMap.values());
-		const filteredMergedArray: Record<string, any>[] = [];
-		
-		mergedArray.forEach(segment => {
-			let hasValidData = false;
-			config.selectableProperties.forEach(prop => {
-				const propStr = String(prop.value);
-				const val1 = segment[`${c1}${propStr}`];
-				const val2 = segment[`${c2}${propStr}`];
-
-				if (typeof val1 === 'number' && typeof val2 === 'number') {
-					segment[`${c2}${c1}${propStr}`] = val2 - val1;
-					hasValidData = true;
-				} else {
-					segment[`${c2}${c1}${propStr}`] = null;
-				}
-			});
-			if (hasValidData) filteredMergedArray.push(segment);
-		});
-
-		return filteredMergedArray;
-	});
-
-	private translate = inject(TranslateService);
 	constructor() {
-		effect(() => {
-			const request = this.requestValue();
-			const requestCompare = this.requestCompare();
-			if (!request || !requestCompare) return;
-			untracked(() => {
-				this.resetAndFetchAll(request, requestCompare);
-			});
-		})
-	}
+        effect(() => {
+            const req = this.requestValue();
+            const reqComp = this.requestCompare();
+            if (!req || !reqComp) return;
 
-	private async resetAndFetchAll(requestValue: R, requestCompare: R) {
-        await this.resetAndFetch(this.pagedProperties, this.accumulatedData, requestValue);
-		if (this.compare()) await this.resetAndFetch(this.comparePagedProperties, this.compareAccumulatedData, requestCompare);
+            untracked(() => {
+                this.primaryDataset().resetAndFetchFirstBatch(req);
+                this.primaryDataset().initializeCount(req);
+                
+                if (this.isCompareMode()) {
+                    this.compareDataset().resetAndFetchFirstBatch(reqComp);
+                    this.compareDataset().initializeCount(reqComp);
+                }
+            });
+        });
     }
 
-	private async resetAndFetch(props: WritableSignal<PagedProperties<T> | null>, data: WritableSignal<T[]>, request: R | null) {
-        data.set([]);
-        props.set(null);
-        await this.loadMore(props, data, request);
+	protected async loadAllData(): Promise<void> {
+        await this.primaryDataset().loadRemainingPages(this.requestValue());
+        if (this.isCompareMode()) {
+            await this.compareDataset().loadRemainingPages(this.requestCompare());
+        }
     }
 
-	protected async loadMore(props: WritableSignal<PagedProperties<T> | null>, data: WritableSignal<T[]>, request: R | null) {
-        if (this.loading() || !request) return;
+    private overrideTimeCategoryRequest(baseReq: R | null, value: any): R | null {
+        if (!baseReq) return null;
+        const category = this.timeCategory();
+        return (category in baseReq) ? { ...baseReq, [category]: value } : baseReq;
+    }
+
+    private applyLocalFilters(data: T[]): T[] {
+        const category = this.filterProperty();
+        const min = this.filterMin();
+        const max = this.filterMax();
+        if (!category) return data;
         
-		const pagedProps = props();
-        const page = pagedProps ? pagedProps.metadata.currentPage + 1 : 0;
-		if (pagedProps && pagedProps.metadata.totalPages <= page) return;
-		
-		this.loading.set(true);
-		const result = await this.fetchFn()(request, page, this.pageSize);
-		data.update(current => [...current, ...result.properties]);
-		props.set(result);
-		this.loading.set(false);
+        return data.filter(d => {
+            const val = d[category] as number;
+            return (min === null || val >= min) && (max === null || val <= max);
+        });
     }
 
-	protected async loadAllPages(props: WritableSignal<PagedProperties<T> | null>, data: WritableSignal<T[]>, request: R | null) {
-		const pagedProps = props();
-        if (this.loading() || !request || !pagedProps) return;
-		
-		this.loading.set(true);
+    // Comparison Mappings & Generation
+    protected readonly compareConfig = computed<ChartConfig<Record<string, any>> | null>(() => {
+        const config = this.config();
+        if (!this.isCompareMode() || !config?.canCompare) return null;
 
-		for (let page = pagedProps.metadata.currentPage + 1; page <= pagedProps.metadata.totalPages; page++) {
-			const result = await this.fetchFn()(request, page, this.pageSize);
-			data.update(current => [...current, ...result.properties]);
-			props.set(result);
-		}
+        const translation = TimeCatergoryLabelTranslations[this.timeCategory()];
+        const c1 = this.currentCategoryValues().value() as string;
+        const c2 = this.currentCategoryValues().compare() as string;
 
-		const completeData = data();
-		if (completeData.length > 0) {
-			// TODO: improve duplicate logic, by macking it obsolete in the backend by using proper functions
-			const existingIds = new Set(completeData.map(item => (item as any)[this.config().idKey]));
-			if (completeData.length !== existingIds.size) {
-				console.error("DUPLICATES DETECTED: ", completeData.length-existingIds.size);
-			}
-		}
+        const l1 = this.translate.instant(translation[c1].label);
+        const l2 = this.translate.instant(translation[c2].label);
 
-		
-		
-		this.loading.set(false);
-    }
-	protected async loadAll () {
-		await this.loadAllPages(this.pagedProperties, this.accumulatedData, this.requestValue());
-		if (this.compare()) this.loadAllPages(this.comparePagedProperties, this.compareAccumulatedData, this.requestCompare());
-	}
+        const options: { value: string; label: string }[] = [];
+        config.selectableProperties.forEach(option => {
+            const propStr = String(option.value);
+            options.push({ label: `${l1}: ${option.label}`, value: `${c1}${propStr}` });
+            options.push({ label: `${l2}: ${option.label}`, value: `${c2}${propStr}` });
+            options.push({ label: `Change ${l1} to ${l2}: ${option.label}`, value: `${c2}${c1}${propStr}` });
+        });
 
+        return {
+            selectableProperties: options,
+            defaultProperty: `${c2}${c1}${String(config.defaultProperty)}`,
+            defaultProperty2: `${c2}${c1}${String(config.defaultProperty2)}`,
+            aggregationLabel: config.aggregationLabel,
+            isAggregated: config.isAggregated,
+            idKey: config.idKey as string
+        };
+    });
 
-	private getTotalElements(props: PagedProperties<T> | null)  {
-		if (!props) return 0;
-		return props.metadata.totalElements;
-	}
+    protected readonly compareProperty = linkedSignal(() => this.compareConfig()?.defaultProperty || "");
 
-	private filterData(data: T[], filterCategory: keyof T, minFilter: number | null, maxFilter: number | null) {
-		let filteredData = data;
-		if (!filterCategory) return filteredData;
-		if (minFilter) filteredData = filteredData.filter(d => d[filterCategory] as number >= minFilter);
-		if (maxFilter) filteredData = filteredData.filter(d => d[filterCategory] as number <= maxFilter);
-		return filteredData;
-	}
+    protected readonly mergedCompareData = computed<Record<string, any>[]>(() => {
+        const config = this.config();
+        if (!this.isCompareMode() || !config?.canCompare) return [];
+
+        const idKey = config.idKey as string;
+        const c1 = this.currentCategoryValues().value() as string;
+        const c2 = this.currentCategoryValues().compare() as string;
+        const segmentMap = new Map<number | string, Record<string, any>>();
+
+        this.primaryFilteredData().forEach((item: any) => {
+            const id = item[idKey];
+            const entry: any = { [idKey]: id };
+            config.selectableProperties.forEach(p => entry[`${c1}${String(p.value)}`] = item[p.value]);
+            segmentMap.set(id, entry);
+        });
+
+        this.compareFilteredData().forEach((item: any) => {
+            const id = item[idKey];
+            const entry = segmentMap.get(id);
+            if (entry) {
+                config.selectableProperties.forEach(p => entry[`${c2}${String(p.value)}`] = item[p.value]);
+            }
+        });
+
+        return Array.from(segmentMap.values()).filter(segment => {
+            let valid = false;
+            config.selectableProperties.forEach(p => {
+                const val1 = segment[`${c1}${String(p.value)}`];
+                const val2 = segment[`${c2}${String(p.value)}`];
+                if (typeof val1 === 'number' && typeof val2 === 'number') {
+                    segment[`${c2}${c1}${String(p.value)}`] = val2 - val1;
+                    valid = true;
+                } else {
+                    segment[`${c2}${c1}${String(p.value)}`] = null;
+                }
+            });
+            return valid;
+        });
+    });
 }

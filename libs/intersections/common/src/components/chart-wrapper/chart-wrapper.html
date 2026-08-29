@@ -1,15 +1,18 @@
-<div class="relative group h-full max-w-96 border-round overflow-hidden">
-    <div class="absolute top-0 right-0 p-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+<div class="relative group h-full max-w-96 border-round overflow-hidden"
+    [class.fullscreen-mode]="fs.fullscreenMode()"
+    appFullscreen #fs="appFullscreen"
+>
+    <div [hidden]="screenshotMode()" class="absolute top-0 right-0 p-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <p-button 
             icon="pi pi-cog" 
             [rounded]="true" 
             [text]="true" 
             severity="secondary"
-            (click)="op.toggle($event)" />
+            (click)="sidebarVisible.set(!sidebarVisible())" />
     </div>
 
-    <div #screenshotContainer [style.width]="isExporting() ? '1376px' : null">
-        <div class="flex-1 flex flex-col w-full px-4 pb-2 mt-1 text-xs text-gray-500" [style.font-size]="isExporting() ? '48px' : '12px'" [style.line-height]="'1.2'">
+    <div #screenshotContainer [style.width]="isExporting() ? '1376px' : null" class="screenshotContainer">
+        <div class="flex-1 flex flex-col w-full px-4 pb-2 mt-1 text-xs text-gray-500" [style.font-size]="isExporting() || fs.fullscreenMode() ? '48px' : '12px'" [style.line-height]="'1.2'">
             @if (chartFilter().min() || chartFilter().max()) {
                 <div class="flex justify-center flex-row flex-wrap">
                     <div class="flex items-center">
@@ -21,23 +24,26 @@
                     </div>
                 </div>
             }
-            <ng-content select="[label]"></ng-content>
+            <ng-content select="[label]" [style.font-size]="isExporting() || fs.fullscreenMode() ? '48px' : '12px'"></ng-content>
         </div>
         <p-chart
             [type]="$any(chart().chartType)" 
             [data]="chart().data" 
             [options]="scaledChartOptions()" 
-            [height]="isExporting() ? '84rem' : '21rem'"/>
+            [height]="isExporting() ? '84rem' : (fs.fullscreenMode() ? '100%' : '21rem')"/>
     </div>
 
-    <p-popover #op (onShow)="setSettingVisibility(true)" (onHide)="setSettingVisibility(false)">
-        <div class="flex flex-col gap-4 w-80 p-2">
-            <div class="flex flex-row">
-                <span class="flex-1 font-bold text-m mb-2 block">Settings</span>
-                <p-button icon="pi pi-download" (onClick)="downloadAsImage()" size="small"/>
-            </div>
-
-            <intersection-settings [isSettingsVisible]="isSettingsVisible()" [settings]="settingsWithTimeCategory()" />
-        </div>
-    </p-popover>
+    <intersection-settings-drawer
+        [(visible)]="sidebarVisible"
+        [settings]="settingsWithTimeCategory()"
+        [(fullscreenMode)]="fs.fullscreenMode"
+        [(screenshotMode)]="screenshotMode"
+    >
+        <ng-container footer-actions>
+            <p-button icon="pi pi-download" (onClick)="downloadAsImage()"
+            severity="secondary" 
+                [outlined]="true"
+            />
+        </ng-container>
+    </intersection-settings-drawer>
 </div>

@@ -352,7 +352,8 @@ export function createHeatmapBinning(
     maxViewX?: number,
     minViewY?: number,
     maxViewY?: number,
-    maxViewCount?: number
+    maxViewCount?: number,
+    normalize?: boolean
 ): { chart: ChartData<'matrix'>; options: ChartOptions<'matrix'>; minCount: number; maxCount: number; outliers: number;
 } {
     if (!data || data.length === 0) return { 
@@ -378,7 +379,7 @@ export function createHeatmapBinning(
     const binsY = Math.max(1, Math.round((maxY - minY) / bucketSizeY));
 
     let numberOfOutliers = 0;
-    const grid: Record<string, { x: number, y: number, v: number, ids: number[] }> = {};
+    const grid: Record<string, { x: number, y: number, v: number, ids: number[], count: number }> = {};
 
     data.forEach(d => {
         const valX = d[xKey] instanceof Date ? d[xKey].getTime() : d[xKey];
@@ -401,12 +402,28 @@ export function createHeatmapBinning(
                 x: minX + (safeBinX * bucketSizeX) + (bucketSizeX / 2), 
                 y: minY + (safeBinY * bucketSizeY) + (bucketSizeY / 2),
                 v: 0,
+                count: 0,
                 ids: []
             };
         }
         grid[key].v++;
+        grid[key].count++;
         if (grid[key].ids.length < 10) grid[key].ids.push(d[idKey]);
     });
+
+    if (normalize) {
+        const totals: Record<string, number> = {};
+        for (const key in grid) {
+            const [binX, ] = key.split('-');
+            totals[binX] = (totals[binX] || 0) + grid[key].v;
+        }
+
+        for (const key in grid) {
+            const [binX, ] = key.split('-');
+            const segmentTotal = totals[binX] || 1;
+            grid[key].v = 100 * grid[key].v / segmentTotal;
+        }
+    }
 
     const matrixData = Object.values(grid);
     const actualMaxCount = Math.max(...matrixData.map(d => d.v));
@@ -514,7 +531,10 @@ export function createHeatmapBinning(
                         },
                         label: (context: any) => {
                             const raw = context.raw;
-                            const lines = [`Count: ${raw.v}`];
+                            const lines = [`Count: ${raw.count}`];
+                            if (normalize) {
+                                lines.push(`Relative Value (%): ${raw.v.toFixed(4)}`);
+                            }
 
                             if (raw.ids && raw.ids.length > 0) {
                                 raw.ids.forEach((id: any) => {

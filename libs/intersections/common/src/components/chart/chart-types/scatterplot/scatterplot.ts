@@ -24,6 +24,8 @@ export class ScatterPlotComponent<T> {
     label = input.required<string>();
     chartFilter = input.required<ChartFilter<T>>();
 
+    isLargeMode = signal<boolean>(false);
+
 	protected propertyChart = linkedSignal(() => this.config().defaultProperty2);
     protected readonly labelPropertyChart = computed(() => {
 		for (const el of this.config().selectableProperties) {
@@ -62,7 +64,6 @@ export class ScatterPlotComponent<T> {
             options: d.options
         }
     });
-    protected isExporting = signal<boolean>(false); 
 
     protected chartData = computed(() => {
         return createScatterPlot(

@@ -1,10 +1,13 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
-
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { IntersectionsRequestService } from '@simra/intersections-domain';
-import { RegionRequestService } from '@simra/streets-domain';
+import { debounce } from 'lodash';
+import { 
+	IntersectionsEdgeRequestService,
+	IntersectionsNodeRequestService,
+	IntersectionRegionTreeComponent
+} from '@simra/intersections-domain';
 import {
-	NodePageableMetricRequest, 
+	NodePageableMetricRequest,
 	NodeMetricRow,
 	EdgePageableMetricRequest,
 	EdgeMetricRow,
@@ -16,18 +19,17 @@ import {
 	BaseMetric,
 	onLazyHelper,
 	onFilterChangeHelper,
-	PagedProperties
+	PagedProperties,
+	RouteParamUtilityService
 } from '@simra/intersections-common';
-import { TranslatePipe } from '@ngx-translate/core';
 import {
-	AutocompleteComponent,
 	TRAFFIC_TIMES_TO_TRANSLATION,
 	WEEK_DAYS_TO_TRANSLATION, YEAR_TO_TRANSLATION
 } from '@simra/common-components';
 import { Observable } from 'rxjs';
 import { Card } from 'primeng/card';
 import { TableLazyLoadEvent, TableModule, TableFilterEvent } from 'primeng/table';
-import { ToggleButtonModule } from 'primeng/togglebutton';
+import { ToggleButton } from 'primeng/togglebutton';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 
 @Component({
@@ -37,32 +39,31 @@ import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
     FormsModule,
     Card,
     TableModule,
-    ToggleButtonModule,
-    TranslatePipe,
-    AutocompleteComponent,
+    ToggleButton,
     IntersectionListContentComponent,
     IntersectionListHeaderComponent,
-    IntersectionListHeaderFilterComponent
+    IntersectionListHeaderFilterComponent,
+	IntersectionRegionTreeComponent
 ],
 	templateUrl: './list.html',
-	styleUrl: './list.scss',
 })
 export class IntersectionsListComponent {
-	private readonly _requestService = inject(IntersectionsRequestService);
-	private readonly _regionRequestService = inject(RegionRequestService);
+	private readonly _edgeRequestService = inject(IntersectionsEdgeRequestService);
+	private readonly _nodeRequestService = inject(IntersectionsNodeRequestService);
+	private readonly _routeService = inject(RouteParamUtilityService);
 
-	private readonly defaults = {
-		trafficSignalClusterId: undefined,
-		numberOfRides: 50,
-		region: undefined,
-		streetNames: undefined,
-		name: undefined,
-		weekDay: EWeekDays.ALL_WEEK,
-		trafficTime: ETrafficTimes.ALL_DAY,
-		year: EYear.ALL,
-		page: 0,
-		size: 20,
-		sort: "avgWaitingTime,DESC"
+	isTreeLoaded = false;
+	protected readonly initialValues = {
+		regionLTreePath: this._routeService.getInitialParam('regionLTreePath', "r_62422"),
+		name: this._routeService.getInitialParam('name', undefined),
+		streetNames: this._routeService.getInitialParam('streetNames', undefined),
+		numberOfRides: this._routeService.getInitialParam('numberOfRides', 50, Number),
+		weekDay: this._routeService.getInitialParam('weekDay', EWeekDays.ALL_WEEK),
+		trafficTime: this._routeService.getInitialParam('trafficTime', ETrafficTimes.ALL_DAY),
+		year: this._routeService.getInitialParam('year', EYear.ALL),
+		page: this._routeService.getInitialParam('page', 0, Number),
+		size: this._routeService.getInitialParam('size', 20, Number),
+		sort: this._routeService.getInitialParam('sort', "avgWaitingTime,DESC")
 	}
 
 	protected readonly pagedProperties = signal<PagedProperties<BaseMetric> | null>(null);
@@ -77,7 +78,7 @@ export class IntersectionsListComponent {
 			header: 'INTERSECTIONS.HEADERS.RIDES', 
 			sortable: true, 
 			display: "number",
-			headerFilter: { step: 5, min: 0, default: this.defaults.numberOfRides },
+			headerFilter: { step: 5, min: 0, default: this.initialValues.numberOfRides },
 			tooltip: 'INTERSECTIONS.TIP.RIDES'
 		},
 		{ 
@@ -120,7 +121,7 @@ export class IntersectionsListComponent {
 			sortable: false,
 			display: "enum",
 			translationMap: WEEK_DAYS_TO_TRANSLATION, 
-			headerFilter: { enum: EWeekDays, default: this.defaults.weekDay }
+			headerFilter: { enum: EWeekDays, default: this.initialValues.weekDay }
 		},
 		{ 
 			field: 'trafficTime',
@@ -128,7 +129,7 @@ export class IntersectionsListComponent {
 			sortable: false,
 			display: "enum", 
 			translationMap: TRAFFIC_TIMES_TO_TRANSLATION,
-			headerFilter: { enum: ETrafficTimes, default: this.defaults.trafficTime }
+			headerFilter: { enum: ETrafficTimes, default: this.initialValues.trafficTime }
 		},
 		{ 
 			field: 'year', 
@@ -136,10 +137,21 @@ export class IntersectionsListComponent {
 			sortable: false,
 			display: "enum", 
 			translationMap: YEAR_TO_TRANSLATION, 
-			headerFilter: { enum: EYear, default: this.defaults.year}
+			headerFilter: { enum: EYear, default: this.initialValues.year}
 		}
-	]
+	];
 	
+	protected nodeFilter = signal<NodePageableMetricRequest>({
+		regionLTreePath: this.initialValues.regionLTreePath,
+		streetNames: this.initialValues.streetNames,
+		numberOfRides: this.initialValues.numberOfRides,
+		weekDay:  this.initialValues.weekDay,
+		trafficTime: this.initialValues.trafficTime,
+		year: this.initialValues.year,
+		page: this.initialValues.page,
+		size: this.initialValues.size,
+		sort: this.initialValues.sort
+	});
 	protected readonly nodeColumns: ListColumn<NodeMetricRow>[] = [
 		{ 
 			field: 'trafficSignalClusterLink', 
@@ -162,28 +174,28 @@ export class IntersectionsListComponent {
 			display: "autocomplete",
 			tooltip: 'INTERSECTIONS.TIP.STREETNAMES',
 			headerFilter: {
+				default: this.initialValues.streetNames,
 				fetchFunction: (query: string): Observable<string[]> => {
 					const nodeFilter = this.nodeFilter();
-					nodeFilter.streetNames = query;
-					return this._requestService.getIntersectionNodeStreetNames(nodeFilter);
+					this.nodeFilter.update(f => ({ ...f, streetNames: query }));
+					return this._nodeRequestService.getIntersectionNodeStreetNames(nodeFilter);
 				}
 			}
 		},
 		...this.metricColumns
 	];
-	protected nodeFilter = signal<NodePageableMetricRequest>({
-		trafficSignalClusterId: this.defaults.trafficSignalClusterId,
-		numberOfRides: this.defaults.numberOfRides,
-		region: this.defaults.region,
-		streetNames: this.defaults.streetNames,
-		weekDay: this.defaults.weekDay,
-		trafficTime: this.defaults.trafficTime,
-		year: this.defaults.year,
-		page: this.defaults.page,
-		size: this.defaults.size,
-		sort: this.defaults.sort
-	});
 
+	protected edgeFilter = signal<EdgePageableMetricRequest>({
+		regionLTreePath: this.initialValues.regionLTreePath,
+		name: this.initialValues.name,
+		numberOfRides: this.initialValues.numberOfRides,
+		weekDay:  this.initialValues.weekDay,
+		trafficTime: this.initialValues.trafficTime,
+		year: this.initialValues.year,
+		page: this.initialValues.page,
+		size: this.initialValues.size,
+		sort: this.initialValues.sort
+	});
 	protected readonly edgeColumns: ListColumn<EdgeMetricRow>[] = [
 		{ 
 			field: 'osmLink', 
@@ -206,59 +218,66 @@ export class IntersectionsListComponent {
 			display: "autocomplete",
 			tooltip: 'INTERSECTIONS.SEGMENTID.NAME',
 			headerFilter: {
+				default: this.initialValues.name,
 				fetchFunction: (query: string): Observable<string[]> => {
 					const edgeFilter = this.edgeFilter();
-					edgeFilter.name = query;
-					return this._requestService.getIntersectionEdgeStreetNames(edgeFilter);
+					this.edgeFilter.update(f => ({ ...f, name: query }));
+					return this._edgeRequestService.getIntersectionEdgeStreetNames(edgeFilter);
 				}
 			}
 		},
 		...this.metricColumns
 	];
-	protected edgeFilter = signal<EdgePageableMetricRequest>({
-		numberOfRides: this.defaults.numberOfRides,
-		region: this.defaults.region,
-		name: this.defaults.name,
-		weekDay: this.defaults.weekDay,
-		trafficTime: this.defaults.trafficTime,
-		year: this.defaults.year,
-		page: this.defaults.page,
-		size: this.defaults.size,
-		sort: this.defaults.sort
-	});
-
 
 	protected readonly loading = signal(false);
 	protected readonly rows = signal<NodeMetricRow[] | EdgeMetricRow[]>([]);
-	protected readonly requestFilter = computed(() => this.isNode() ? this.nodeFilter() : this.edgeFilter());
+	protected readonly activeFilter = computed(() => this.isNode() ? this.nodeFilter() : this.edgeFilter());
+	protected readonly applyQueryObject = computed(() => { return { ...this.activeFilter(), isNode: this.isNode() }});
 	protected columns = computed(() => (this.isNode() ? this.nodeColumns : this.edgeColumns) as ListColumn<IntersectionRow>[]);
-	protected isNode = signal<boolean>(true);
-	
+	protected isNode = signal<boolean>(this._routeService.getInitialParam('isNode', true, (v) => v === 'true'));
 
-	public fetchRegionNames = (query: string): Observable<string[]> => {
-		return this._regionRequestService.fetchRegionNames(query);
-	};
-
-	constructor () {
-		effect(async () => {
-			const isNode = this.isNode();
-			const request = isNode ? this.nodeFilter() : this.edgeFilter();
-			this.loading.set(true);
-			const data = isNode ? await this._requestService.getIntersectionNodeMetricsPageableProperties(request) 
-				: await this._requestService.getIntersectionEdgeMetricsPageableProperties(request);
-			this.pagedProperties.set(data);
-			this.rows.set(data.properties);
-			this.loading.set(false);
-		});
-	}
 
 	onFilterChange (event: TableFilterEvent) {
+		if (!this.isTreeLoaded) return;
 		onFilterChangeHelper(event, this.nodeFilter);
 		onFilterChangeHelper(event, this.edgeFilter);
+		this.updateData();
 	}
 
-	onLazy(event: TableLazyLoadEvent) { 
+	onLazy(event: TableLazyLoadEvent) {
+		if (!this.isTreeLoaded) return;
 		onLazyHelper(event, this.nodeFilter);
 		onLazyHelper(event, this.edgeFilter);
+		this.updateData();
+	}
+
+	onRegionChange (selectedRegionLTreePath: string | null) {
+		if (!selectedRegionLTreePath) return;
+		this.isTreeLoaded = true;
+
+		this.nodeFilter.update(f => ({ ...f, regionLTreePath: selectedRegionLTreePath }));
+		this.edgeFilter.update(f => ({ ...f, regionLTreePath: selectedRegionLTreePath }));
+		this.updateData();
+	}
+
+	async executeUpdateData () {
+		const isNode = this.isNode();
+		const request = isNode ? this.nodeFilter() : this.edgeFilter()
+		this.loading.set(true);
+		const data = isNode ? await this._nodeRequestService.getIntersectionNodeMetricsPageableProperties(request) 
+			: await this._edgeRequestService.getIntersectionEdgeMetricsPageableProperties(request);
+		this.pagedProperties.set(data);
+		this.rows.set(data.properties);
+		this.loading.set(false);
+	}
+
+	public updateData = debounce(() => {
+		this.executeUpdateData();
+	}, 500);
+
+	constructor() {
+		effect(() => {
+			this._routeService.applyParams(this.applyQueryObject());
+        });
 	}
 }

@@ -3,8 +3,9 @@
     @if(col.headerFilter && col.display === "autocomplete") {
         <m-autocomplete 
             class="table__autocomplete"
+            [selected]="col.headerFilter.default"
             [fetchFunction]="col.headerFilter.fetchFunction"
-            (selectionChange)="filterChange.emit($event)"
+            (valueChange)="filterChange.emit($event)"
             [field]="col.field"
         />
     }

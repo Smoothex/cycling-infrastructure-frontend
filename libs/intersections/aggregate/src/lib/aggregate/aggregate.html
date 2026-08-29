@@ -121,8 +121,19 @@
             </ng-template>
         </p-table>
     </p-card>
-
-    <intersection-chart header="Charts" [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG" [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric" [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()"/>
-    <intersection-chart header="Charts" [config]="BASE_CHART_CONFIG" [fetchFn]="isNode() ? loadNodes: loadEdges" [request]="isNode() ? nodeRequest() : edgeRequest()"/>
+    
+    
+    <intersection-chart header="Charts" 
+        [config]="isNode() ? NODE_METRIC_CHART_CONFIG : BASE_METRIC_CHART_CONFIG"
+        [countFn]="isNode() ? loadNodeMetricCount : loadEdgeMetricCount"
+        [fetchFn]="isNode() ? loadNodeMetric: loadEdgeMetric"
+        [request]="isNode() ? nodeMetricRequest() : edgeMetricRequest()"
+    />
+    <intersection-chart header="Charts"
+        [config]="BASE_CHART_CONFIG"
+        [countFn]="isNode() ? loadNodesCount : loadEdgesCount"
+        [fetchFn]="isNode() ? loadNodes: loadEdges"
+        [request]="isNode() ? nodeRequest() : edgeRequest()"
+    />
 </div>
 

@@ -5,7 +5,7 @@
             [paginator]="true"
             [loading]="loading()"
             [lazy]="true"
-            [rows]="requestFilter().size"
+            [rows]="activeFilter().size"
             [rowsPerPageOptions]="[10, 20, 50]"
             [totalRecords]="totalElements()"
 			(onFilter)="onFilterChange($event)"
@@ -15,9 +15,14 @@
             [sortOrder]="-1"
         >
             <ng-template pTemplate="caption" class="pt-0">
-				<div class="title-filter">
-                    <p-togglebutton [(ngModel)]="isNode" offLabel="Wege" onLabel="Kreuzungen" class="w-24" />
-					<m-autocomplete class="region__autocomplete" [fetchFunction]="fetchRegionNames" [placeholder]="'COMPONENTS.GENERAL.TABLE.HEADER.REGION' | translate" (selectionChange)="onFilterChange($event)" field="region" [showDropdown]="true" />
+				<div class="flex flex-row justify-evenly items-center">
+                    <p-togglebutton class="w-1/3" [(ngModel)]="isNode" (onChange)="updateData()" offLabel="Wege" onLabel="Kreuzungen" />
+                    <intersection-region-tree
+                        class="w-1/3"
+                        [preselectedRegionLTreePath]="initialValues.regionLTreePath"
+                        [requireSelection]="true"
+                        (selectedRegionLTreePath)="onRegionChange($event)"
+                    />
                 </div>
 			</ng-template>
             <ng-template pTemplate="header">

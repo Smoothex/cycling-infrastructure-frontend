@@ -1,4 +1,4 @@
-import { FeatureCollection, Position, Geometry } from 'geojson';
+import { FeatureCollection, Position, Geometry, Point } from 'geojson';
 import { ETrafficTimes, EWeekDays, EYear } from '@simra/common-models';
 import { Observable } from 'rxjs';
 import { Signal, WritableSignal } from '@angular/core';
@@ -14,6 +14,14 @@ type PagedResponse<K extends string, V> = {
 export type PagedGeoResponse<T extends Geometry> = PagedResponse<"geoData", FeatureCollection<T>>;
 export type PagedIds = PagedResponse<"ids", number[]>;
 export type PagedProperties<T> = PagedResponse<"properties", T[]>;
+
+type ScrollResponse<K extends string, V> = {
+    metadata: {
+        hasNext: boolean;
+        lastId: number;
+    };
+} & Record<K, V>;
+export type ScrollProperties<T> = ScrollResponse<"properties", T[]>;
 
 export interface IdListRequest {
     id?: number;
@@ -47,18 +55,23 @@ export interface BaseRequest {
 }
 
 export interface StartEndDateRequest {
-    startDate: number;
-    endDate: number;
+    startDate?: number;
+    endDate?: number;
 }
 
 export interface PrecomputedRequest {
-    weekDay: EWeekDays;
-    trafficTime: ETrafficTimes;
-    year: EYear;
+    weekDay?: EWeekDays;
+    trafficTime?: ETrafficTimes;
+    year?: EYear;
 }
 
 export interface MetricRequest extends PrecomputedRequest {
-    numberOfRides: number;
+    numberOfRides?: number;
+}
+
+export interface ScrollRequest {
+    pageSize: number;
+    lastId?: number;
 }
 
 export interface PageableRequest {
@@ -66,9 +79,9 @@ export interface PageableRequest {
     page: number;
     size: number;
 }
-export interface PrecomputedPageableRequest extends PageableRequest, PrecomputedRequest {} 
 
-export interface PageableMetricRequest extends MetricRequest, PageableRequest {}
+
+
 
 export interface Base<TDate = Date>  {
     id: number;
@@ -111,18 +124,21 @@ export interface BaseMetric extends AggregatedResult {
     avgWaitingTimeWhenStopped: number;
 }
 
-interface NodeRequest {
+
+interface NodeRequestProperties {
     trafficSignalClusterId?: number;
     startValhallaEdgeId?: number;
     endValhallaEdgeId?: number;
-    regionId?: number;
+    regionLTreePath?: string;
 }
-export interface NodePageableRequestPrecomputed extends PrecomputedPageableRequest, NodeRequest {}
-export interface NodePageableRequestStartEndDate  extends PageableRequest, StartEndDateRequest, NodeRequest {}
-export interface NodePageableMetricRequest extends PageableMetricRequest, NodePageableRequestPrecomputed {
-    region?: string;
+export interface NodeRequest extends NodeRequestProperties, StartEndDateRequest, PrecomputedRequest {}
+export interface NodeScrollRequest extends NodeRequest, ScrollRequest {} 
+export interface NodePageableRequest extends NodeRequest, PageableRequest {}
+export interface NodeMetricRequest extends NodeRequestProperties, MetricRequest {
     streetNames?: string;
 }
+export interface NodePageableMetricRequest extends NodeMetricRequest, PageableRequest {}
+export interface NodeScrollMetricRequest extends EdgeMetricRequest, ScrollRequest {}
 
 export interface NodeMetric extends BaseMetric, NodeSpecifics {}
 export interface NodeMetricRow extends IntersectionRow, BaseMetric, NodeSpecifics {
@@ -150,19 +166,21 @@ export interface NodeRow extends IntersectionRow, Node {
 }
 
 
-interface EdgeRequest {
+interface EdgeRequestProperties {
     osmId?: number;
     valhallaEdgeId?: number;
 	prevValhallaEdgeId?: number;
     nextValhallaEdgeId?: number;
-    regionId?: number;
+    regionLTreePath?: string;
 }
-export interface EdgePageableRequestPrecomputed extends PrecomputedPageableRequest, EdgeRequest {}
-export interface EdgePageableRequestStartEndDate extends PageableRequest, StartEndDateRequest, EdgeRequest {}
-export interface EdgePageableMetricRequest extends PageableMetricRequest, EdgePageableRequestPrecomputed {
-    region?: string;
+export interface EdgeRequest extends EdgeRequestProperties, StartEndDateRequest, PrecomputedRequest {}
+export interface EdgeScrollRequest extends EdgeRequest, ScrollRequest {} 
+export interface EdgePageableRequest extends EdgeRequest, PageableRequest {}
+export interface EdgeMetricRequest extends EdgeRequestProperties, MetricRequest {
     name?: string;
 }
+export interface EdgePageableMetricRequest extends EdgeMetricRequest, PageableRequest {}
+export interface EdgeScrollMetricRequest extends EdgeMetricRequest, ScrollRequest {}
 
 export interface EdgeMetric extends BaseMetric, EdgeSpecifics {}
 export interface EdgeMetricRow extends IntersectionRow, BaseMetric, EdgeSpecifics {
@@ -191,15 +209,33 @@ export interface EdgeRow extends IntersectionRow, Edge {
 export interface RegionCompleteRequest extends MetricRequest {
     adminLevel: number;
 }
-export interface RegionPageableRequest extends PageableMetricRequest {
+export interface RegionRequest extends MetricRequest {
     regionId?: number;
+    regionLTreePath?: string;
     adminLevel?: number;
 }
+export interface RegionScrollRequest extends RegionRequest, ScrollRequest {}
+export interface RegionPageableRequest extends RegionRequest, PageableRequest {}
 
+export interface RegionTreeNode {
+    id: number;
+    name: string;
+    adminLevel: number;
+    ltreePath: string;
+    children?: RegionTreeNode[];
+}
+
+export interface TreeNode {
+    key: string;
+    label: string;
+    data: { ltreePath: string };
+    children?: TreeNode[];
+}
 
 export interface RegionMetricData  {
     name: string;
     adminLevel: number;
+    ltreePath: string;
 
     length: number;
     duration: number;
@@ -260,6 +296,7 @@ export interface NumberFilterConfig {
 }
 
 export interface AutocompleteFilterConfig {
+  default?: string;
   fetchFunction: (query: string) => Observable<string[]>;
 }
 
@@ -379,4 +416,9 @@ export interface ChartComplete {
     chartType: ChartType;
     data: ChartData;
     options: ChartOptions;
+}
+
+export interface MatchedPointsAndRidePoints {
+    matchedPoints: FeatureCollection<Point>;
+    ridePoints: FeatureCollection<Point>;
 }

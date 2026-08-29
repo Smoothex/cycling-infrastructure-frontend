@@ -10,9 +10,17 @@
         (onFilter)="onFilterChange($event)"
         (onLazyLoad)="onLazy($event)"
         [resetPageOnSort]="true"
-        [sortField]="'nodeWaitingSPerKm'"
+        [sortField]="'numberOfRides'"
         [sortOrder]="-1"
     >
+        <ng-template pTemplate="caption" class="pt-0">
+				<div class="flex flex-row justify-evenly items-center">
+                    <intersection-region-tree
+                        class="w-1/3"
+                        (selectedRegionLTreePath)="onRegionChange($event)"
+                    />
+                </div>
+			</ng-template>
         <ng-template pTemplate="header">
             <tr intersection-list-header
                 [columns]="columns"
