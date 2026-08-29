@@ -17,9 +17,11 @@ export class RouteReviewRequestService {
 	}
 
 	public getDetail(rideId: string): Observable<RouteReviewDetail> {
-		return this._http.get<RouteReviewDetail>(
-			`/api/route-comparisons/review-sample/${rideId}`,
-		);
+		return this._http.get<RouteReviewDetail>(`/api/route-comparisons/review-sample/${rideId}`);
+	}
+
+	public getRideDetail(rideId: string): Observable<RouteReviewDetail> {
+		return this._http.get<RouteReviewDetail>(`/api/route-comparisons/rides/${rideId}`);
 	}
 
 	public saveReview(rideId: string, request: SaveRouteReviewRequest): Observable<RouteReview> {

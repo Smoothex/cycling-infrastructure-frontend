@@ -49,7 +49,6 @@ interface TestablePreferenceAvoidancePage {
 	pendingTab: WritableSignal<ExplorerTab | undefined>;
 	selectedPanelView: WritableSignal<'INFO' | 'EVENTS' | 'STREET_VIEW'>;
 	selectedSegmentId: WritableSignal<number | undefined>;
-	_selectionPinned: WritableSignal<boolean>;
 	selectedCorridorSegmentIds: WritableSignal<number[]>;
 	rideDetailItems(event: SegmentEvent): { label: string; value: string }[];
 	eventPreviewChips(event: SegmentEvent): { label: string; value: string }[];
@@ -189,7 +188,7 @@ describe('PreferenceAvoidancePage', () => {
 		expect(clearButton.disabled).toBe(false);
 	});
 
-	it('shows year-aware Street View for the selected segment midpoint', async () => {
+	it('keeps the selected segment while showing year-aware Street View', async () => {
 		facade.getSegment.mockReturnValue(
 			of({
 				id: 42,
@@ -203,9 +202,8 @@ describe('PreferenceAvoidancePage', () => {
 				},
 			}),
 		);
-		component.selectedYear.set(2022);
-		component._selectionPinned.set(true);
 		component.selectedSegmentId.set(42);
+		component.selectedYear.set(2022);
 		component.selectedPanelView.set('STREET_VIEW');
 		fixture.detectChanges();
 		await fixture.whenStable();
@@ -213,6 +211,7 @@ describe('PreferenceAvoidancePage', () => {
 
 		const viewer = fixture.debugElement.query(By.directive(MapillaryViewerStubComponent))
 			.componentInstance as MapillaryViewerStubComponent;
+		expect(component.selectedSegmentId()).toBe(42);
 		expect(viewer.latitude()).toBeCloseTo(52.52, 5);
 		expect(viewer.longitude()).toBeCloseTo(13.41, 5);
 		expect(viewer.year()).toBe(2022);

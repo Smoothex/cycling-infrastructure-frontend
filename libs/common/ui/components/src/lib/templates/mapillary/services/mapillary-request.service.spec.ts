@@ -18,7 +18,7 @@ describe('MapillaryRequestService', () => {
 
 	afterEach(() => httpTestingController.verify());
 
-	it('selects the spatially closest image and uses capture time as a tie-breaker', async () => {
+	it('keeps a substantially closer image when a newer image is too far away', async () => {
 		const resultPromise = firstValueFrom(service.findNearestImage(52.52, 13.405));
 		const request = httpTestingController.expectOne((candidate) =>
 			candidate.url.endsWith('/mapillary/images'),
@@ -50,6 +50,34 @@ describe('MapillaryRequestService', () => {
 		});
 	});
 
+	it('prefers a newer image when it is still spatially close to the segment', async () => {
+		const resultPromise = firstValueFrom(service.findNearestImage(52.52, 13.405));
+		const request = httpTestingController.expectOne((candidate) =>
+			candidate.url.endsWith('/mapillary/images'),
+		);
+
+		request.flush({
+			data: [
+				{
+					id: 'older-nearest',
+					captured_at: '2022-05-11T00:00:00Z',
+					geometry: { type: 'Point', coordinates: [13.40501, 52.52] },
+				},
+				{
+					id: 'newer-nearby',
+					captured_at: '2025-09-16T00:00:00Z',
+					geometry: { type: 'Point', coordinates: [13.4051, 52.52] },
+				},
+			],
+		});
+
+		await expect(resultPromise).resolves.toMatchObject({
+			id: 'newer-nearby',
+			capturedAt: '2025-09-16T00:00:00.000Z',
+			temporalMatch: 'IN_RANGE',
+		});
+	});
+
 	it('filters by capture year and falls back to the temporally closest image', async () => {
 		const from = new Date('2022-01-01T00:00:00.000Z');
 		const to = new Date('2022-12-31T23:59:59.999Z');
@@ -68,8 +96,8 @@ describe('MapillaryRequestService', () => {
 		expect(yearRequest.request.params.get('end_captured_at')).toBe(to.toISOString());
 		yearRequest.flush({ data: [] });
 
-		const fallbackRequest = httpTestingController.expectOne((candidate) =>
-			!candidate.params.has('start_captured_at'),
+		const fallbackRequest = httpTestingController.expectOne(
+			(candidate) => !candidate.params.has('start_captured_at'),
 		);
 		fallbackRequest.flush({
 			data: [

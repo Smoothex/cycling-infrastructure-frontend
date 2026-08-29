@@ -24,12 +24,18 @@ describe('RouteReviewRequestService', () => {
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/route-comparisons/review-sample');
 	});
 
-	it('loads detail only for a sampled ride', () => {
+	it('loads detail for a sampled ride', () => {
 		service.getDetail('ride-1');
 
 		expect(httpClientSpy.get).toHaveBeenCalledWith(
 			'/api/route-comparisons/review-sample/ride-1',
 		);
+	});
+
+	it('loads route-comparison detail by ride ID', () => {
+		service.getRideDetail('ride-1');
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/route-comparisons/rides/ride-1');
 	});
 
 	it('persists the manual decision independently from the automated class', () => {
