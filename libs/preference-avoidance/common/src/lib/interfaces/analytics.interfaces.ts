@@ -30,6 +30,11 @@ export type DetourImpactRouteComparisonType = Exclude<RouteComparisonType, 'EQUI
 
 export type InfrastructureDimension = 'SURFACE' | 'SMOOTHNESS' | 'CYCLEWAY_TYPE' | 'HIGHWAY';
 
+export interface AnalyticsFilterOptions {
+	rideIntents: string[];
+	trafficConditions: string[];
+}
+
 export interface ProcessingSummary {
 	totalRides: number;
 	rideStatusCounts: Record<string, number>;

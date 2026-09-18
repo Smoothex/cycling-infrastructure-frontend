@@ -33,6 +33,10 @@ export class PreferenceAvoidanceAnalysisFacade {
 		return this._analyticsRequestService.getSummary();
 	}
 
+	public getFilterOptions() {
+		return this._analyticsRequestService.getFilterOptions();
+	}
+
 	public getDistribution(params: AnalyticsDistributionParams) {
 		return this._analyticsRequestService.getDistribution(params);
 	}

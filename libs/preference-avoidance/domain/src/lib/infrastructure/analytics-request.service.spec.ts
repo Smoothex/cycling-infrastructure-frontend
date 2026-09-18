@@ -26,6 +26,12 @@ describe('AnalyticsRequestService', () => {
 		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/summary');
 	});
 
+	it('should fetch both dropdowns through the filter-options endpoint', () => {
+		service.getFilterOptions();
+
+		expect(httpClientSpy.get).toHaveBeenCalledWith('/api/analytics/filter-options');
+	});
+
 	it('should call the distribution endpoint with params', () => {
 		service.getDistribution({ dimension: 'EVENT_TYPE', limit: 12 });
 

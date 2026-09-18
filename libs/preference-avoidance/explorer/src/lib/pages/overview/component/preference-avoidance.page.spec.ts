@@ -53,6 +53,8 @@ interface TestablePreferenceAvoidancePage {
 		features: maplibregl.MapGeoJSONFeature[],
 		lngLat: maplibregl.LngLat,
 	): void;
+	rideIntentOptions(): string[];
+	trafficConditionOptions(): string[];
 	selectedYear: WritableSignal<number | undefined>;
 	selectedRideIntent: WritableSignal<string | undefined>;
 	selectedTrafficCondition: WritableSignal<string | undefined>;
@@ -107,6 +109,10 @@ describe('PreferenceAvoidancePage', () => {
 				roadDisruptionAffectedEvents: 12,
 			}),
 		),
+		getFilterOptions: jest.fn().mockReturnValue(of({
+			rideIntents: ['COMMUTE', 'UNKNOWN'],
+			trafficConditions: ['LIGHT', 'HEAVY'],
+		})),
 		getSegments: jest.fn().mockReturnValue(of([])),
 		getTileStatus: jest.fn().mockReturnValue(of(undefined)),
 		getTrafficDetectors: jest.fn().mockReturnValue(of(undefined)),
@@ -162,6 +168,23 @@ describe('PreferenceAvoidancePage', () => {
 		component = fixture.componentInstance as unknown as TestablePreferenceAvoidancePage;
 		fixture.detectChanges();
 		await fixture.whenStable();
+	});
+
+	it('loads both dropdowns once without requesting full distributions', () => {
+		expect(facade.getFilterOptions).toHaveBeenCalledTimes(1);
+		expect(facade.getDistribution).not.toHaveBeenCalled();
+		expect(component.rideIntentOptions()).toEqual(['COMMUTE', 'UNKNOWN']);
+		expect(component.trafficConditionOptions()).toEqual(['LIGHT', 'HEAVY']);
+	});
+
+	it('reuses global options when changing filters', async () => {
+		component.selectedYear.set(2024);
+		component.selectedRideIntent.set('COMMUTE');
+		fixture.detectChanges();
+		await fixture.whenStable();
+		expect(facade.getFilterOptions).toHaveBeenCalledTimes(1);
+		expect(facade.getDistribution).not.toHaveBeenCalled();
+		expect(facade.getSegments).toHaveBeenLastCalledWith(expect.objectContaining({ rideIntent: 'COMMUTE' }));
 	});
 
 	const disruptionFeature = (id: string, validFrom: number, content: string, layer = 'line') =>

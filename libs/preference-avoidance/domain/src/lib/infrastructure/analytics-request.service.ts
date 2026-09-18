@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
 	AnalyticsContext,
+	AnalyticsFilterOptions,
 	AnalyticsContextParams,
 	AnalyticsCorridorGeometryParams,
 	AnalyticsCorridorsParams,
@@ -33,6 +34,10 @@ export class AnalyticsRequestService {
 
 	public getSummary(): Observable<ProcessingSummary> {
 		return this._http.get<ProcessingSummary>('/api/analytics/summary');
+	}
+
+	public getFilterOptions(): Observable<AnalyticsFilterOptions> {
+		return this._http.get<AnalyticsFilterOptions>('/api/analytics/filter-options');
 	}
 
 	public getDistribution(

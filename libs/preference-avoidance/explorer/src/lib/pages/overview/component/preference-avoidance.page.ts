@@ -733,25 +733,17 @@ export class PreferenceAvoidancePage {
 		() => this.segmentFiltersActive() || this.selectedRiskLegendBuckets().length > 0,
 	);
 
-	protected readonly rideIntentOptions = resource<string[], unknown>({
-		defaultValue: [],
-		loader: async () => {
-			const buckets = await firstValueFrom(
-				this._facade.getDistribution({ dimension: 'RIDE_INTENT' }),
-			);
-			return buckets.map((bucket) => bucket.value);
-		},
+	private readonly filterOptions = resource({
+		loader: async () => firstValueFrom(this._facade.getFilterOptions()),
 	});
 
-	protected readonly trafficConditionOptions = resource<string[], unknown>({
-		defaultValue: [],
-		loader: async () => {
-			const buckets = await firstValueFrom(
-				this._facade.getDistribution({ dimension: 'TRAFFIC_CONDITION' }),
-			);
-			return buckets.map((bucket) => bucket.value).filter((value) => value !== 'UNKNOWN');
-		},
-	});
+	protected readonly rideIntentOptions = computed(
+		() => this.filterOptions.value()?.rideIntents ?? [],
+	);
+
+	protected readonly trafficConditionOptions = computed(
+		() => this.filterOptions.value()?.trafficConditions ?? [],
+	);
 
 	protected readonly filteredSegments = computed(() => this.segmentPool.value() ?? []);
 

@@ -28,7 +28,7 @@
 					(ngModelChange)="onRideIntentChange($event)"
 				>
 					<option [ngValue]="undefined">Any</option>
-					@for (intent of rideIntentOptions.value(); track intent) {
+					@for (intent of rideIntentOptions(); track intent) {
 					<option [ngValue]="intent">{{ formatValue(intent) }}</option>
 					}
 				</select>
@@ -42,7 +42,7 @@
 					(ngModelChange)="selectedTrafficCondition.set($event)"
 				>
 					<option [ngValue]="undefined">Any</option>
-					@for (condition of trafficConditionOptions.value(); track condition) {
+					@for (condition of trafficConditionOptions(); track condition) {
 					<option [ngValue]="condition">{{ formatValue(condition) }}</option>
 					}
 				</select>
