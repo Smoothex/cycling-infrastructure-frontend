@@ -20,7 +20,6 @@ import {
 	SegmentEnrichmentFilter,
 	SegmentEvent,
 	SegmentEventType,
-	SegmentsGeoJson,
 	SegmentSummary,
 	NearMissIncident,
 	RoadClosure,
@@ -343,7 +342,6 @@ export class PreferenceAvoidancePage {
 	private _hoverHighlightFeature?: GeoJSON.Feature<LineString | MultiLineString>;
 	private _corridorGeometryFeature?: GeoJSON.Feature<MultiLineString>;
 	private _corridorRequestVersion = 0;
-	private _matchedOverlayFeatures: GeoJSON.Feature<LineString>[] = [];
 	private _trafficDetectorFeatures: GeoJSON.Feature<Point>[] = [];
 	private _trafficDetectorRadiusFeature?: GeoJSON.Feature<Polygon>;
 	private _trafficDetectorPopup?: maplibregl.Popup;
@@ -755,62 +753,6 @@ export class PreferenceAvoidancePage {
 		},
 	});
 
-	protected readonly matchedOverlayCollection = resource<
-		SegmentsGeoJson | undefined,
-		string | undefined
-	>({
-		params: () => {
-			if (!this.matchedOverlayActive()) {
-				return undefined;
-			}
-			return [
-				this.selectedYear() ?? '',
-				[...this.selectedEnrichmentFilters()].sort().join(','),
-				this.selectedRideIntent() ?? '',
-				this.selectedTrafficCondition() ?? '',
-			].join('|');
-		},
-		loader: async ({ params }) => {
-			const [year, filters, rideIntent, trafficCondition] = params.split('|');
-			return firstValueFrom(
-				this._facade.getSegmentsGeoJson({
-					minAvoidanceRatio: 0,
-					minPreferenceRatio: 0,
-					minSampleSize: 1,
-					limit: 10000,
-					...this.yearRange(year ? Number(year) : undefined),
-					enrichmentFilters: this.enrichmentFiltersParam(
-						filters ? (filters.split(',') as SegmentEnrichmentFilter[]) : [],
-					),
-					rideIntent: rideIntent || undefined,
-					trafficCondition: trafficCondition || undefined,
-				}),
-			);
-		},
-	});
-
-	private readonly matchedOverlayFeatures = computed<GeoJSON.Feature<LineString>[]>(() => {
-		const collection = this.matchedOverlayCollection.value();
-		if (!this.matchedOverlayActive() || !collection) {
-			return [];
-		}
-
-		return collection.features.map(
-			(feature): GeoJSON.Feature<LineString> => ({
-				type: 'Feature',
-				geometry: feature.geometry,
-				properties: {
-					id: feature.properties.id,
-					avoidanceCount: feature.properties.avoidanceCount,
-					preferenceCount: feature.properties.preferenceCount,
-					bucket: this.eventSignalBucket(feature.properties),
-					color: this.eventSignalColor(feature.properties),
-					width: this.eventLineWidth(feature.properties),
-				},
-			}),
-		);
-	});
-
 	protected readonly filteredSegments = computed(() => this.segmentPool.value() ?? []);
 
 	protected readonly analyticsFilters = computed<AnalyticsFilters>(() => ({
@@ -977,13 +919,14 @@ export class PreferenceAvoidancePage {
 			this.applyMapFilters(map);
 		});
 
-		// keep the matched-segments overlay in sync with the active filters
-		effect(() => {
+		// Coalesce rapid filter changes; setTiles cancels/reloads tiles for the new URL.
+		effect((onCleanup) => {
 			const map = this._map();
-			this._matchedOverlayFeatures = this.matchedOverlayFeatures();
-			if (map) {
-				this.syncMatchedSource(map);
-			}
+			const active = this.matchedOverlayActive();
+			const url = this.filteredTileUrl();
+			if (!map || !active) return;
+			const timeout = setTimeout(() => this.syncMatchedSource(map, url), 150);
+			onCleanup(() => clearTimeout(timeout));
 		});
 
 		effect(() => {
@@ -1385,6 +1328,7 @@ export class PreferenceAvoidancePage {
 		return this.eventDetailGroup('Ride', [
 			this.eventDetailItem('Purpose', event.rideIntent),
 			this.eventDetailItem('Bike type', event.bikeType),
+			this.eventDetailItem('Ride ID', event.rideId, { formatBucket: false }),
 		]).items;
 	}
 
@@ -1760,19 +1704,18 @@ export class PreferenceAvoidancePage {
 		});
 
 		map.addSource(preferenceAvoidanceMatchedSource, {
-			type: 'geojson',
-			data: { type: 'FeatureCollection', features: [] },
+			type: 'vector',
+			tiles: [this.filteredTileUrl()],
+			minzoom: 6,
+			maxzoom: 14,
 		});
 		map.addLayer({
 			id: preferenceAvoidanceMatchedLayer,
 			type: 'line',
 			source: preferenceAvoidanceMatchedSource,
+			'source-layer': 'segments',
 			layout: { visibility: 'none' },
-			paint: {
-				'line-color': ['get', 'color'],
-				'line-width': ['get', 'width'],
-				'line-opacity': 0.88,
-			},
+			paint: segmentLinePaint,
 		});
 
 		map.addSource(preferenceAvoidanceHighlightSource, {
@@ -2012,19 +1955,6 @@ export class PreferenceAvoidancePage {
 			}
 		});
 
-		for (const layerId of [
-			roadClosuresLineLayer,
-			roadClosuresPointLayer,
-			roadClosuresSymbolLayer,
-		]) {
-			map.on('click', layerId, (event) => {
-				const feature = event.features?.[0];
-				if (feature) {
-					this.openRoadClosurePopup(map, feature, event.lngLat);
-				}
-			});
-		}
-
 		map.on('click', (event) => {
 			const clickableLayers = interactiveLayers.filter((layerId) => map.getLayer(layerId));
 			if (!clickableLayers.length) {
@@ -2032,6 +1962,14 @@ export class PreferenceAvoidancePage {
 			}
 
 			const features = map.queryRenderedFeatures(event.point, { layers: clickableLayers });
+			const disruptionFeatures = features.filter((feature) =>
+				[roadClosuresLineLayer, roadClosuresPointLayer, roadClosuresSymbolLayer].includes(
+					feature.layer.id,
+				),
+			);
+			if (disruptionFeatures.length) {
+				this.openRoadClosurePopup(map, disruptionFeatures, event.lngLat);
+			}
 			const segmentFeature = features.find(
 				(feature) =>
 					feature.layer.id === preferenceAvoidanceStreetsLayer ||
@@ -2064,14 +2002,32 @@ export class PreferenceAvoidancePage {
 		}
 	}
 
-	private tileUrl(generatedAt: number): string {
+	private apiOrigin(): string {
 		const base = this.normalizeApiBase(this._appConfig.apiUrl);
 		const origin = !base
 			? window.location.origin
 			: base.startsWith('/')
 				? `${window.location.origin}${base}`
 				: base;
-		return `pmtiles://${origin}/api/tiles/segments.pmtiles?v=${generatedAt}`;
+		return origin;
+	}
+
+	private tileUrl(generatedAt: number): string {
+		return `pmtiles://${this.apiOrigin()}/api/tiles/segments.pmtiles?v=${generatedAt}`;
+	}
+
+	private filteredTileUrl(): string {
+		const params = new URLSearchParams();
+		const range = this.yearRange(this.selectedYear());
+		if (range.from !== undefined) params.set('from', String(range.from));
+		if (range.to !== undefined) params.set('to', String(range.to));
+		const filters = [...new Set(this.selectedEnrichmentFilters())].sort();
+		if (filters.length) params.set('enrichmentFilters', filters.join(','));
+		const rideIntent = this.selectedRideIntent();
+		const trafficCondition = this.selectedTrafficCondition();
+		if (rideIntent) params.set('rideIntent', rideIntent);
+		if (trafficCondition) params.set('trafficCondition', trafficCondition);
+		return `${this.apiOrigin()}/api/segments/tiles/{z}/{x}/{y}.mvt?${params}`;
 	}
 
 	private normalizeApiBase(apiUrl: string | undefined): string {
@@ -2350,6 +2306,7 @@ export class PreferenceAvoidancePage {
 			closeButton: true,
 			closeOnClick: false,
 			maxWidth: '320px',
+			offset: 24,
 		})
 			.setLngLat([lon, lat])
 			.setHTML(
@@ -2378,47 +2335,128 @@ export class PreferenceAvoidancePage {
 		popup?.remove();
 	}
 
+	private roadClosurePopupHtml(features: maplibregl.MapGeoJSONFeature[]): string {
+		const records = new Map<string, maplibregl.MapGeoJSONFeature>();
+		for (const feature of features) {
+			const id = feature.properties?.['id'];
+			if (id != null) records.set(String(id), feature);
+		}
+		const start = (feature: maplibregl.MapGeoJSONFeature): number => {
+			const value = Number(feature.properties?.['validFrom']);
+			return Number.isFinite(value) ? value : 0;
+		};
+		const ordered = [...records.values()].sort(
+			(a, b) =>
+				start(b) - start(a) ||
+				String(a.properties['id']).localeCompare(String(b.properties['id'])),
+		);
+		const fullRecords = new Map(
+			(this.roadClosures.value() ?? []).map((record) => [record.id, record]),
+		);
+		const geometryKey = (feature: maplibregl.MapGeoJSONFeature): string | undefined => {
+			const record = fullRecords.get(String(feature.properties['id']));
+			return record ? JSON.stringify([record.lon, record.lat, record.lines]) : undefined;
+		};
+		const details = (feature: maplibregl.MapGeoJSONFeature) => {
+			const text = (key: string) =>
+				String(feature.properties?.[key] ?? '')
+					.trim()
+					.replace(/\s+/g, ' ');
+			const from = start(feature);
+			const to = Number(feature.properties?.['validTo'] ?? 0);
+			return [
+				{ key: 'street', label: 'Street', value: text('street') },
+				{ key: 'section', label: 'Section', value: text('section') },
+				{
+					key: 'factorType',
+					label: 'Type',
+					value:
+						roadClosureTypeLabels[text('factorType')] ??
+						(text('factorType') || 'Road closure'),
+				},
+				{
+					key: 'severity',
+					label: 'Severity',
+					value: roadClosureSeverityLabels[text('severity')] ?? text('severity'),
+				},
+				{ key: 'direction', label: 'Direction', value: text('direction') },
+				{
+					key: 'period',
+					label: 'Period',
+					value: from
+						? `${this.formatDateTime(from)} – ${to ? this.formatDateTime(to) : 'open-ended'}`
+						: '',
+				},
+				{ key: 'content', label: 'Description', value: text('content') },
+			];
+		};
+		const renderRows = (rows: { label: string; value: string }[]) =>
+			`<dl>${rows.map(({ label, value }) => `<div><dt>${this.escapeHtml(label)}</dt><dd>${this.escapeHtml(value || 'Not recorded')}</dd></div>`).join('')}</dl>`;
+		const entries = ordered.map((feature, index) => {
+			const fields = details(feature);
+			if (index === 0) {
+				const value = (key: string) =>
+					fields.find((field) => field.key === key)?.value ?? '';
+				const previous = ordered[1] ? details(ordered[1]) : [];
+				const removed = fields.filter(
+					(field) =>
+						!field.value &&
+						previous.some((other) => other.key === field.key && other.value),
+				);
+				const rows = fields.filter(
+					(field) => !['street', 'section', 'content'].includes(field.key) && field.value,
+				);
+				return `<section class="detector-popup road-closure-popup__entry">
+					<h4>${this.escapeHtml(value('street') || value('factorType'))}</h4>
+					${value('section') ? `<p>${this.escapeHtml(value('section'))}</p>` : ''}
+					${renderRows(rows)}
+					${value('content') ? `<p>${this.escapeHtml(value('content'))}</p>` : ''}
+					${removed.length ? renderRows(removed) : ''}
+				</section>`;
+			}
+			const newer = details(ordered[index - 1]);
+			const isEarlier = start(feature) < start(ordered[index - 1]);
+			// Compare displayed records without asserting that shared coordinates mean one project.
+			const changes = fields
+				.filter(
+					(field) =>
+						newer.find((other) => other.key === field.key)?.value !== field.value,
+				)
+				.map((field) => ({
+					label: `${isEarlier ? 'Previous ' : ''}${field.label.toLowerCase()}`,
+					value: field.value,
+				}));
+			const currentGeometry = geometryKey(feature);
+			const newerGeometry = geometryKey(ordered[index - 1]);
+			if (currentGeometry && newerGeometry && currentGeometry !== newerGeometry) {
+				changes.push({ label: 'Mapped area', value: 'Different from the record above' });
+			}
+			return `<section class="detector-popup road-closure-popup__entry road-closure-popup__changes">
+				${isEarlier ? '' : '<h5>Other record</h5>'}
+				${changes.length ? renderRows(changes) : '<p>Same displayed details.</p>'}
+			</section>`;
+		});
+		return `<div class="road-closure-popup">
+			${ordered.length > 1 ? `<p class="road-closure-popup__summary">${ordered.length} records at this location</p>` : ''}
+			${entries.join('')}
+		</div>`;
+	}
+
 	private openRoadClosurePopup(
 		map: maplibregl.Map,
-		feature: maplibregl.MapGeoJSONFeature,
+		features: maplibregl.MapGeoJSONFeature[],
 		lngLat: maplibregl.LngLat,
 	): void {
 		this._roadClosurePopup?.remove();
 
-		const properties = feature.properties ?? {};
-		const text = (key: string) => String(properties[key] ?? '');
-		const typeLabel = roadClosureTypeLabels[text('factorType')] ?? 'Road closure';
-		const severityLabel = roadClosureSeverityLabels[text('severity')] ?? '';
-		const validFrom = Number(properties['validFrom'] ?? 0);
-		const validTo = Number(properties['validTo'] ?? 0);
-		const period = validFrom
-			? `${this.formatDateTime(validFrom)} – ${validTo ? this.formatDateTime(validTo) : 'open-ended'}`
-			: '';
-		const rows = [
-			['Type', this.escapeHtml(typeLabel)],
-			['Severity', this.escapeHtml(severityLabel)],
-			['Direction', this.escapeHtml(text('direction'))],
-			['Period', this.escapeHtml(period)],
-		].filter(([, value]) => value);
-
 		const popup = new maplibregl.Popup({
 			closeButton: true,
 			closeOnClick: false,
-			maxWidth: '320px',
+			maxWidth: '360px',
+			offset: 24,
 		})
 			.setLngLat(lngLat)
-			.setHTML(
-				`
-				<div class="detector-popup">
-					<h4>${this.escapeHtml(text('street') || typeLabel)}</h4>
-					${properties['section'] ? `<p>${this.escapeHtml(text('section'))}</p>` : ''}
-					<dl>
-						${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}
-					</dl>
-					${properties['content'] ? `<p>${this.escapeHtml(text('content'))}</p>` : ''}
-				</div>
-			`,
-			)
+			.setHTML(this.roadClosurePopupHtml(features))
 			.addTo(map);
 		popup.on('close', () => {
 			if (this._roadClosurePopup === popup) {
@@ -2528,14 +2566,13 @@ export class PreferenceAvoidancePage {
 		});
 	}
 
-	private syncMatchedSource(map: maplibregl.Map): void {
+	private syncMatchedSource(map: maplibregl.Map, url = this.filteredTileUrl()): void {
 		const source = map.getSource(preferenceAvoidanceMatchedSource) as
-			| maplibregl.GeoJSONSource
+			| maplibregl.VectorTileSource
 			| undefined;
-		if (!source) {
-			return;
+		if (source && source.serialize().tiles?.[0] !== url) {
+			source.setTiles([url]);
 		}
-		source.setData({ type: 'FeatureCollection', features: this._matchedOverlayFeatures });
 	}
 
 	private syncCorridorHighlight(map: maplibregl.Map): void {

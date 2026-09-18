@@ -361,10 +361,9 @@
 								</div>
 								} @if (selectedEventId() === event.id) {
 								<div class="event-detail">
-									@if (rideDetailItems(event).length) {
-									<section class="event-detail__group">
-										<h4>Ride</h4>
-										<dl>
+								@if (rideDetailItems(event).length) {
+								<section class="event-detail__group">
+									<dl>
 											@for (item of rideDetailItems(event); track item.label)
 											{
 											<div>
