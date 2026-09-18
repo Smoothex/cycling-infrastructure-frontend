@@ -39,6 +39,20 @@ class MapillaryViewerStubComponent {
 }
 
 interface TestablePreferenceAvoidancePage {
+	setSelectedHighlight(map: maplibregl.Map, geometry: unknown, properties: unknown): void;
+	filteredTileUrl(): string;
+	syncMatchedSource(map: maplibregl.Map, url?: string): void;
+	applyMapFilters(map: maplibregl.Map): void;
+	roadClosures: {
+		value: () => { id: string; lon: number; lat: number; lines: number[][][] }[] | undefined;
+	};
+	roadClosurePopupHtml(features: maplibregl.MapGeoJSONFeature[]): string;
+	registerMapHandlers(map: maplibregl.Map): void;
+	openRoadClosurePopup(
+		map: maplibregl.Map,
+		features: maplibregl.MapGeoJSONFeature[],
+		lngLat: maplibregl.LngLat,
+	): void;
 	selectedYear: WritableSignal<number | undefined>;
 	selectedRideIntent: WritableSignal<string | undefined>;
 	selectedTrafficCondition: WritableSignal<string | undefined>;
@@ -150,6 +164,181 @@ describe('PreferenceAvoidancePage', () => {
 		await fixture.whenStable();
 	});
 
+	const disruptionFeature = (id: string, validFrom: number, content: string, layer = 'line') =>
+		({
+			properties: {
+				id,
+				validFrom,
+				content,
+				street: 'Einsteinufer',
+				factorType: 'CONSTRUCTION',
+			},
+			layer: { id: `preference-avoidance-road-closures-${layer}-layer` },
+		}) as unknown as maplibregl.MapGeoJSONFeature;
+
+	it('shows overlapping disruption records once each, with the latest start first', () => {
+		const older = disruptionFeature('old', Date.UTC(2024, 5, 1), 'Earlier works');
+		const newer = disruptionFeature('new', Date.UTC(2024, 10, 19), 'Later works');
+		const duplicate = disruptionFeature('new', Date.UTC(2024, 10, 19), 'Later works', 'point');
+		const html = component.roadClosurePopupHtml([older, newer, duplicate]);
+		const popup = document.createElement('div');
+		popup.innerHTML = html;
+		expect(popup.querySelectorAll('.road-closure-popup__entry')).toHaveLength(2);
+		expect(popup.textContent).toContain('2 records at this location');
+		expect(html.indexOf('Later works')).toBeLessThan(html.indexOf('Earlier works'));
+		expect(popup.textContent).toContain('open-ended');
+	});
+
+	it('keeps distinct records with equal start dates and escapes source text', () => {
+		const a = disruptionFeature('a', 1000, '<img src=x onerror=alert(1)>');
+		const b = disruptionFeature('b', 1000, 'Other works');
+		const popup = document.createElement('div');
+		popup.innerHTML = component.roadClosurePopupHtml([b, a]);
+		expect(popup.querySelectorAll('.road-closure-popup__entry')).toHaveLength(2);
+		expect(popup.querySelector('img')).toBeNull();
+		expect(popup.textContent).toContain('<img src=x onerror=alert(1)>');
+		expect(component.roadClosurePopupHtml([a])).not.toContain('records at this location');
+	});
+
+	it('shows a period-only change without repeating the street, type or description', () => {
+		const older = disruptionFeature('old', Date.UTC(2024, 5, 1), 'Carriageway narrowed');
+		const newer = disruptionFeature('new', Date.UTC(2024, 10, 19), 'Carriageway narrowed');
+		const popup = document.createElement('div');
+		popup.innerHTML = component.roadClosurePopupHtml([older, newer]);
+		expect(popup.querySelectorAll('h4')).toHaveLength(1);
+		expect(popup.textContent?.match(/Carriageway narrowed/g)).toHaveLength(1);
+		const changes = popup.querySelector('.road-closure-popup__changes');
+		expect(changes?.textContent).toContain('Previous period');
+		expect(changes?.querySelector('h5')).toBeNull();
+		expect(changes?.textContent).not.toContain('Earlier record');
+		expect(changes?.querySelectorAll('dl > div')).toHaveLength(1);
+		expect(popup.textContent).not.toContain('newest start first');
+	});
+
+	it('preserves changed type, description, severity, direction and section in earlier records', () => {
+		const older = disruptionFeature('old', 1000, 'Old description');
+		older.properties = {
+			...older.properties,
+			factorType: 'EVENT',
+			severity: 'FULL_CLOSURE',
+			direction: 'East',
+			section: 'A to B',
+		};
+		const newer = disruptionFeature('new', 2000, 'New description');
+		newer.properties = {
+			...newer.properties,
+			severity: 'NO_CLOSURE',
+			direction: 'West',
+			section: 'B to C',
+		};
+		const popup = document.createElement('div');
+		popup.innerHTML = component.roadClosurePopupHtml([older, newer]);
+		const changes = popup.querySelector('.road-closure-popup__changes');
+		for (const label of [
+			'Previous type',
+			'Previous description',
+			'Previous severity',
+			'Previous direction',
+			'Previous section',
+		]) {
+			expect(changes?.textContent).toContain(label);
+		}
+		expect(changes?.textContent).toContain('Old description');
+		expect(changes?.textContent).not.toContain('New description');
+	});
+
+	it('makes cleared fields explicit and does not invent chronology for equal start dates', () => {
+		const older = disruptionFeature('old', 1000, 'Original description');
+		const newer = disruptionFeature('new', 2000, '');
+		const popup = document.createElement('div');
+		popup.innerHTML = component.roadClosurePopupHtml([older, newer]);
+		expect(popup.querySelector('.road-closure-popup__entry')?.textContent).toContain(
+			'Not recorded',
+		);
+		expect(popup.textContent).toContain('Original description');
+		const sameTime = disruptionFeature('other', 2000, 'Other notice');
+		popup.innerHTML = component.roadClosurePopupHtml([newer, sameTime]);
+		expect(popup.textContent).toContain('Other record');
+		expect(popup.textContent).not.toContain('Earlier record');
+	});
+
+	it('reports changed mapped areas using complete API geometry, not map tile fragments', () => {
+		jest.spyOn(component.roadClosures, 'value').mockReturnValue([
+			{
+				id: 'old',
+				lon: 13.32,
+				lat: 52.52,
+				lines: [
+					[
+						[13.32, 52.52],
+						[13.33, 52.52],
+					],
+				],
+			},
+			{
+				id: 'new',
+				lon: 13.32,
+				lat: 52.52,
+				lines: [
+					[
+						[13.32, 52.52],
+						[13.34, 52.52],
+					],
+				],
+			},
+		]);
+		const popup = document.createElement('div');
+		popup.innerHTML = component.roadClosurePopupHtml([
+			disruptionFeature('old', 1000, 'Works'),
+			disruptionFeature('new', 2000, 'Works'),
+		]);
+		expect(popup.textContent).toContain('Mapped area');
+		expect(popup.textContent).toContain('Different from the record above');
+	});
+
+	it('opens one popup with hits from every disruption layer', () => {
+		const hits = [
+			disruptionFeature('old', 1, 'Earlier', 'line'),
+			disruptionFeature('new', 2, 'Later', 'point'),
+			disruptionFeature('new', 2, 'Later', 'symbol'),
+		];
+		const map = {
+			on: jest.fn(),
+			getLayer: jest.fn().mockReturnValue({}),
+			queryRenderedFeatures: jest.fn().mockReturnValue(hits),
+		} as unknown as maplibregl.Map;
+		const open = jest
+			.spyOn(component, 'openRoadClosurePopup')
+			.mockImplementation(() => undefined);
+		component.registerMapHandlers(map);
+		const clicks = (map.on as jest.Mock).mock.calls.filter(
+			([event, handler]) => event === 'click' && typeof handler === 'function',
+		);
+		expect(clicks).toHaveLength(1);
+		const lngLat = { lng: 13.32, lat: 52.52 };
+		clicks[0][1]({ point: { x: 10, y: 10 }, lngLat });
+		expect(open).toHaveBeenCalledTimes(1);
+		expect(open).toHaveBeenCalledWith(map, hits, lngLat);
+	});
+
+	it.each([
+		'preference-avoidance-streets-layer',
+		'preference-avoidance-segments-layer',
+		'preference-avoidance-matched-layer',
+	])('selects a segment clicked on %s', (layer) => {
+		const map = { on: jest.fn() } as unknown as maplibregl.Map;
+		jest.spyOn(component, 'setSelectedHighlight').mockImplementation(() => undefined);
+		component.registerMapHandlers(map);
+		const handler = (map.on as jest.Mock).mock.calls.find(
+			([event, layerId]) => event === 'click' && layerId === layer,
+		)?.[2];
+		expect(handler).toBeDefined();
+		handler({ features: [{ properties: { id: 27922832, avoidanceCount: 9, preferenceCount: 29 },
+			geometry: { type: 'LineString', coordinates: [[13.412, 52.507], [13.414, 52.508]] } }] });
+		expect(component.selectedSegmentId()).toBe(27922832);
+		expect(component.setSelectedHighlight).toHaveBeenCalled();
+	});
+
 	it('clears every data filter while preserving the active tab', () => {
 		component.selectedYear.set(2024);
 		component.selectedRideIntent.set('COMMUTE');
@@ -239,9 +428,9 @@ describe('PreferenceAvoidancePage', () => {
 		expect(text).toContain('Events with road disruptions');
 		expect(text).not.toContain('Historical OSM data enriched');
 
-		const disruptionKpi = [
-			...fixture.nativeElement.querySelectorAll('.pa-kpi-tile'),
-		].find((tile: Element) => tile.textContent?.includes('Events with road disruptions'));
+		const disruptionKpi = [...fixture.nativeElement.querySelectorAll('.pa-kpi-tile')].find(
+			(tile: Element) => tile.textContent?.includes('Events with road disruptions'),
+		);
 		expect(disruptionKpi?.querySelector('strong')?.textContent?.trim()).toBe('12');
 	});
 
@@ -287,19 +476,54 @@ describe('PreferenceAvoidancePage', () => {
 			enrichmentFilters: ['ROAD_DISRUPTION_AFFECTED', 'TRAFFIC_MEASURED'],
 		});
 		expect(facade.getSegments).toHaveBeenLastCalledWith(expectedFilters);
-		expect(facade.getSegmentsGeoJson).toHaveBeenLastCalledWith(expectedFilters);
+		expect(facade.getSegmentsGeoJson).not.toHaveBeenCalled();
+		const tileUrl = new URL(component.filteredTileUrl());
+		expect(tileUrl.pathname).toBe('/api/segments/tiles/%7Bz%7D/%7Bx%7D/%7By%7D.mvt');
+		expect(Object.fromEntries(tileUrl.searchParams)).toEqual({
+			from: String(Date.UTC(2024, 0, 1)),
+			to: String(Date.UTC(2025, 0, 1) - 1),
+			rideIntent: 'COMMUTE',
+			trafficCondition: 'CONGESTED',
+			enrichmentFilters: 'ROAD_DISRUPTION_AFFECTED,TRAFFIC_MEASURED',
+		});
 		expect(facade.getSegmentEvents).not.toHaveBeenCalled();
 	});
 
-	it('uses the live segment overlay when an enrichment filter is active', async () => {
-		component.selectedEnrichmentFilters.set(['WEATHER_ENRICHED']);
-
+	it('uses canonical vector tile URLs for combined availability filters without a GeoJSON request', async () => {
+		component.selectedEnrichmentFilters.set(['WEATHER_ENRICHED', 'OHSOME_ENRICHED']);
 		fixture.detectChanges();
 		await fixture.whenStable();
+		const url = component.filteredTileUrl();
+		component.selectedEnrichmentFilters.set(['OHSOME_ENRICHED', 'WEATHER_ENRICHED']);
+		expect(component.filteredTileUrl()).toBe(url);
+		expect(facade.getSegmentsGeoJson).not.toHaveBeenCalled();
+		// MapLibre exposes its configured URL immediately via serialize(), but
+		// source.tiles is undefined until its asynchronous metadata load finishes.
+		const source = { serialize: () => ({ type: 'vector', tiles: [url] }), setTiles: jest.fn() };
+		const map = { getSource: () => source } as unknown as maplibregl.Map;
+		component.syncMatchedSource(map);
+		expect(source.setTiles).not.toHaveBeenCalled();
+		component.selectedRideIntent.set('COMMUTE');
+		component.syncMatchedSource(map);
+		expect(source.setTiles).toHaveBeenCalledWith([component.filteredTileUrl()]);
+	});
 
-		expect(facade.getSegmentsGeoJson).toHaveBeenLastCalledWith(
-			expect.objectContaining({ enrichmentFilters: ['WEATHER_ENRICHED'] }),
-		);
+	it('keeps filtered tiles visible for combined filters and restores PMTiles when cleared', () => {
+		const map = {
+			getLayer: () => ({}),
+			setFilter: jest.fn(),
+			setPaintProperty: jest.fn(),
+			setLayoutProperty: jest.fn(),
+		} as unknown as maplibregl.Map;
+		component.selectedYear.set(2024);
+		component.selectedEnrichmentFilters.set(['WEATHER_ENRICHED', 'OHSOME_ENRICHED']);
+		component.applyMapFilters(map);
+		expect(map.setLayoutProperty).toHaveBeenCalledWith('preference-avoidance-matched-layer', 'visibility', 'visible');
+		expect(map.setLayoutProperty).toHaveBeenCalledWith('preference-avoidance-segments-layer', 'visibility', 'none');
+		expect(map.setPaintProperty).not.toHaveBeenCalledWith('preference-avoidance-matched-layer', expect.anything(), expect.anything());
+		component.selectedEnrichmentFilters.set([]);
+		component.applyMapFilters(map);
+		expect(map.setLayoutProperty).toHaveBeenLastCalledWith('preference-avoidance-matched-layer', 'visibility', 'none');
 	});
 
 	it('returns to the map and selects a segment from the table', () => {
@@ -315,7 +539,7 @@ describe('PreferenceAvoidancePage', () => {
 		expect(component.selectedSegmentId()).toBe(42);
 	});
 
-	it('shows every road disruption and omits the ride id from event details', () => {
+	it('shows every road disruption and includes the ride ID in event details', () => {
 		const event = segmentEvent({
 			roadDisruptions: [
 				{
@@ -344,9 +568,10 @@ describe('PreferenceAvoidancePage', () => {
 			],
 		});
 
-		expect(component.rideDetailItems(event).map((item) => item.label)).toEqual([
-			'Purpose',
-			'Bike type',
+		expect(component.rideDetailItems(event)).toEqual([
+			expect.objectContaining({ label: 'Purpose', value: 'Commute' }),
+			expect.objectContaining({ label: 'Bike type', value: 'City Trekking Bike' }),
+			expect.objectContaining({ label: 'Ride ID', value: 'ride-1' }),
 		]);
 
 		const disruptionRow = component
@@ -460,9 +685,9 @@ describe('PreferenceAvoidancePage', () => {
 				expect.objectContaining({ label: 'Cycling direction', value: 'Two-way' }),
 			]),
 		);
-		expect(component.rideDetailItems(segmentEvent({ rideIntent: 'UNKNOWN' }))).toEqual([
-			expect.objectContaining({ label: 'Bike type' }),
-		]);
+		expect(
+			component.rideDetailItems(segmentEvent({ rideId: undefined, rideIntent: 'UNKNOWN' })),
+		).toEqual([expect.objectContaining({ label: 'Bike type' })]);
 	});
 
 	it('renders road disruption groups in the expanded event card', async () => {

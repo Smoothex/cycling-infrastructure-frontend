@@ -1133,3 +1133,45 @@
 		}
 	}
 }
+
+.road-closure-popup {
+	display: grid;
+	gap: 0.75rem;
+	max-height: min(55vh, 360px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+
+	&__summary {
+		margin: 0;
+		font-size: 0.78rem;
+		color: var(--text-color-secondary);
+	}
+
+	&__entry + &__entry {
+		border-top: 1px solid var(--surface-border);
+		padding-top: 0.75rem;
+	}
+}
+
+.road-closure-popup__changes {
+	gap: 0.3rem;
+
+	h5 {
+		margin: 0;
+		font-size: 0.75rem;
+		color: var(--text-color-secondary);
+	}
+
+	dl div {
+		display: block;
+	}
+
+	dt {
+		font-size: 0.75rem;
+	}
+
+	dd {
+		text-align: left;
+		font-weight: 500;
+	}
+}
