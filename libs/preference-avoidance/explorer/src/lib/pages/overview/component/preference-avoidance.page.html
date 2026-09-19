@@ -202,6 +202,18 @@
 							[isNavigable]="true"
 							(mapReady)="onMapReady($event)"
 						></t-map-component>
+						@if (matchedOverlayActive() && showSegmentEvents() && filteredMapState() ===
+						'loading') {
+						<div class="pa-map-status" role="status">
+							Loading filtered map…
+						</div>
+						} @if (matchedOverlayActive() && showSegmentEvents() && filteredMapState()
+						=== 'error') {
+						<div class="pa-map-status pa-map-status--error" role="alert">
+							The filtered map could not be fully loaded.
+							<button type="button" (click)="retryFilteredMap()">Retry</button>
+						</div>
+						}
 						<div class="pa-map-legend">
 							<div class="event-legend">
 								<span class="event-legend__endpoint">Preferred</span>

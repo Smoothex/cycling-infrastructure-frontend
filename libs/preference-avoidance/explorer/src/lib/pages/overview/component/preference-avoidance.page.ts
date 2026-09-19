@@ -5,6 +5,7 @@ import {
 	computed,
 	effect,
 	inject,
+	DestroyRef,
 	resource,
 	signal,
 	ViewEncapsulation,
@@ -40,6 +41,7 @@ import { Card } from 'primeng/card';
 import { Checkbox } from 'primeng/checkbox';
 import { Popover } from 'primeng/popover';
 import { Skeleton } from 'primeng/skeleton';
+import { FilteredMapLayer, FilteredMapState } from './filtered-map-layer';
 import { AnalyticsDashboardComponent } from '../../../components/analytics-dashboard/component/analytics-dashboard.component';
 import { RouteComparisonReviewerComponent } from '../../../components/route-comparison-reviewer/component/route-comparison-reviewer.component';
 import { SegmentsTableComponent } from '../../../components/segments-table/component/segments-table.component';
@@ -58,7 +60,6 @@ const preferenceAvoidanceCorridorGeometrySource = 'preference-avoidance-corridor
 const preferenceAvoidanceCorridorGeometryLayer = 'preference-avoidance-corridor-geometry-layer';
 const preferenceAvoidanceStreetsLayer = 'preference-avoidance-streets-layer';
 const preferenceAvoidanceSegmentsLayer = 'preference-avoidance-segments-layer';
-const preferenceAvoidanceMatchedSource = 'preference-avoidance-matched-source';
 const preferenceAvoidanceMatchedLayer = 'preference-avoidance-matched-layer';
 const preferenceAvoidanceHighlightSource = 'preference-avoidance-segments-highlight-source';
 const preferenceAvoidanceHighlightOutlineLayer =
@@ -338,6 +339,9 @@ export class PreferenceAvoidancePage {
 	private readonly _segmentDetailCache = new Map<number, SegmentSummary>();
 	private readonly _addressCache = new Map<number, string | undefined>();
 	private _mapHandlersRegistered = false;
+	private filteredMapLayer?: FilteredMapLayer;
+	protected readonly filteredMapState = signal<FilteredMapState>('idle');
+	private readonly destroyRef = inject(DestroyRef);
 	private _selectedHighlightFeature?: GeoJSON.Feature<LineString | MultiLineString>;
 	private _hoverHighlightFeature?: GeoJSON.Feature<LineString | MultiLineString>;
 	private _corridorGeometryFeature?: GeoJSON.Feature<MultiLineString>;
@@ -911,14 +915,12 @@ export class PreferenceAvoidancePage {
 			this.applyMapFilters(map);
 		});
 
-		// Coalesce rapid filter changes; setTiles cancels/reloads tiles for the new URL.
-		effect((onCleanup) => {
+		this.destroyRef.onDestroy(() => this.filteredMapLayer?.destroy());
+		effect(() => {
 			const map = this._map();
-			const active = this.matchedOverlayActive();
+			const active = this.matchedOverlayActive() && this.showSegmentEvents();
 			const url = this.filteredTileUrl();
-			if (!map || !active) return;
-			const timeout = setTimeout(() => this.syncMatchedSource(map, url), 150);
-			onCleanup(() => clearTimeout(timeout));
+			if (map) this.syncMatchedSource(map, active ? url : undefined);
 		});
 
 		effect(() => {
@@ -1695,21 +1697,6 @@ export class PreferenceAvoidancePage {
 			paint: segmentLinePaint,
 		});
 
-		map.addSource(preferenceAvoidanceMatchedSource, {
-			type: 'vector',
-			tiles: [this.filteredTileUrl()],
-			minzoom: 6,
-			maxzoom: 14,
-		});
-		map.addLayer({
-			id: preferenceAvoidanceMatchedLayer,
-			type: 'line',
-			source: preferenceAvoidanceMatchedSource,
-			'source-layer': 'segments',
-			layout: { visibility: 'none' },
-			paint: segmentLinePaint,
-		});
-
 		map.addSource(preferenceAvoidanceHighlightSource, {
 			type: 'geojson',
 			data: { type: 'FeatureCollection', features: [] },
@@ -1919,6 +1906,7 @@ export class PreferenceAvoidancePage {
 		map.on('click', preferenceAvoidanceSegmentsLayer, onTileSegmentClick);
 
 		map.on('click', preferenceAvoidanceMatchedLayer, (event) => {
+			if (this.filteredMapState() !== 'ready') return;
 			const feature = event.features?.[0];
 			const segmentId = Number(feature?.properties?.['id']);
 			if (!feature || !Number.isFinite(segmentId)) {
@@ -2559,12 +2547,29 @@ export class PreferenceAvoidancePage {
 	}
 
 	private syncMatchedSource(map: maplibregl.Map, url = this.filteredTileUrl()): void {
-		const source = map.getSource(preferenceAvoidanceMatchedSource) as
-			| maplibregl.VectorTileSource
-			| undefined;
-		if (source && source.serialize().tiles?.[0] !== url) {
-			source.setTiles([url]);
-		}
+		if (!map.getLayer(preferenceAvoidanceSegmentsLayer)) return;
+		this.filteredMapLayer ??= new FilteredMapLayer(
+			map,
+			{
+				id: preferenceAvoidanceMatchedLayer,
+				type: 'line',
+				source: '',
+				'source-layer': 'segments',
+				paint: segmentLinePaint,
+			},
+			preferenceAvoidanceHighlightOutlineLayer,
+			(state) => this.filteredMapState.set(state),
+		);
+		this.filteredMapLayer.select(
+			this.matchedOverlayActive() && this.showSegmentEvents() ? url : undefined,
+		);
+		this.applyMapFilters(map);
+	}
+
+	protected retryFilteredMap(): void {
+		this.filteredMapLayer?.retry();
+		const map = this._map();
+		if (map) this.applyMapFilters(map);
 	}
 
 	private syncCorridorHighlight(map: maplibregl.Map): void {

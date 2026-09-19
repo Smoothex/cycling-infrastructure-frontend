@@ -39,6 +39,7 @@ class MapillaryViewerStubComponent {
 }
 
 interface TestablePreferenceAvoidancePage {
+	filteredMapState: WritableSignal<'idle' | 'loading' | 'ready' | 'error'>;
 	setSelectedHighlight(map: maplibregl.Map, geometry: unknown, properties: unknown): void;
 	filteredTileUrl(): string;
 	syncMatchedSource(map: maplibregl.Map, url?: string): void;
@@ -356,6 +357,7 @@ describe('PreferenceAvoidancePage', () => {
 			([event, layerId]) => event === 'click' && layerId === layer,
 		)?.[2];
 		expect(handler).toBeDefined();
+		component.filteredMapState.set('ready');
 		handler({ features: [{ properties: { id: 27922832, avoidanceCount: 9, preferenceCount: 29 },
 			geometry: { type: 'LineString', coordinates: [[13.412, 52.507], [13.414, 52.508]] } }] });
 		expect(component.selectedSegmentId()).toBe(27922832);
@@ -520,15 +522,7 @@ describe('PreferenceAvoidancePage', () => {
 		component.selectedEnrichmentFilters.set(['OHSOME_ENRICHED', 'WEATHER_ENRICHED']);
 		expect(component.filteredTileUrl()).toBe(url);
 		expect(facade.getSegmentsGeoJson).not.toHaveBeenCalled();
-		// MapLibre exposes its configured URL immediately via serialize(), but
-		// source.tiles is undefined until its asynchronous metadata load finishes.
-		const source = { serialize: () => ({ type: 'vector', tiles: [url] }), setTiles: jest.fn() };
-		const map = { getSource: () => source } as unknown as maplibregl.Map;
-		component.syncMatchedSource(map);
-		expect(source.setTiles).not.toHaveBeenCalled();
-		component.selectedRideIntent.set('COMMUTE');
-		component.syncMatchedSource(map);
-		expect(source.setTiles).toHaveBeenCalledWith([component.filteredTileUrl()]);
+
 	});
 
 	it('keeps filtered tiles visible for combined filters and restores PMTiles when cleared', () => {
