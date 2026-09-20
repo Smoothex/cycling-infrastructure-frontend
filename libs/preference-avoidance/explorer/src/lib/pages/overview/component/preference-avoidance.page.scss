@@ -468,6 +468,12 @@
 		}
 	}
 
+	// Reserve the map's true center for both loading and retry messages.
+	.pa-map-frame--status .maplibregl-ctrl-geocoder {
+		width: min(22rem, calc(50% - 10rem));
+		min-width: 0;
+	}
+
 	.event-legend {
 		display: flex;
 		flex-wrap: nowrap;
@@ -1178,33 +1184,25 @@
 
 .pa-map-status {
 	position: absolute;
-	top: 4rem;
-	left: 1rem;
-	right: 3rem;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: max-content;
+	max-width: min(18rem, calc(100% - 18rem));
+	min-height: 29px;
 	z-index: 2;
-	padding: 0.75rem 1rem;
+	padding: 0.35rem 0.65rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 	border-radius: 0.5rem;
 	background: #fff;
 	color: #334155;
 	box-shadow: 0 2px 8px #0002;
-	font-size: 0.875rem;
+	font-size: 0.75rem;
+	line-height: 1.2;
 	pointer-events: none;
-	&[role='status'] {
-		top: 10px;
-		left: 8.5rem;
-		right: calc(min(22rem, 40%) + 1.25rem);
-		width: max-content;
-		max-width: min(18rem, calc(100% - 10rem - min(22rem, 40%)));
-		min-height: 29px;
-		margin-inline: auto;
-		padding: 0.35rem 0.65rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		font-size: 0.75rem;
-		line-height: 1.2;
-	}
 	&--error {
 		color: #b91c1c;
 		background: #fef2f2;

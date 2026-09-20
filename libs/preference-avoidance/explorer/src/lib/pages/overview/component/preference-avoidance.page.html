@@ -197,7 +197,8 @@
 							</p-popover>
 						</div>
 					</ng-template>
-					<div class="pa-map-frame">
+					<div class="pa-map-frame"
+						[class.pa-map-frame--status]="matchedOverlayActive() && showSegmentEvents() && (filteredMapState() === 'loading' || filteredMapState() === 'error')">
 						<t-map-component
 							[isNavigable]="true"
 							(mapReady)="onMapReady($event)"
@@ -210,7 +211,7 @@
 						} @if (matchedOverlayActive() && showSegmentEvents() && filteredMapState()
 						=== 'error') {
 						<div class="pa-map-status pa-map-status--error" role="alert">
-							The filtered map could not be fully loaded.
+							Filtered map unavailable.
 							<button type="button" (click)="retryFilteredMap()">Retry</button>
 						</div>
 						}
